@@ -1,0 +1,40 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/HrastERP.API/HrastERP.API.csproj" />
+    <Project Path="src/HrastERP.SharedKernel/HrastERP.SharedKernel.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/" />
+  <Folder Name="/src/Modules/Administration/">
+    <Project Path="src/Modules/Administration/Administration.Application/Administration.Application.csproj" />
+    <Project Path="src/Modules/Administration/Administration.Domain/Administration.Domain.csproj" />
+    <Project Path="src/Modules/Administration/Administration.Infrastructure/Administration.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Finance/">
+    <Project Path="src/Modules/Finance/Finance.Application/Finance.Application.csproj" />
+    <Project Path="src/Modules/Finance/Finance.Domain/Finance.Domain.csproj" />
+    <Project Path="src/Modules/Finance/Finance.Infrastructure/Finance.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Inventory/">
+    <Project Path="src/Modules/Inventory/Inventory.Application/Inventory.Application.csproj" />
+    <Project Path="src/Modules/Inventory/Inventory.Domain/Inventory.Domain.csproj" />
+    <Project Path="src/Modules/Inventory/Inventory.Infrastructure/Inventory.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Procurement/">
+    <Project Path="src/Modules/Procurement/Procurement.Application/Procurement.Application.csproj" />
+    <Project Path="src/Modules/Procurement/Procurement.Domain/Procurement.Domain.csproj" />
+    <Project Path="src/Modules/Procurement/Procurement.Infrastructure/Procurement.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Production/">
+    <Project Path="src/Modules/Production/Production.Application/Production.Application.csproj" />
+    <Project Path="src/Modules/Production/Production.Domain/Production.Domain.csproj" />
+    <Project Path="src/Modules/Production/Production.Infrastructure/Production.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Administration.Tests/Administration.Tests.csproj" />
+    <Project Path="tests/Finance.Tests/Finance.Tests.csproj" />
+    <Project Path="tests/HrastERP.SharedKernel.Tests/HrastERP.SharedKernel.Tests.csproj" />
+    <Project Path="tests/Inventory.Tests/Inventory.Tests.csproj" />
+    <Project Path="tests/Procurement.Tests/Procurement.Tests.csproj" />
+    <Project Path="tests/Production.Tests/Production.Tests.csproj" />
+  </Folder>
+</Solution>
