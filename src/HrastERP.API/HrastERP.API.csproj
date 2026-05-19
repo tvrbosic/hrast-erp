@@ -2,11 +2,11 @@
 
   <ItemGroup>
     <ProjectReference Include="..\HrastERP.SharedKernel\HrastERP.SharedKernel.csproj" />
-    <ProjectReference Include="..\Modules\Administration\Administration.Infrastructure\Administration.Infrastructure.csproj" />
-    <ProjectReference Include="..\Modules\Procurement\Procurement.Infrastructure\Procurement.Infrastructure.csproj" />
-    <ProjectReference Include="..\Modules\Inventory\Inventory.Infrastructure\Inventory.Infrastructure.csproj" />
-    <ProjectReference Include="..\Modules\Production\Production.Infrastructure\Production.Infrastructure.csproj" />
-    <ProjectReference Include="..\Modules\Finance\Finance.Infrastructure\Finance.Infrastructure.csproj" />
+    <ProjectReference Include="..\Modules\Administration\HrastERP.Administration.Infrastructure\HrastERP.Administration.Infrastructure.csproj" />
+    <ProjectReference Include="..\Modules\Procurement\HrastERP.Procurement.Infrastructure\HrastERP.Procurement.Infrastructure.csproj" />
+    <ProjectReference Include="..\Modules\Inventory\HrastERP.Inventory.Infrastructure\HrastERP.Inventory.Infrastructure.csproj" />
+    <ProjectReference Include="..\Modules\Production\HrastERP.Production.Infrastructure\HrastERP.Production.Infrastructure.csproj" />
+    <ProjectReference Include="..\Modules\Finance\HrastERP.Finance.Infrastructure\HrastERP.Finance.Infrastructure.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

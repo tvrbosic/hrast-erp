@@ -19,7 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Modules\Production\Production.Infrastructure\Production.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Production\HrastERP.Production.Infrastructure\HrastERP.Production.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

@@ -19,7 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Modules\Procurement\Procurement.Infrastructure\Procurement.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Procurement\HrastERP.Procurement.Infrastructure\HrastERP.Procurement.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

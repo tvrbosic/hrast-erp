@@ -1,0 +1,59 @@
+using FluentAssertions;
+using HrastERP.SharedKernel.Results;
+
+namespace HrastERP.SharedKernel.Tests.Results;
+
+public class ErrorTests
+{
+    [Fact]
+    public void Error_None_has_empty_code_and_message()
+    {
+        Error.None.Code.Should().BeEmpty();
+        Error.None.Message.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Errors_with_same_code_and_message_are_equal()
+    {
+        var a = new Error("ERR001", "Something failed");
+        var b = new Error("ERR001", "Something failed");
+
+        a.Should().Be(b);
+    }
+
+    [Fact]
+    public void Errors_with_different_codes_are_not_equal()
+    {
+        var a = new Error("ERR001", "Something failed");
+        var b = new Error("ERR002", "Something failed");
+
+        a.Should().NotBe(b);
+    }
+
+    [Fact]
+    public void NotFound_factory_creates_error_with_given_code_and_message()
+    {
+        var error = Error.NotFound("User.NotFound", "User was not found");
+
+        error.Code.Should().Be("User.NotFound");
+        error.Message.Should().Be("User was not found");
+    }
+
+    [Fact]
+    public void Validation_factory_creates_error_with_given_code_and_message()
+    {
+        var error = Error.Validation("User.InvalidEmail", "Email is invalid");
+
+        error.Code.Should().Be("User.InvalidEmail");
+        error.Message.Should().Be("Email is invalid");
+    }
+
+    [Fact]
+    public void Forbidden_factory_creates_error_with_given_code_and_message()
+    {
+        var error = Error.Forbidden("User.Forbidden", "Access denied");
+
+        error.Code.Should().Be("User.Forbidden");
+        error.Message.Should().Be("Access denied");
+    }
+}

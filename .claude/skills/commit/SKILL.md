@@ -24,7 +24,7 @@ Run these in parallel:
 Follow **Conventional Commits** format:
 
 ```
-type(scope): short summary under 72 chars
+type(scope): short summary under 100 chars
 
 Optional body explaining WHY (not what), if changes are complex.
 ```
@@ -54,10 +54,7 @@ Do NOT commit until explicit approval is given.
 ### 4. Commit and push (on approval)
 
 1. Stage files — prefer specific file names over `git add .` to avoid accidentally including secrets or build artifacts
-2. Commit with the approved message, appending co-author trailer:
-```
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
-```
+2. Commit with the approved message — do NOT append any co-author trailer
 3. Push to remote: `git push`
 4. Confirm success with final `git status`
 
