@@ -1,0 +1,24 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+<PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.*" />
+    <PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" Version="10.0.*" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\HrastERP.SharedKernel\HrastERP.SharedKernel.csproj" />
+    <ProjectReference Include="..\Modules\Administration\HrastERP.Administration.Domain\HrastERP.Administration.Domain.csproj" />
+    <ProjectReference Include="..\Modules\Finance\HrastERP.Finance.Domain\HrastERP.Finance.Domain.csproj" />
+    <ProjectReference Include="..\Modules\Inventory\HrastERP.Inventory.Domain\HrastERP.Inventory.Domain.csproj" />
+    <ProjectReference Include="..\Modules\Procurement\HrastERP.Procurement.Domain\HrastERP.Procurement.Domain.csproj" />
+    <ProjectReference Include="..\Modules\Production\HrastERP.Production.Domain\HrastERP.Production.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

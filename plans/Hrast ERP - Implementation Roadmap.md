@@ -106,11 +106,11 @@ HrastERP.sln
 - Common exception types (`NotFoundException`, `ForbiddenException`, `ValidationException`)
 
 #### 0.3 Database & EF Core Setup
-- PostgreSQL connection with EF Core
-- `HrastDbContext` or per-module DbContexts registered to single connection
+- PostgreSQL connection with EF Core (Docker compose)
+- Shared `HrastDbContext` within HrastERP.Infrastructure
+- Timestamped entities (`CreatedAt`, `CreatedBy`, `UpdatedAt`, `UpdatedBy`)
 - Global query filter for `TenantId` on all tenant-scoped entities
 - Soft delete support (`IsDeleted`, `DeletedAt`, `DeletedBy`)
-- Timestamped entities (`CreatedAt`, `CreatedBy`, `UpdatedAt`, `UpdatedBy`)
 - Migration pipeline
 
 #### 0.4 Multi-Tenancy

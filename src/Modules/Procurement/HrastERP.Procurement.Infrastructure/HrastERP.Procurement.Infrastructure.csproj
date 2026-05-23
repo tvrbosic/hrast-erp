@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\HrastERP.Procurement.Application\HrastERP.Procurement.Application.csproj" />
+    <ProjectReference Include="..\..\..\HrastERP.Infrastructure\HrastERP.Infrastructure.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

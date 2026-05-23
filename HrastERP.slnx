@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/HrastERP.API/HrastERP.API.csproj" />
+    <Project Path="src/HrastERP.Infrastructure/HrastERP.Infrastructure.csproj" />
     <Project Path="src/HrastERP.SharedKernel/HrastERP.SharedKernel.csproj" />
   </Folder>
   <Folder Name="/src/Modules/" />
@@ -32,6 +33,7 @@
   <Folder Name="/tests/">
     <Project Path="tests/Administration.Tests/Administration.Tests.csproj" />
     <Project Path="tests/Finance.Tests/Finance.Tests.csproj" />
+    <Project Path="tests/HrastERP.Infrastructure.Tests/HrastERP.Infrastructure.Tests.csproj" />
     <Project Path="tests/HrastERP.SharedKernel.Tests/HrastERP.SharedKernel.Tests.csproj" />
     <Project Path="tests/Inventory.Tests/Inventory.Tests.csproj" />
     <Project Path="tests/Procurement.Tests/Procurement.Tests.csproj" />

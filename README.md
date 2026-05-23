@@ -30,6 +30,7 @@ A shared `HrastERP.SharedKernel` library provides common abstractions used acros
 src/
   HrastERP.API/                              # Presentation layer (ASP.NET Web API)
   HrastERP.SharedKernel/                     # Shared abstractions and utilities
+  HrastERP.Infrastructure/                   # Core infrastructure (DbContext, EF Core, database config)
   Modules/
     <Module>/
       HrastERP.<Module>.Domain/              # Domain layer
@@ -37,10 +38,12 @@ src/
       HrastERP.<Module>.Infrastructure/      # Infrastructure layer
 tests/
   HrastERP.SharedKernel.Tests/
+  HrastERP.Infrastructure.Tests/
   <Module>.Tests/                            # Per-module test projects
 ```
 
 ## Technology
 
 - .NET 10
+- PostgreSQL + EF Core (Npgsql)
 - xUnit + FluentAssertions (testing)
