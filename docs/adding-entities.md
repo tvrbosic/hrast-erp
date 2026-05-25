@@ -6,10 +6,20 @@ This document describes the steps required to add a new domain entity to a modul
 
 ## 1. Define the entity (Domain layer)
 
-Create the entity class in `HrastERP.<Module>.Domain`, extending either `BaseEntity<TId>` or `AggregateRoot<TId>` from `HrastERP.SharedKernel`:
+Create the entity class in `HrastERP.<Module>.Domain`, extending the appropriate base class from `HrastERP.SharedKernel`:
 
-- Use `BaseEntity<TId>` for plain entities that are not aggregate roots.
-- Use `AggregateRoot<TId>` for aggregate roots that raise domain events.
+| Base class | Aggregate root? | Audit trail? | Soft delete? |
+|---|---|---|---|
+| `BaseEntity<TId>` | No | No | No |
+| `AggregateRoot<TId>` | Yes | No | No |
+| `AuditableEntity<TId>` | No | Yes | No |
+| `AuditableAggregateRoot<TId>` | Yes | Yes | No |
+| `SoftDeletableEntity<TId>` | No | No | Yes |
+| `SoftDeletableAggregateRoot<TId>` | Yes | No | Yes |
+| `AuditableSoftDeletableEntity<TId>` | No | Yes | Yes |
+| `AuditableSoftDeletableAggregateRoot<TId>` | Yes | Yes | Yes |
+
+All audit and soft-delete fields (`CreatedAt`, `CreatedBy`, `UpdatedAt`, `UpdatedBy`, `DeletedAt`, `DeletedBy`) are populated automatically by EF Core interceptors — do not set them in domain code.
 
 ```csharp
 // src/Modules/Inventory/HrastERP.Inventory.Domain/Product.cs

@@ -1,3 +1,5 @@
+using System.Linq.Expressions;
+using HrastERP.SharedKernel.Domain;
 using Microsoft.EntityFrameworkCore;
 
 namespace HrastERP.Infrastructure.Persistence;
@@ -26,6 +28,28 @@ public sealed class HrastDbContext(
             modelBuilder.ApplyConfigurationsFromAssembly(moduleAssembly.Assembly);
         }
 
+        ApplySoftDeleteFilters(modelBuilder);
+
         base.OnModelCreating(modelBuilder);
+    }
+
+    // Registers an EF Core query filter (WHERE deleted_at IS NULL) for every ISoftDeletable entity.
+    // HasQueryFilter requires a typed lambda (e.g. Expression<Func<Order, bool>>), but here the entity
+    // types are only known at runtime — so we build the equivalent lambda dynamically via expression
+    // trees instead of writing it inline per entity (This saves us from having to write a lambda for each entity).
+    private static void ApplySoftDeleteFilters(ModelBuilder modelBuilder)
+    {
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            if (!typeof(ISoftDeletable).IsAssignableFrom(entityType.ClrType))
+                continue;
+
+            var parameter = Expression.Parameter(entityType.ClrType, "e");
+            var deletedAtProperty = Expression.Property(parameter, nameof(ISoftDeletable.DeletedAt));
+            var nullConstant = Expression.Constant(null, typeof(DateTime?));
+            var isNull = Expression.Equal(deletedAtProperty, nullConstant);
+            var lambda = Expression.Lambda(isNull, parameter);
+            modelBuilder.Entity(entityType.ClrType).HasQueryFilter(lambda);
+        }
     }
 }

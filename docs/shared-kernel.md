@@ -30,6 +30,23 @@ Extends `BaseEntity<TId>` and implements `IAuditable`. Use this as the base clas
 ### `AuditableAggregateRoot.cs`
 Extends `AggregateRoot<TId>` and implements `IAuditable`. Use this as the base class for aggregate roots that need audit trail support (e.g. `Order`, `Invoice`). Inherits domain event support from `AggregateRoot` and identity-based equality from `BaseEntity`.
 
+### `ISoftDeletable.cs`
+Marker interface for entities that support soft deletion. Exposes two nullable properties: `DeletedAt` (`DateTime?`, UTC) and `DeletedBy` (`Guid?`, user ID). Implement this interface indirectly by inheriting one of the four soft-deletable base classes below — do not implement it directly on domain entities.
+
+### `SoftDeletableEntity.cs`
+`SoftDeletableEntity<TId>` extends `BaseEntity<TId>` and implements `ISoftDeletable`. Use for non-aggregate entities that need soft delete but do **not** need an audit trail. `DeletedAt` and `DeletedBy` are populated automatically by `SoftDeleteInterceptor` — never set them manually.
+
+### `SoftDeletableAggregateRoot.cs`
+`SoftDeletableAggregateRoot<TId>` extends `AggregateRoot<TId>` and implements `ISoftDeletable`. Use for aggregate roots that need soft delete but do **not** need an audit trail.
+
+### `AuditableSoftDeletableEntity.cs`
+`AuditableSoftDeletableEntity<TId>` extends `BaseEntity<TId>` and implements both `IAuditable` and `ISoftDeletable`. Use for non-aggregate entities that need both an audit trail (`CreatedAt`, `CreatedBy`, `UpdatedAt`, `UpdatedBy`) and soft delete (`DeletedAt`, `DeletedBy`). All six fields are populated automatically by the EF Core interceptors.
+
+### `AuditableSoftDeletableAggregateRoot.cs`
+`AuditableSoftDeletableAggregateRoot<TId>` extends `AggregateRoot<TId>` and implements both `IAuditable` and `ISoftDeletable`. Use for aggregate roots that need both an audit trail and soft delete. This is the most common base class for core business aggregates (e.g. `Order`, `Invoice`).
+
+**Soft-delete behavior (Infrastructure):** `SoftDeleteInterceptor` intercepts every `SaveChanges` call. When an entity's EF Core state is `Deleted`, the interceptor flips it to `Modified` and sets `DeletedAt = DateTime.UtcNow` and `DeletedBy = currentUser.UserId`. A global query filter (`DeletedAt == null`) is applied to all `ISoftDeletable` entity types in `HrastDbContext`, so soft-deleted records are invisible to normal queries. Use `.IgnoreQueryFilters()` to include them (e.g. for admin views or purge jobs).
+
 ### `ValueObject.cs`
 Abstract base class for value objects. Equality is determined by the values returned from the abstract `GetEqualityComponents()` method, not by reference or identity. Overrides `Equals`, `GetHashCode`, `==`, and `!=` accordingly. Use this for types like `Money`, `Address`, or `Dimensions` that have no identity of their own.
 

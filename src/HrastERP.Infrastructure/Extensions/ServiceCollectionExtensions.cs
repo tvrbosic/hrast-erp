@@ -20,12 +20,15 @@ public static class ServiceCollectionExtensions
             .ValidateOnStart();
 
         services.AddScoped<AuditableEntityInterceptor>();
+        services.AddScoped<SoftDeleteInterceptor>();
 
         services.AddDbContext<HrastDbContext>((sp, options) =>
         {
             var settings = sp.GetRequiredService<IOptions<DatabaseSettings>>().Value;
             options.UseNpgsql(settings.ConnectionString);
-            options.AddInterceptors(sp.GetRequiredService<AuditableEntityInterceptor>());
+            options.AddInterceptors(
+                sp.GetRequiredService<AuditableEntityInterceptor>(),
+                sp.GetRequiredService<SoftDeleteInterceptor>());
         });
 
         return services;

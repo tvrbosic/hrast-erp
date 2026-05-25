@@ -109,8 +109,8 @@ HrastERP.sln
 - PostgreSQL connection with EF Core (Docker compose)
 - Shared `HrastDbContext` within HrastERP.Infrastructure
 - Timestamped entities (`CreatedAt`, `CreatedBy`, `UpdatedAt`, `UpdatedBy`)
-- Global query filter for `TenantId` on all tenant-scoped entities
 - Soft delete support (`IsDeleted`, `DeletedAt`, `DeletedBy`)
+- Global query filter for `TenantId` on all tenant-scoped entities
 - Migration pipeline
 
 #### 0.4 Multi-Tenancy
@@ -150,6 +150,7 @@ HrastERP.sln
 - Hangfire Dashboard secured behind admin role
 - `IBackgroundJobService` abstraction for enqueue/schedule operations
 - Recurring job registration pattern
+- Apply to clean-up soft deleted entites
 
 #### 0.10 Email Infrastructure
 - `IEmailService` interface with `SendAsync(EmailMessage)` method
