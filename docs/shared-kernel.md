@@ -21,6 +21,15 @@ Abstract generic base class `BaseEntity<TId>` for all entities. Provides an `Id`
 ### `AggregateRoot.cs`
 Extends `BaseEntity<TId>` with domain event support. Maintains an internal list of `IDomainEvent` instances and exposes them as `IReadOnlyCollection<IDomainEvent> DomainEvents`. Subclasses raise events by calling the protected `AddDomainEvent` method. The application layer calls `ClearDomainEvents` after dispatching them.
 
+### `IAuditable.cs`
+Interface marking entities that carry audit trail fields: `CreatedAt` (`DateTime`), `CreatedBy` (`Guid`), `UpdatedAt` (`DateTime?`), and `UpdatedBy` (`Guid?`). The `AuditableEntityInterceptor` in the Infrastructure layer detects entities implementing this interface and auto-populates the fields on `SaveChanges`. `CreatedBy`/`UpdatedBy` store `ICurrentUser.UserId`.
+
+### `AuditableEntity.cs`
+Extends `BaseEntity<TId>` and implements `IAuditable`. Use this as the base class for non-aggregate entities that need audit trail support (e.g. `OrderLine`). Inherits identity-based equality from `BaseEntity`.
+
+### `AuditableAggregateRoot.cs`
+Extends `AggregateRoot<TId>` and implements `IAuditable`. Use this as the base class for aggregate roots that need audit trail support (e.g. `Order`, `Invoice`). Inherits domain event support from `AggregateRoot` and identity-based equality from `BaseEntity`.
+
 ### `ValueObject.cs`
 Abstract base class for value objects. Equality is determined by the values returned from the abstract `GetEqualityComponents()` method, not by reference or identity. Overrides `Equals`, `GetHashCode`, `==`, and `!=` accordingly. Use this for types like `Money`, `Address`, or `Dimensions` that have no identity of their own.
 

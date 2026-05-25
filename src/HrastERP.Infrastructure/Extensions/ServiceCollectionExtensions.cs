@@ -19,10 +19,13 @@ public static class ServiceCollectionExtensions
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
+        services.AddScoped<AuditableEntityInterceptor>();
+
         services.AddDbContext<HrastDbContext>((sp, options) =>
         {
             var settings = sp.GetRequiredService<IOptions<DatabaseSettings>>().Value;
             options.UseNpgsql(settings.ConnectionString);
+            options.AddInterceptors(sp.GetRequiredService<AuditableEntityInterceptor>());
         });
 
         return services;
