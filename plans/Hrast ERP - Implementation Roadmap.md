@@ -113,18 +113,18 @@ HrastERP.sln
 - Global query filter for `TenantId` on all tenant-scoped entities
 - Migration pipeline
 
-#### 0.4 Multi-Tenancy
-- Tenant resolution middleware: extract `TenantId` from JWT claims
-- `TenantId` global query filter applied via EF Core
-- `ICurrentTenant` service scoped to request
-- Tenant isolation validated at application layer
-
-#### 0.5 Authentication Infrastructure
+#### 0.4 Authentication Infrastructure
 - ASP.NET Core Identity with custom `ApplicationUser` entity
 - JWT Bearer token issuance and validation
 - Refresh token support (stored in DB)
 - Login, logout, refresh-token endpoints
 - Password hashing, lockout configuration
+
+#### 0.5 Multi-Tenancy
+- Tenant resolution middleware: extract `TenantId` from JWT claims
+- `TenantId` global query filter applied via EF Core
+- `ICurrentTenant` service scoped to request
+- Tenant isolation validated at application layer
 
 #### 0.6 Authorization Infrastructure
 - Custom RBAC permission system: `Permission` enum flags per module operation
