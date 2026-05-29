@@ -56,3 +56,6 @@ CodeCoverage/
 TestResult.xml
 nunit-*.xml
 .DS_Store
+
+# JetBrains IDEs
+.idea/

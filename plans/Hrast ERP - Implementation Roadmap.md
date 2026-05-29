@@ -10,33 +10,25 @@ ASP.NET Core 10 API-first, multi-tenant SaaS ERP for sawmill and wood processing
 
 ### Solution Structure
 ```
-HrastERP.sln
+HrastERP.slnx
 ├── src/
-│   ├── HrastERP.API                      # Entry point, controllers, middleware, DI composition
+│   ├── HrastERP.API                      # Composition root only — no controllers, just wires modules
 │   ├── HrastERP.SharedKernel             # Base entities, value objects, interfaces, domain events, result types
+│   ├── HrastERP.Infrastructure           # Shared DbContext, interceptors, pipeline behaviors
 │   ├── Modules/
 │   │   ├── Administration/
-│   │   │   ├── Administration.Domain
-│   │   │   ├── Administration.Application
-│   │   │   └── Administration.Infrastructure
+│   │   │   └── HrastERP.Administration   # Single project, layers as folders
 │   │   ├── Procurement/
-│   │   │   ├── Procurement.Domain
-│   │   │   ├── Procurement.Application
-│   │   │   └── Procurement.Infrastructure
+│   │   │   └── HrastERP.Procurement
 │   │   ├── Inventory/
-│   │   │   ├── Inventory.Domain
-│   │   │   ├── Inventory.Application
-│   │   │   └── Inventory.Infrastructure
+│   │   │   └── HrastERP.Inventory
 │   │   ├── Production/
-│   │   │   ├── Production.Domain
-│   │   │   ├── Production.Application
-│   │   │   └── Production.Infrastructure
+│   │   │   └── HrastERP.Production
 │   │   └── Finance/
-│   │       ├── Finance.Domain
-│   │       ├── Finance.Application
-│   │       └── Finance.Infrastructure
+│   │       └── HrastERP.Finance
 └── tests/
     ├── HrastERP.SharedKernel.Tests
+    ├── HrastERP.Infrastructure.Tests
     ├── Administration.Tests
     ├── Procurement.Tests
     ├── Inventory.Tests
@@ -44,10 +36,24 @@ HrastERP.sln
     └── Finance.Tests
 ```
 
+### Per-Module Internal Structure (Vertical Slice)
+
+Each module is a single project with Clean Architecture layers as folders:
+
+```
+HrastERP.<Module>/
+├── Domain/           # Entities, aggregates, value objects, events, enumerations, repository interfaces
+├── Application/      # CQRS commands/queries (MediatR), validators (FluentValidation), DTOs, event handlers
+├── Infrastructure/   # EF Core configurations, repository implementations
+├── Web/              # Controllers
+└── <Module>Module.cs # DI registration entry point
+```
+
 ### Per-Module Layer Responsibilities
 - **Domain**: Entities, aggregates, value objects, domain events, repository interfaces, domain services
 - **Application**: CQRS commands/queries (MediatR), validators (FluentValidation), DTOs, application service interfaces
-- **Infrastructure**: EF Core DbContext, repository implementations, external service integrations
+- **Infrastructure**: EF Core entity configurations, repository implementations, external service integrations
+- **Web**: Controllers that receive HTTP requests, send MediatR commands/queries, map Result to HTTP responses
 
 ### Cross-Cutting Concerns (SharedKernel + API)
 - Multi-tenancy: row-level tenant isolation via `TenantId` on all entities, resolved from JWT claims

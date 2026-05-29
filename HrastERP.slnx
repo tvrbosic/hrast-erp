@@ -4,31 +4,12 @@
     <Project Path="src/HrastERP.Infrastructure/HrastERP.Infrastructure.csproj" />
     <Project Path="src/HrastERP.SharedKernel/HrastERP.SharedKernel.csproj" />
   </Folder>
-  <Folder Name="/src/Modules/" />
-  <Folder Name="/src/Modules/Administration/">
-    <Project Path="src/Modules/Administration/HrastERP.Administration.Application/HrastERP.Administration.Application.csproj" />
-    <Project Path="src/Modules/Administration/HrastERP.Administration.Domain/HrastERP.Administration.Domain.csproj" />
-    <Project Path="src/Modules/Administration/HrastERP.Administration.Infrastructure/HrastERP.Administration.Infrastructure.csproj" />
-  </Folder>
-  <Folder Name="/src/Modules/Finance/">
-    <Project Path="src/Modules/Finance/HrastERP.Finance.Application/HrastERP.Finance.Application.csproj" />
-    <Project Path="src/Modules/Finance/HrastERP.Finance.Domain/HrastERP.Finance.Domain.csproj" />
-    <Project Path="src/Modules/Finance/HrastERP.Finance.Infrastructure/HrastERP.Finance.Infrastructure.csproj" />
-  </Folder>
-  <Folder Name="/src/Modules/Inventory/">
-    <Project Path="src/Modules/Inventory/HrastERP.Inventory.Application/HrastERP.Inventory.Application.csproj" />
-    <Project Path="src/Modules/Inventory/HrastERP.Inventory.Domain/HrastERP.Inventory.Domain.csproj" />
-    <Project Path="src/Modules/Inventory/HrastERP.Inventory.Infrastructure/HrastERP.Inventory.Infrastructure.csproj" />
-  </Folder>
-  <Folder Name="/src/Modules/Procurement/">
-    <Project Path="src/Modules/Procurement/HrastERP.Procurement.Application/HrastERP.Procurement.Application.csproj" />
-    <Project Path="src/Modules/Procurement/HrastERP.Procurement.Domain/HrastERP.Procurement.Domain.csproj" />
-    <Project Path="src/Modules/Procurement/HrastERP.Procurement.Infrastructure/HrastERP.Procurement.Infrastructure.csproj" />
-  </Folder>
-  <Folder Name="/src/Modules/Production/">
-    <Project Path="src/Modules/Production/HrastERP.Production.Application/HrastERP.Production.Application.csproj" />
-    <Project Path="src/Modules/Production/HrastERP.Production.Domain/HrastERP.Production.Domain.csproj" />
-    <Project Path="src/Modules/Production/HrastERP.Production.Infrastructure/HrastERP.Production.Infrastructure.csproj" />
+  <Folder Name="/src/Modules/">
+    <Project Path="src/Modules/Administration/HrastERP.Administration/HrastERP.Administration.csproj" />
+    <Project Path="src/Modules/Finance/HrastERP.Finance/HrastERP.Finance.csproj" />
+    <Project Path="src/Modules/Inventory/HrastERP.Inventory/HrastERP.Inventory.csproj" />
+    <Project Path="src/Modules/Procurement/HrastERP.Procurement/HrastERP.Procurement.csproj" />
+    <Project Path="src/Modules/Production/HrastERP.Production/HrastERP.Production.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Administration.Tests/Administration.Tests.csproj" />

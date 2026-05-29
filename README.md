@@ -5,16 +5,16 @@ Hrast ERP is an imaginary practice project created for educational and portfolio
 
 The solution follows a **modular monolith** architecture — a single deployable unit divided into independent business modules with clear boundaries. Each module internally follows **Clean Architecture** principles, with dependencies pointing inward: Infrastructure and Application depend on Domain, never the other way around.
 
-Each business module is structured as an independent vertical slice with four layers:
+Each business module is a **single project** (`HrastERP.<Module>`) with Clean Architecture layers organized as folders:
 
-| Layer | Role |
+| Folder | Role |
 |---|---|
-| **Presentation (API)** | `HrastERP.API` — single ASP.NET Web API entry point shared across all modules |
-| **Application** | `<Module>.Application` — use cases and application logic per module |
-| **Domain** | `<Module>.Domain` — domain models and business rules per module |
-| **Infrastructure** | `<Module>.Infrastructure` — persistence and external integrations per module |
+| **Domain/** | Domain models, value objects, events, and repository interfaces |
+| **Application/** | Use cases organized by feature (commands and queries via CQRS) |
+| **Infrastructure/** | Persistence (EF Core configurations) and repository implementations |
+| **Web/** | API controllers |
 
-A shared `HrastERP.SharedKernel` library provides common abstractions used across modules.
+The API project (`HrastERP.API`) is a pure composition root — it references all modules and registers their services. A shared `HrastERP.SharedKernel` library provides common abstractions used across modules. A shared `HrastERP.Infrastructure` library provides the `HrastDbContext`, pipeline behaviors, and core infrastructure.
 
 ## Modules
 
@@ -28,14 +28,16 @@ A shared `HrastERP.SharedKernel` library provides common abstractions used acros
 
 ```
 src/
-  HrastERP.API/                              # Presentation layer (ASP.NET Web API)
+  HrastERP.API/                              # Composition root (ASP.NET Web API)
   HrastERP.SharedKernel/                     # Shared abstractions and utilities
-  HrastERP.Infrastructure/                   # Core infrastructure (DbContext, EF Core, database config)
+  HrastERP.Infrastructure/                   # Core infrastructure (DbContext, pipeline behaviors)
   Modules/
     <Module>/
-      HrastERP.<Module>.Domain/              # Domain layer
-      HrastERP.<Module>.Application/         # Application layer
-      HrastERP.<Module>.Infrastructure/      # Infrastructure layer
+      HrastERP.<Module>/                     # Single project per module
+        Domain/                              # Domain layer (entities, value objects, events, repositories)
+        Application/                         # Application layer (features with commands/queries)
+        Infrastructure/                      # Infrastructure layer (persistence, repositories)
+        Web/                                 # Presentation layer (controllers)
 tests/
   HrastERP.SharedKernel.Tests/
   HrastERP.Infrastructure.Tests/
@@ -46,4 +48,6 @@ tests/
 
 - .NET 10
 - PostgreSQL + EF Core (Npgsql)
+- MediatR (CQRS + pipeline behaviors)
+- FluentValidation
 - xUnit + FluentAssertions (testing)

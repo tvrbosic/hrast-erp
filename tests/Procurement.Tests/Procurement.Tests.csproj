@@ -19,7 +19,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Modules\Procurement\HrastERP.Procurement.Infrastructure\HrastERP.Procurement.Infrastructure.csproj" />
+    <PackageReference Include="FluentAssertions" Version="7.*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Modules\Procurement\HrastERP.Procurement\HrastERP.Procurement.csproj" />
   </ItemGroup>
 
 </Project>

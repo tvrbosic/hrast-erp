@@ -1,5 +1,7 @@
+using HrastERP.Infrastructure.Behaviors;
 using HrastERP.Infrastructure.Configuration;
 using HrastERP.Infrastructure.Persistence;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -30,6 +32,19 @@ public static class ServiceCollectionExtensions
                 sp.GetRequiredService<AuditableEntityInterceptor>(),
                 sp.GetRequiredService<SoftDeleteInterceptor>());
         });
+
+        return services;
+    }
+
+    /// <summary>
+    /// Registers MediatR pipeline behaviors for validation and logging.
+    /// Call once in Program.cs — behaviors apply to all module handlers.
+    /// </summary>
+    public static IServiceCollection AddMediatRPipelineBehaviors(
+        this IServiceCollection services)
+    {
+        services.AddTransient(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
+        services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
 
         return services;
     }

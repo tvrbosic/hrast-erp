@@ -6,7 +6,7 @@ This document describes the steps required to add a new domain entity to a modul
 
 ## 1. Define the entity (Domain layer)
 
-Create the entity class in `HrastERP.<Module>.Domain`, extending the appropriate base class from `HrastERP.SharedKernel`:
+Create the entity class in the `Domain/Entities/` folder of the module project, extending the appropriate base class from `HrastERP.SharedKernel`:
 
 | Base class | Aggregate root? | Audit trail? | Soft delete? |
 |---|---|---|---|
@@ -22,7 +22,7 @@ Create the entity class in `HrastERP.<Module>.Domain`, extending the appropriate
 All audit and soft-delete fields (`CreatedAt`, `CreatedBy`, `UpdatedAt`, `UpdatedBy`, `DeletedAt`, `DeletedBy`) are populated automatically by EF Core interceptors — do not set them in domain code.
 
 ```csharp
-// src/Modules/Inventory/HrastERP.Inventory.Domain/Product.cs
+// src/Modules/Inventory/HrastERP.Inventory/Domain/Entities/Product.cs
 public class Product : AggregateRoot<Guid>
 {
     public string Name { get; private set; }
@@ -42,10 +42,10 @@ public class Product : AggregateRoot<Guid>
 
 ## 2. Create the EF Core configuration (Infrastructure layer)
 
-Create an `IEntityTypeConfiguration<TEntity>` class in `HrastERP.<Module>.Infrastructure`. Place it under a `Persistence/Configurations/` subfolder by convention.
+Create an `IEntityTypeConfiguration<TEntity>` class in the `Infrastructure/Persistence/Configurations/` folder of the module project.
 
 ```csharp
-// src/Modules/Inventory/HrastERP.Inventory.Infrastructure/Persistence/Configurations/ProductConfiguration.cs
+// src/Modules/Inventory/HrastERP.Inventory/Infrastructure/Persistence/Configurations/ProductConfiguration.cs
 public class ProductConfiguration : IEntityTypeConfiguration<Product>
 {
     public void Configure(EntityTypeBuilder<Product> builder)
@@ -57,7 +57,7 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
 }
 ```
 
-**No further registration is needed.** When the module's `AddXxxInfrastructure()` is called at startup, it registers the module assembly as an `EntityConfigurationAssembly` singleton in DI. On first use, `HrastDbContext.OnModelCreating` calls `ApplyConfigurationsFromAssembly` for every registered module assembly, which picks up all `IEntityTypeConfiguration<T>` implementations automatically.
+**No further registration is needed.** When the module's `Add<Module>Module()` is called at startup, it registers the module assembly as an `EntityConfigurationAssembly` singleton in DI. On first use, `HrastDbContext.OnModelCreating` calls `ApplyConfigurationsFromAssembly` for every registered module assembly, which picks up all `IEntityTypeConfiguration<T>` implementations automatically.
 
 ---
 
@@ -75,6 +75,6 @@ dotnet ef database update --project src/HrastERP.Infrastructure --startup-projec
 
 ## How assembly scanning works
 
-`HrastDbContext` receives an `IEnumerable<EntityConfigurationAssembly>` from DI. Each module's `Add<Module>Infrastructure()` extension registers its own assembly into this collection. `OnModelCreating` iterates them all and scans each for `IEntityTypeConfiguration<T>` implementations.
+`HrastDbContext` receives an `IEnumerable<EntityConfigurationAssembly>` from DI. Each module's `Add<Module>Module()` extension registers its own assembly into this collection. `OnModelCreating` iterates them all and scans each for `IEntityTypeConfiguration<T>` implementations.
 
-Adding a new module follows the same pattern: call `services.AddSingleton(new EntityConfigurationAssembly(Assembly.GetExecutingAssembly()))` inside the new module's `Add<Module>Infrastructure` method. Nothing in the core infrastructure changes.
+Adding a new module follows the same pattern: call `services.AddSingleton(new EntityConfigurationAssembly(Assembly.GetExecutingAssembly()))` inside the new module's `Add<Module>Module` method. Nothing in the core infrastructure changes.

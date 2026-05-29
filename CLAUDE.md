@@ -23,15 +23,25 @@ dotnet run --project src/HrastERP.API/
 
 ## Architecture
 
-**Modular monolith** — single deployable unit, five independent business modules (Administration, Finance, Inventory, Procurement, Production). Each module follows **Clean Architecture** with inward-only dependencies: Infrastructure → Application → Domain. Domain never imports Application or Infrastructure.
+**Modular monolith with vertical slice architecture** — single deployable unit, five independent business modules (Administration, Finance, Inventory, Procurement, Production). Each module is a **single project** with Clean Architecture layers as folders (Domain, Application, Infrastructure, Web). The API project is a pure composition root.
 
-**Project naming convention:** `HrastERP.<Module>.<Layer>` (e.g. `HrastERP.Inventory.Domain`).
+**Project naming convention:** `HrastERP.<Module>` (e.g. `HrastERP.Inventory`). Each module contains `Domain/`, `Application/`, `Infrastructure/`, and `Web/` folders.
 
-**Dependency wiring:** `HrastERP.API` references only the Infrastructure project of each module. The API layer is the composition root.
+**Dependency wiring:** `HrastERP.API` references all module projects. Each module exposes a `Add<Module>Module()` extension method that registers MediatR handlers, FluentValidation validators, EF Core configurations, and repositories. The API layer calls these and registers controller assemblies via `AddApplicationPart()`.
+
+**CQRS:** MediatR with commands and queries organized by feature inside `Application/`. Structure: `Application/<Feature>/Commands/` and `Application/<Feature>/Queries/`. Handlers return `Result<T>`.
+
+**Pipeline behaviors** (registered in `HrastERP.Infrastructure`):
+- `ValidationBehavior` — runs FluentValidation validators, returns `Result.Failure` on validation errors
+- `LoggingBehavior` — structured request/response logging with timing
+
+**Inter-module communication:** Domain events only (MediatR notifications). Modules never reference each other. Cross-module event contracts live in SharedKernel under `IntegrationEvents/`.
+
+**Dependency rules:** Since layers are folders not projects, inward-only dependencies (Domain ← Application ← Infrastructure) are enforced by convention. Domain code must not import from Application, Infrastructure, or Web folders.
 
 ## SharedKernel
 
-`HrastERP.SharedKernel` is referenced by all layers of all modules. It is pure C# with no framework dependencies (no EF Core, no MediatR).
+`HrastERP.SharedKernel` is referenced by all modules. It is pure C# with no framework dependencies (no EF Core, no MediatR).
 
 Key types and their intended use:
 
@@ -51,6 +61,31 @@ Key types and their intended use:
 **Audit fields:** Entities inheriting `AuditableEntity` or `AuditableAggregateRoot` get `CreatedAt`/`CreatedBy`/`UpdatedAt`/`UpdatedBy` auto-populated by `AuditableEntityInterceptor` in the Infrastructure layer. Uses `DateTime` (UTC) and `ICurrentUser.UserId` (`Guid`). Falls back to `Guid.Empty` when unauthenticated.
 
 Nothing in SharedKernel should import from any module.
+
+## Module structure
+
+Each module follows this folder layout:
+
+```
+HrastERP.<Module>/
+├── Domain/
+│   ├── Entities/
+│   ├── ValueObjects/
+│   ├── Events/
+│   ├── Enumerations/
+│   └── Repositories/          # Interfaces only
+├── Application/
+│   └── <Feature>/
+│       ├── Commands/
+│       └── Queries/
+├── Infrastructure/
+│   ├── Persistence/
+│   │   └── Configurations/
+│   └── Repositories/
+├── Web/
+│   └── Controllers/
+└── <Module>Module.cs          # DI registration entry point
+```
 
 ## Test stack
 
