@@ -19,12 +19,15 @@ public sealed class LoggingBehavior<TRequest, TResponse>(
     {
         var requestName = typeof(TRequest).Name;
 
+        // Log that processing has started.
         logger.LogInformation("Handling {RequestName}", requestName);
 
+        // Execute the next handler in the pipeline and measure elapsed time.
         var stopwatch = Stopwatch.StartNew();
         var response = await next(cancellationToken);
         stopwatch.Stop();
 
+        // Log completion with elapsed time for performance tracking.
         logger.LogInformation(
             "Handled {RequestName} in {ElapsedMilliseconds}ms",
             requestName,

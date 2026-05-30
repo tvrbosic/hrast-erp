@@ -1,29 +1,35 @@
-using HrastERP.Infrastructure.Behaviors;
 using HrastERP.Infrastructure.Configuration;
 using HrastERP.Infrastructure.Persistence;
-using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using Microsoft.Extensions.Configuration;
 
 namespace HrastERP.Infrastructure.Extensions;
 
-public static class ServiceCollectionExtensions
+internal static class PersistenceServiceExtensions
 {
-    public static IServiceCollection AddInfrastructure(
-        this IServiceCollection services,
-        IConfiguration configuration)
+    /// <summary>
+    /// Registers EF Core DbContext, database settings, and persistence interceptors.
+    /// Called internally by <see cref="ServiceCollectionExtensions.AddInfrastructure"/>.
+    /// </summary>
+    internal static IServiceCollection AddPersistence(this IServiceCollection services)
     {
+        // Bind DatabaseSettings from appsettings.json and validate at startup.
+        // ValidateDataAnnotations enforces [Required], [Range], etc. on the settings class.
+        // ValidateOnStart ensures misconfiguration fails immediately rather than at first use.
         services
             .AddOptions<DatabaseSettings>()
             .BindConfiguration(DatabaseSettings.SectionName)
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
+        // Register EF Core interceptors:
+        // - AuditableEntityInterceptor auto-populates CreatedAt/CreatedBy/UpdatedAt/UpdatedBy on save
+        // - SoftDeleteInterceptor converts deletes into IsDeleted flag updates
         services.AddScoped<AuditableEntityInterceptor>();
         services.AddScoped<SoftDeleteInterceptor>();
 
+        // Register the EF Core DbContext with PostgreSQL and attach both interceptors
         services.AddDbContext<HrastDbContext>((sp, options) =>
         {
             var settings = sp.GetRequiredService<IOptions<DatabaseSettings>>().Value;
@@ -32,19 +38,6 @@ public static class ServiceCollectionExtensions
                 sp.GetRequiredService<AuditableEntityInterceptor>(),
                 sp.GetRequiredService<SoftDeleteInterceptor>());
         });
-
-        return services;
-    }
-
-    /// <summary>
-    /// Registers MediatR pipeline behaviors for validation and logging.
-    /// Call once in Program.cs — behaviors apply to all module handlers.
-    /// </summary>
-    public static IServiceCollection AddMediatRPipelineBehaviors(
-        this IServiceCollection services)
-    {
-        services.AddTransient(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
-        services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
 
         return services;
     }

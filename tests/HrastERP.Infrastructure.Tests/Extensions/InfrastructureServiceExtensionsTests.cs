@@ -9,7 +9,7 @@ using HrastERP.Infrastructure.Configuration;
 
 namespace HrastERP.Infrastructure.Tests.Extensions;
 
-public class ServiceCollectionExtensionsTests
+public class InfrastructureServiceExtensionsTests
 {
     [Fact]
     public void AddInfrastructure_RegistersHrastDbContext()
@@ -22,7 +22,8 @@ public class ServiceCollectionExtensionsTests
             .Build();
 
         var services = new ServiceCollection();
-        services.AddInfrastructure(configuration);
+        services.AddSingleton<IConfiguration>(configuration);
+        services.AddInfrastructure();
 
         var descriptor = services.FirstOrDefault(d => d.ServiceType == typeof(HrastDbContext));
         descriptor.Should().NotBeNull();
@@ -37,7 +38,7 @@ public class ServiceCollectionExtensionsTests
 
         var services = new ServiceCollection();
         services.AddSingleton<IConfiguration>(configuration);
-        services.AddInfrastructure(configuration);
+        services.AddInfrastructure();
         var provider = services.BuildServiceProvider();
 
         var act = () => provider.GetRequiredService<IOptions<DatabaseSettings>>().Value;

@@ -1,6 +1,8 @@
 using System.Linq.Expressions;
+using HrastERP.Infrastructure.Authentication;
 using HrastERP.SharedKernel.Abstractions;
 using HrastERP.SharedKernel.Domain;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace HrastERP.Infrastructure.Persistence;
@@ -15,7 +17,7 @@ namespace HrastERP.Infrastructure.Persistence;
 public sealed class HrastDbContext(
     DbContextOptions<HrastDbContext> options,
     IEnumerable<EntityConfigurationAssembly> moduleAssemblies,
-    ICurrentTenant currentTenant) : DbContext(options)
+    ICurrentTenant currentTenant) : IdentityUserContext<ApplicationUser, Guid>(options)
 {
     // Captured once at construction. Safe because DbContext is scoped — each request gets
     // a new instance with the correct TenantId already resolved from the request context.
