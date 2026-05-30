@@ -27,7 +27,7 @@ dotnet run --project src/HrastERP.API/
 
 **Project naming convention:** `HrastERP.<Module>` (e.g. `HrastERP.Inventory`). Each module contains `Domain/`, `Application/`, `Infrastructure/`, and `Web/` folders.
 
-**Dependency wiring:** `HrastERP.API` references all module projects. Each module exposes a `Add<Module>Module()` extension method that registers MediatR handlers, FluentValidation validators, EF Core configurations, and repositories. The API layer calls these and registers controller assemblies via `AddApplicationPart()`.
+**Dependency wiring:** `HrastERP.API` references all module projects. Each module exposes a `Add<Module>Module()` extension method that registers MediatR handlers, FluentValidation validators, EF Core configurations, and repositories. The API layer calls these and registers controller assemblies via `AddApplicationPart()`. Shared infrastructure is registered via a single `AddInfrastructure()` call, which delegates to focused extension classes: `PersistenceServiceExtensions`, `BehaviorServiceExtensions`, and `AuthenticationServiceExtensions`.
 
 **CQRS:** MediatR with commands and queries organized by feature inside `Application/`. Structure: `Application/<Feature>/Commands/` and `Application/<Feature>/Queries/`. Handlers return `Result<T>`.
 
@@ -86,6 +86,25 @@ HrastERP.<Module>/
 │   └── Controllers/
 └── <Module>Module.cs          # DI registration entry point
 ```
+
+## Authentication
+
+JWT Bearer authentication with ASP.NET Core Identity. Key components:
+
+**Infrastructure layer** (`HrastERP.Infrastructure/Authentication/`):
+- **`ApplicationUser`** — extends `IdentityUser<Guid>` with `TenantId` and `FirstName`/`LastName`
+- **`RefreshToken`** — entity for refresh token rotation, linked to `ApplicationUser`
+- **`IAuthService` / `AuthService`** — login, register, refresh, and logout flows using Identity + token service
+- **`ITokenService` / `TokenService`** — generates JWT access tokens and refresh tokens
+- **`AuthErrors`** — predefined `Error` constants for auth failures (e.g. `Auth.InvalidCredentials`)
+
+**API layer** (`HrastERP.API/`):
+- **`AuthController`** — endpoints: `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/refresh`, `POST /api/auth/logout`
+- **`CurrentUser`** / **`CurrentTenant`** — implement `ICurrentUser` / `ICurrentTenant` by reading JWT claims from `HttpContext`
+
+**Configuration:** JWT settings are in `appsettings.json` under `"Jwt"` section (`SecretKey`, `Issuer`, `Audience`), bound to `JwtSettings` with validation on startup.
+
+**DbContext:** `HrastDbContext` inherits from `IdentityUserContext<ApplicationUser, Guid>` (not plain `DbContext`), which adds Identity tables to the EF Core model.
 
 ## Test stack
 

@@ -48,6 +48,7 @@ tests/
 
 - .NET 10
 - PostgreSQL + EF Core (Npgsql)
+- ASP.NET Core Identity + JWT Bearer authentication
 - MediatR (CQRS + pipeline behaviors)
 - FluentValidation
 - xUnit + FluentAssertions (testing)
