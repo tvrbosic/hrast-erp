@@ -16,34 +16,16 @@ Contains the base types for building a domain model. Every entity, aggregate roo
 Marker interface implemented by all domain events across modules. A domain event represents something that has already happened within the domain (e.g. `OrderApproved`, `GoodsReceived`). Aggregates raise events by adding them to their internal list; the application layer dispatches them after the transaction commits.
 
 ### `BaseEntity.cs`
-Abstract generic base class `BaseEntity<TId>` for all entities. Provides an `Id` property and overrides `Equals`, `GetHashCode`, `==`, and `!=` so that two entity instances are considered equal if and only if they have the same type and the same `Id`. Also includes a protected parameterless constructor required by EF Core.
+Abstract generic base class `BaseEntity<TId>` for all entities. Implements both `IAuditable` and `ISoftDeletable`, so every entity automatically carries audit trail and soft-delete fields. Provides an `Id` property and overrides `Equals`, `GetHashCode`, `==`, and `!=` so that two entity instances are considered equal if and only if they have the same type and the same `Id`. Also includes a protected parameterless constructor required by EF Core.
 
 ### `AggregateRoot.cs`
-Extends `BaseEntity<TId>` with domain event support. Maintains an internal list of `IDomainEvent` instances and exposes them as `IReadOnlyCollection<IDomainEvent> DomainEvents`. Subclasses raise events by calling the protected `AddDomainEvent` method. The application layer calls `ClearDomainEvents` after dispatching them.
+Extends `BaseEntity<TId>` with domain event support. Maintains an internal list of `IDomainEvent` instances and exposes them as `IReadOnlyCollection<IDomainEvent> DomainEvents`. Subclasses raise events by calling the protected `AddDomainEvent` method. The application layer calls `ClearDomainEvents` after dispatching them. Inherits audit trail and soft-delete support from `BaseEntity`.
 
 ### `IAuditable.cs`
-Interface marking entities that carry audit trail fields: `CreatedAt` (`DateTime`), `CreatedBy` (`Guid`), `UpdatedAt` (`DateTime?`), and `UpdatedBy` (`Guid?`). The `AuditableEntityInterceptor` in the Infrastructure layer detects entities implementing this interface and auto-populates the fields on `SaveChanges`. `CreatedBy`/`UpdatedBy` store `ICurrentUser.UserId`.
-
-### `AuditableEntity.cs`
-Extends `BaseEntity<TId>` and implements `IAuditable`. Use this as the base class for non-aggregate entities that need audit trail support (e.g. `OrderLine`). Inherits identity-based equality from `BaseEntity`.
-
-### `AuditableAggregateRoot.cs`
-Extends `AggregateRoot<TId>` and implements `IAuditable`. Use this as the base class for aggregate roots that need audit trail support (e.g. `Order`, `Invoice`). Inherits domain event support from `AggregateRoot` and identity-based equality from `BaseEntity`.
+Interface for entities with audit trail fields: `CreatedAt` (`DateTime`), `CreatedBy` (`Guid`), `UpdatedAt` (`DateTime?`), and `UpdatedBy` (`Guid?`). Implemented by `BaseEntity`, so all entities are auditable. The `AuditableEntityInterceptor` in the Infrastructure layer detects entities implementing this interface and auto-populates the fields on `SaveChanges`. `CreatedBy`/`UpdatedBy` store `ICurrentUser.UserId`.
 
 ### `ISoftDeletable.cs`
-Marker interface for entities that support soft deletion. Exposes two nullable properties: `DeletedAt` (`DateTime?`, UTC) and `DeletedBy` (`Guid?`, user ID). Implement this interface indirectly by inheriting one of the four soft-deletable base classes below — do not implement it directly on domain entities.
-
-### `SoftDeletableEntity.cs`
-`SoftDeletableEntity<TId>` extends `BaseEntity<TId>` and implements `ISoftDeletable`. Use for non-aggregate entities that need soft delete but do **not** need an audit trail. `DeletedAt` and `DeletedBy` are populated automatically by `SoftDeleteInterceptor` — never set them manually.
-
-### `SoftDeletableAggregateRoot.cs`
-`SoftDeletableAggregateRoot<TId>` extends `AggregateRoot<TId>` and implements `ISoftDeletable`. Use for aggregate roots that need soft delete but do **not** need an audit trail.
-
-### `AuditableSoftDeletableEntity.cs`
-`AuditableSoftDeletableEntity<TId>` extends `BaseEntity<TId>` and implements both `IAuditable` and `ISoftDeletable`. Use for non-aggregate entities that need both an audit trail (`CreatedAt`, `CreatedBy`, `UpdatedAt`, `UpdatedBy`) and soft delete (`DeletedAt`, `DeletedBy`). All six fields are populated automatically by the EF Core interceptors.
-
-### `AuditableSoftDeletableAggregateRoot.cs`
-`AuditableSoftDeletableAggregateRoot<TId>` extends `AggregateRoot<TId>` and implements both `IAuditable` and `ISoftDeletable`. Use for aggregate roots that need both an audit trail and soft delete. This is the most common base class for core business aggregates (e.g. `Order`, `Invoice`).
+Interface for entities that support soft deletion. Exposes two nullable properties: `DeletedAt` (`DateTime?`, UTC) and `DeletedBy` (`Guid?`, user ID). Implemented by `BaseEntity`, so all entities are soft-deletable. `DeletedAt` and `DeletedBy` are populated automatically by `SoftDeleteInterceptor` — never set them in domain code.
 
 **Soft-delete behavior (Infrastructure):** `SoftDeleteInterceptor` intercepts every `SaveChanges` call. When an entity's EF Core state is `Deleted`, the interceptor flips it to `Modified` and sets `DeletedAt = DateTime.UtcNow` and `DeletedBy = currentUser.UserId`. A global query filter (`DeletedAt == null`) is applied to all `ISoftDeletable` entity types in `HrastDbContext`, so soft-deleted records are invisible to normal queries. Use `.IgnoreQueryFilters()` to include them (e.g. for admin views or purge jobs).
 

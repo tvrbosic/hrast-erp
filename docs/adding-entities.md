@@ -8,18 +8,12 @@ This document describes the steps required to add a new domain entity to a modul
 
 Create the entity class in the `Domain/Entities/` folder of the module project, extending the appropriate base class from `HrastERP.SharedKernel`:
 
-| Base class | Aggregate root? | Audit trail? | Soft delete? |
-|---|---|---|---|
-| `BaseEntity<TId>` | No | No | No |
-| `AggregateRoot<TId>` | Yes | No | No |
-| `AuditableEntity<TId>` | No | Yes | No |
-| `AuditableAggregateRoot<TId>` | Yes | Yes | No |
-| `SoftDeletableEntity<TId>` | No | No | Yes |
-| `SoftDeletableAggregateRoot<TId>` | Yes | No | Yes |
-| `AuditableSoftDeletableEntity<TId>` | No | Yes | Yes |
-| `AuditableSoftDeletableAggregateRoot<TId>` | Yes | Yes | Yes |
+| Base class | Use for |
+|---|---|
+| `BaseEntity<TId>` | Non-aggregate entities (e.g. `OrderLine`) |
+| `AggregateRoot<TId>` | Aggregate roots with domain event support (e.g. `Order`, `Product`) |
 
-All audit and soft-delete fields (`CreatedAt`, `CreatedBy`, `UpdatedAt`, `UpdatedBy`, `DeletedAt`, `DeletedBy`) are populated automatically by EF Core interceptors — do not set them in domain code.
+Both base classes implement `IAuditable` and `ISoftDeletable`, so every entity automatically gets audit trail (`CreatedAt`, `CreatedBy`, `UpdatedAt`, `UpdatedBy`) and soft-delete (`DeletedAt`, `DeletedBy`) fields. These are populated automatically by EF Core interceptors — do not set them in domain code.
 
 ```csharp
 // src/Modules/Inventory/HrastERP.Inventory/Domain/Entities/Product.cs
