@@ -7,7 +7,7 @@ namespace HrastERP.Infrastructure.Tests.Persistence;
 
 public class SoftDeleteQueryFilterTests
 {
-    private sealed class TestEntity(Guid id) : SoftDeletableEntity<Guid>(id);
+    private sealed class TestEntity(Guid id) : BaseEntity<Guid>(id);
 
     private sealed class TestDbContext(DbContextOptions<TestDbContext> options) : DbContext(options)
     {

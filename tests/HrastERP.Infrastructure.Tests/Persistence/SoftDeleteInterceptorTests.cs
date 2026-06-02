@@ -8,7 +8,7 @@ namespace HrastERP.Infrastructure.Tests.Persistence;
 
 public class SoftDeleteInterceptorTests
 {
-    private sealed class TestEntity(Guid id) : SoftDeletableEntity<Guid>(id);
+    private sealed class TestEntity(Guid id) : BaseEntity<Guid>(id);
 
     private sealed class FakeCurrentUser(Guid userId, bool isAuthenticated) : ICurrentUser
     {

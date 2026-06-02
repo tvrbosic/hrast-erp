@@ -8,7 +8,7 @@ namespace HrastERP.Infrastructure.Tests.Persistence;
 
 public class AuditableEntityInterceptorTests : IDisposable
 {
-    private sealed class TestEntity(Guid id) : AuditableEntity<Guid>(id);
+    private sealed class TestEntity(Guid id) : BaseEntity<Guid>(id);
 
     private sealed class FakeCurrentUser(Guid userId, bool isAuthenticated) : ICurrentUser
     {

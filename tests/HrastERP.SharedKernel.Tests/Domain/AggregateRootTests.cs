@@ -52,4 +52,20 @@ public class AggregateRootTests
 
         aggregate.DomainEvents.Should().HaveCount(2);
     }
+
+    [Fact]
+    public void Implements_IAuditable()
+    {
+        var aggregate = new FakeAggregate(Guid.NewGuid());
+
+        aggregate.Should().BeAssignableTo<IAuditable>();
+    }
+
+    [Fact]
+    public void Implements_ISoftDeletable()
+    {
+        var aggregate = new FakeAggregate(Guid.NewGuid());
+
+        aggregate.Should().BeAssignableTo<ISoftDeletable>();
+    }
 }

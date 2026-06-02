@@ -1,9 +1,19 @@
 namespace HrastERP.SharedKernel.Domain;
 
-public abstract class BaseEntity<TId>
+public abstract class BaseEntity<TId> : IAuditable, ISoftDeletable
     where TId : notnull
 {
     public TId Id { get; protected set; } = default!;
+
+    // IAuditable
+    public DateTime CreatedAt { get; private set; }
+    public Guid CreatedBy { get; private set; }
+    public DateTime? UpdatedAt { get; private set; }
+    public Guid? UpdatedBy { get; private set; }
+
+    // ISoftDeletable
+    public DateTime? DeletedAt { get; private set; }
+    public Guid? DeletedBy { get; private set; }
 
     protected BaseEntity(TId id)
     {
