@@ -12,6 +12,11 @@ internal sealed class TokenService(IOptions<JwtSettings> jwtOptions) : ITokenSer
 {
     private readonly JwtSettings _settings = jwtOptions.Value;
 
+    /// <summary>
+    /// Generates a signed JWT access token for the given user, embedding identity and tenant claims.
+    /// </summary>
+    /// <param name="user">The authenticated user for whom the token is issued.</param>
+    /// <returns>A compact serialized JWT string.</returns>
     public string GenerateAccessToken(ApplicationUser user)
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_settings.SecretKey));
@@ -37,6 +42,11 @@ internal sealed class TokenService(IOptions<JwtSettings> jwtOptions) : ITokenSer
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
+    /// <summary>
+    /// Generates a cryptographically random refresh token and its SHA-256 hash.
+    /// Only the hash is stored in the database; the raw token is sent to the client.
+    /// </summary>
+    /// <returns>A tuple of the raw Base64 token and its lowercase hex SHA-256 hash.</returns>
     public (string rawToken, string hashedToken) GenerateRefreshToken()
     {
         var randomBytes = RandomNumberGenerator.GetBytes(32);
@@ -45,6 +55,11 @@ internal sealed class TokenService(IOptions<JwtSettings> jwtOptions) : ITokenSer
         return (rawToken, hashedToken);
     }
 
+    /// <summary>
+    /// Computes a SHA-256 hash of the given token string for safe storage and comparison.
+    /// </summary>
+    /// <param name="rawToken">The plaintext token to hash.</param>
+    /// <returns>A lowercase hex-encoded SHA-256 hash of the token.</returns>
     public string HashToken(string rawToken)
     {
         var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(rawToken));

@@ -93,9 +93,32 @@ Configured in `Program.cs`:
 3. `app.UseAuthentication()` — reads the `Authorization: Bearer <token>` header, validates the JWT, and populates `HttpContext.User` with the claims
 4. `app.UseAuthorization()` — evaluates `[Authorize]` attributes against the authenticated user
 
-## Claim Extraction
+## Claim Extraction and Usage
 
-`CurrentUser` and `CurrentTenant` (registered as scoped in `Program.cs`) read JWT claims from `HttpContext.User` and implement `ICurrentUser` / `ICurrentTenant`. These are injected into application-layer handlers so commands and queries can access the current user's ID, tenant, and email. Falls back to `Guid.Empty` when unauthenticated.
+`CurrentUser` and `CurrentTenant` are thin wrappers around `HttpContext.User` (the `ClaimsPrincipal` populated by the JWT middleware). They implement `ICurrentUser` / `ICurrentTenant` and are registered as scoped services in `Program.cs` — one instance per HTTP request.
+
+Each property extracts a specific claim and falls back to a safe default when the claim is missing (unauthenticated requests):
+
+| Property | Claim | Fallback |
+|----------|-------|----------|
+| `UserId` | `sub` (`ClaimTypes.NameIdentifier`) | `Guid.Empty` |
+| `TenantId` | `tenant_id` | `Guid.Empty` |
+| `Username` | `email` (`ClaimTypes.Email`) | `string.Empty` |
+| `IsAuthenticated` | `HttpContext.User.Identity.IsAuthenticated` | `false` |
+
+`CurrentUser` is the **only** place in the codebase that touches `HttpContext`. Everything above it depends solely on `ICurrentUser` / `ICurrentTenant`, keeping application-layer handlers unaware of HTTP or JWTs:
+
+```csharp
+public class MyCommandHandler(ICurrentUser currentUser) : IRequestHandler<MyCommand, Result>
+{
+    public async Task<Result> Handle(MyCommand command, CancellationToken ct)
+    {
+        var userId = currentUser.UserId;     // Guid
+        var tenantId = currentUser.TenantId; // Guid
+        var email = currentUser.Username;    // string
+    }
+}
+```
 
 ## Request Flow Diagram
 
