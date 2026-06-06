@@ -103,7 +103,7 @@ public async Task<IActionResult> Get(Guid id, CancellationToken ct)
 
 This returns:
 - `200 OK` with the serialized value on success
-- The appropriate error status code (400/403/404/409/500) with `{ code, message }` body on failure
+- The appropriate error status code (422/403/404/409/500) with `{ code, message }` body on failure
 
 ### Custom success responses
 
@@ -130,6 +130,21 @@ public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
         : result.ToActionResult();
 }
 ```
+
+### Global exception middleware
+
+`GlobalExceptionMiddleware` (registered first in `Program.cs`) is a safety net for unhandled infrastructure or framework exceptions — database connectivity failures, unexpected nulls, framework bugs. It logs the exception and returns:
+
+```json
+{
+    "code": "General.Unexpected",
+    "message": "An unexpected error occurred."
+}
+```
+
+This middleware is **not** the primary error path. Application-layer failures always use `Result.Failure` with an appropriate `ErrorType`. The middleware only fires if something truly unexpected escapes the handler pipeline.
+
+---
 
 ### Error response body
 
