@@ -18,7 +18,7 @@ Hrast ERP uses the **Result pattern** instead of exceptions for expected failure
 
 | ErrorType    | HTTP Status | When to use |
 |-------------|-------------|-------------|
-| `Validation` | 400 Bad Request | Invalid input, business rule violation, precondition not met |
+| `Validation` | 422 Unprocessable Entity | Invalid input, business rule violation, precondition not met |
 | `NotFound`   | 404 Not Found | Requested entity does not exist |
 | `Forbidden`  | 403 Forbidden | User lacks permission for the operation |
 | `Conflict`   | 409 Conflict | Duplicate resource, concurrent modification, already exists |

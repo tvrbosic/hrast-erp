@@ -1,6 +1,7 @@
 using System.Text;
 using HrastERP.Administration;
 using HrastERP.API.Authentication;
+using HrastERP.API.Middleware;
 using HrastERP.Finance;
 using HrastERP.Infrastructure.Configuration;
 using HrastERP.Infrastructure.Extensions;
@@ -72,6 +73,10 @@ builder.Services
     .AddApplicationPart(typeof(ProductionModule).Assembly);
 
 var app = builder.Build();
+
+// Safety net for unhandled infrastructure/framework exceptions. Must be first so it wraps the entire pipeline.
+// Application-layer failures use Result.Failure — this middleware only catches unexpected exceptions (DB errors, bugs, etc.).
+app.UseMiddleware<GlobalExceptionMiddleware>();
 
 // UseAuthentication reads the Bearer token from the request, validates it, and populates HttpContext.User.
 // UseAuthorization checks whether the authenticated user is allowed to access the endpoint ([Authorize] etc.).

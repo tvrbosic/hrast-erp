@@ -1,3 +1,4 @@
+using HrastERP.API.Models;
 using HrastERP.SharedKernel.Results;
 using Microsoft.AspNetCore.Mvc;
 
@@ -23,7 +24,7 @@ public static class ResultExtensions
 
     private static IActionResult ToErrorResult(Error error)
     {
-        var body = new { code = error.Code, message = error.Message };
+        var body = new ErrorResponse(error.Code, error.Message);
 
         return error.Type switch
         {
