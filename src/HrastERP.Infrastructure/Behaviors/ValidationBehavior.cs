@@ -1,3 +1,4 @@
+using System.Text.Json;
 using FluentValidation;
 using HrastERP.SharedKernel.Results;
 using MediatR;
@@ -44,9 +45,14 @@ public sealed class ValidationBehavior<TRequest, TResponse>(
             return await next(cancellationToken);
         }
 
-        // Aggregate all validation error messages into a single error.
-        var errorMessages = string.Join("; ", failures.Select(f => f.ErrorMessage));
-        var error = Error.Validation("General.Validation", errorMessages);
+        // Group failures by property name (camelCase) and build a field-level error dictionary.
+        var fieldErrors = failures
+            .GroupBy(f => JsonNamingPolicy.CamelCase.ConvertName(f.PropertyName))
+            .ToDictionary(
+                g => g.Key,
+                g => g.Select(f => f.ErrorMessage).ToArray());
+
+        var error = Error.Validation("General.Validation", "One or more validation errors occurred.", fieldErrors);
 
         // We need to return a TResponse failure, but TResponse could be either Result or Result<TValue>.
         // For plain Result, we can call Result.Failure(error) directly.

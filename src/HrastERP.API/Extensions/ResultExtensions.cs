@@ -24,7 +24,10 @@ public static class ResultExtensions
 
     private static IActionResult ToErrorResult(Error error)
     {
-        var body = new ErrorResponse(error.Code, error.Message);
+        var body = new ErrorResponse(error.Code, error.Message)
+        {
+            Errors = error.ValidationErrors
+        };
 
         return error.Type switch
         {
