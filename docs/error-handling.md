@@ -34,6 +34,9 @@ The `Error` record provides factory methods that set the `ErrorType` automatical
 
 ```csharp
 Error.Validation("Order.InvalidQuantity", "Quantity must be greater than zero.");
+// With field-level detail (ValidationBehavior does this automatically for FluentValidation failures):
+Error.Validation("General.Validation", "One or more validation errors occurred.",
+    new Dictionary<string, string[]> { ["quantity"] = ["Must be greater than zero."] });
 Error.NotFound("Order.NotFound", "Order was not found.");
 Error.Forbidden("Order.Forbidden", "You cannot modify another tenant's order.");
 Error.Conflict("Order.Duplicate", "An order with this reference already exists.");
@@ -103,7 +106,7 @@ public async Task<IActionResult> Get(Guid id, CancellationToken ct)
 
 This returns:
 - `200 OK` with the serialized value on success
-- The appropriate error status code (422/403/404/409/500) with `{ code, message }` body on failure
+- The appropriate error status code (422/403/404/409/500) with `{ code, message }` body on failure; validation (422) responses also include `errors` with field-level messages
 
 ### Custom success responses
 
@@ -154,6 +157,19 @@ All error responses follow a consistent shape:
 {
     "code": "Auth.InvalidCredentials",
     "message": "Invalid email or password."
+}
+```
+
+Validation responses (422) additionally include an `errors` field with per-field messages. The `errors` key is omitted entirely from non-validation responses (404, 403, 409, 500).
+
+```json
+{
+    "code": "General.Validation",
+    "message": "One or more validation errors occurred.",
+    "errors": {
+        "quantity": ["Must be greater than zero."],
+        "name": ["Name is required.", "Name must not exceed 100 characters."]
+    }
 }
 ```
 
