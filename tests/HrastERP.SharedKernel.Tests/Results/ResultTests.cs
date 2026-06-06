@@ -5,7 +5,7 @@ namespace HrastERP.SharedKernel.Tests.Results;
 
 public class ResultTests
 {
-    private static readonly Error SomeError = new("TEST", "Test error");
+    private static readonly Error SomeError = Error.Validation("TEST", "Test error");
 
     // Non-generic Result
 

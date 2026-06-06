@@ -52,7 +52,7 @@ Key types and their intended use:
 - **`IDomainEvent`** — marker interface for domain events; aggregates raise them, the application layer dispatches after commit
 - **`ValueObject`** — equality by `GetEqualityComponents()`; use for `Money`, `Address`, etc.
 - **`Result` / `Result<TValue>`** — all command and query handlers return these instead of throwing for expected failures; supports implicit conversion from `TValue` and `Error`
-- **`Error`** — `record(string Code, string Message)`; code is dot-separated e.g. `"Order.NotFound"`; factory methods: `Error.NotFound`, `Error.Validation`, `Error.Forbidden`
+- **`Error`** — `record(string Code, string Message, ErrorType Type)`; code is dot-separated e.g. `"Order.NotFound"`; `ErrorType` enum: `Validation`, `NotFound`, `Forbidden`, `Conflict`, `Unexpected`; factory methods: `Error.NotFound`, `Error.Validation`, `Error.Forbidden`, `Error.Conflict`, `Error.Unexpected`. Each module defines errors as `static readonly` constants in a `<Module>Errors` class. See `docs/error-handling.md`.
 - **`PagedResult<T>`** — returned by all list queries; created via `PagedResult<T>.Create(...)`
 - **`ICurrentUser`** / **`ICurrentTenant`** — injected into application handlers; implemented in API layer from JWT claims
 - **Exceptions** (`NotFoundException`, `ForbiddenException`, `ValidationException`) — thrown by application layer, caught by global exception middleware in API which maps them to 404 / 403 / 422

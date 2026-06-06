@@ -1,4 +1,5 @@
 using HrastERP.API.Contracts.Auth;
+using HrastERP.API.Extensions;
 using HrastERP.Infrastructure.Authentication;
 using Microsoft.AspNetCore.Mvc;
 
@@ -13,10 +14,7 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
         LoginRequest request, CancellationToken ct)
     {
         var result = await authService.LoginAsync(request.Email, request.Password, ct);
-
-        return result.IsSuccess
-            ? Ok(result.Value)
-            : Unauthorized(new { error = result.Error.Message });
+        return result.ToActionResult();
     }
 
     [HttpPost("refresh")]
@@ -24,10 +22,7 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
         RefreshTokenRequest request, CancellationToken ct)
     {
         var result = await authService.RefreshAsync(request.RefreshToken, ct);
-
-        return result.IsSuccess
-            ? Ok(result.Value)
-            : Unauthorized(new { error = result.Error.Message });
+        return result.ToActionResult();
     }
 
     [HttpPost("logout")]
@@ -38,6 +33,6 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
 
         return result.IsSuccess
             ? NoContent()
-            : BadRequest(new { error = result.Error.Message });
+            : result.ToActionResult();
     }
 }
