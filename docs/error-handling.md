@@ -147,6 +147,25 @@ public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
 
 This middleware is **not** the primary error path. Application-layer failures always use `Result.Failure` with an appropriate `ErrorType`. The middleware only fires if something truly unexpected escapes the handler pipeline.
 
+### Model binding error factory
+
+When ASP.NET Core fails to deserialize or bind the request body (malformed JSON, missing `[Required]` fields, wrong types), it short-circuits the pipeline **before** MediatR runs. By default, ASP.NET returns its own `ValidationProblemDetails` format which differs from the application's `ErrorResponse` shape.
+
+`ModelBindingExtensions.ConfigureModelBindingErrorFormat()` (in `HrastERP.API/Extensions/`) replaces the default `InvalidModelStateResponseFactory` so that model binding errors produce the same response format as `ValidationBehavior`:
+
+```json
+{
+    "code": "General.Validation",
+    "message": "One or more validation errors occurred.",
+    "errors": {
+        "email": ["The Email field is required."],
+        "password": ["The Password field is required."]
+    }
+}
+```
+
+Field names are converted to camelCase to match `ValidationBehavior` output. The response status code is 422 Unprocessable Entity.
+
 ---
 
 ### Error response body

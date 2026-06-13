@@ -1,6 +1,7 @@
 using System.Text;
 using HrastERP.Administration;
 using HrastERP.API.Authentication;
+using HrastERP.API.Extensions;
 using HrastERP.API.Middleware;
 using HrastERP.Finance;
 using HrastERP.Infrastructure.Configuration;
@@ -71,6 +72,9 @@ builder.Services
     .AddApplicationPart(typeof(InventoryModule).Assembly)
     .AddApplicationPart(typeof(ProcurementModule).Assembly)
     .AddApplicationPart(typeof(ProductionModule).Assembly);
+
+// Configure the model binding error format to return consistent error message (ErrorResponse type) in case of API layer validation errors.
+builder.Services.ConfigureModelBindingErrorFormat();
 
 var app = builder.Build();
 

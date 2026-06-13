@@ -19,5 +19,6 @@
     <Project Path="tests/Inventory.Tests/Inventory.Tests.csproj" />
     <Project Path="tests/Procurement.Tests/Procurement.Tests.csproj" />
     <Project Path="tests/Production.Tests/Production.Tests.csproj" />
+    <Project Path="tests/HrastERP.API.Tests/HrastERP.API.Tests.csproj" />
   </Folder>
 </Solution>
