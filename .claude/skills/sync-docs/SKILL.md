@@ -1,15 +1,16 @@
 ---
 name: sync-docs
-description: Use when you want to reflect recent code changes into project documentation — README.md, CLAUDE.md, or docs/ files. Call as /sync-docs (last 1 commit) or /sync-docs N (last N commits).
+description: Use when you want to reflect recent code changes into project documentation — README.md, CLAUDE.md, or docs/ files. Call as /sync-docs (uncommitted changes) or /sync-docs N (last N commits).
 ---
 
 # sync-docs
 
 ## Overview
 
-Scan the last N commits, determine which changes are worth documenting, decide which documentation targets should be updated, show the proposed changes to the user for review, then apply them after approval.
+Scan code changes, determine which are worth documenting, decide which documentation targets should be updated, show the proposed changes to the user for review, then apply them after approval.
 
-Default: 1 commit. Pass a number to scan more: `/sync-docs 3`.
+- **`/sync-docs`** (no argument) — scans **uncommitted changes** (staged + unstaged)
+- **`/sync-docs N`** — scans the **last N commits**
 
 ---
 
@@ -60,11 +61,22 @@ In-depth reference files for things that are not self-explanatory. Two categorie
 
 ## Flow
 
-### Step 1 — Gather commit data
+### Step 1 — Gather change data
 
+**If no argument (uncommitted changes):**
 Run in parallel:
 ```bash
-git log -N --oneline                          # N = argument or 1
+git status --short                            # which files are modified/added
+git diff --stat                               # unstaged change summary
+git diff                                      # unstaged full diff
+git diff --cached --stat                      # staged change summary
+git diff --cached                             # staged full diff
+```
+
+**If argument N provided (last N commits):**
+Run in parallel:
+```bash
+git log -N --oneline                          # N = argument
 git diff HEAD~N HEAD --stat                   # which files changed
 git diff HEAD~N HEAD                          # full diff
 ```
@@ -160,4 +172,4 @@ Apply only the approved changes. After writing each file, confirm what was updat
 - Keep CLAUDE.md actionable for Claude; keep tutorials in docs/
 - Prefer updating existing docs/ files over creating new ones unless the topic is clearly distinct
 - New docs/ files should cover topics broad enough to be referenced repeatedly, not one-time notes
-- Do not touch documentation that is unrelated to the scanned commits
+- Do not touch documentation that is unrelated to the scanned changes

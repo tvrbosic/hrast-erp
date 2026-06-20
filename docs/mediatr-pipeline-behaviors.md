@@ -83,7 +83,7 @@ The `fieldErrors` dictionary maps camelCase property names to arrays of error me
 }
 ```
 
-See `docs/error-handling.md` for the full HTTP response format and how `ToActionResult()` maps this to HTTP 422.
+See `docs/api-responses.md` for the full HTTP response format and how `ToActionResult()` maps this to HTTP 422.
 
 ### Registering a validator
 

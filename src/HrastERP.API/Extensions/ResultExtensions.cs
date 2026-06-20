@@ -1,4 +1,5 @@
 using HrastERP.API.Models;
+using HrastERP.SharedKernel.Common;
 using HrastERP.SharedKernel.Results;
 using Microsoft.AspNetCore.Mvc;
 
@@ -17,9 +18,29 @@ public static class ResultExtensions
     public static IActionResult ToActionResult<TValue>(this Result<TValue> result)
     {
         if (result.IsSuccess)
-            return new OkObjectResult(result.Value);
+            return new OkObjectResult(WrapInEnvelope(result.Value));
 
         return ToErrorResult(result.Error);
+    }
+
+    private static object WrapInEnvelope<TValue>(TValue value)
+    {
+        var type = typeof(TValue);
+
+        if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(PagedResult<>))
+            return WrapPagedResult((dynamic)value!);
+
+        return new ApiResponse<TValue>(value);
+    }
+
+    private static ApiResponse<IReadOnlyCollection<TItem>> WrapPagedResult<TItem>(PagedResult<TItem> paged)
+    {
+        return new ApiResponse<IReadOnlyCollection<TItem>>(paged.Items)
+        {
+            Meta = new PaginationMeta(
+                paged.Page, paged.PageSize, paged.TotalCount,
+                paged.TotalPages, paged.HasPreviousPage, paged.HasNextPage)
+        };
     }
 
     private static IActionResult ToErrorResult(Error error)

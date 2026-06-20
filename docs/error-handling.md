@@ -1,6 +1,6 @@
 # Error Handling Strategy
 
-This document describes how errors are defined, propagated, and returned to API consumers in Hrast ERP.
+This document describes how errors are defined, propagated, and returned from application handlers in Hrast ERP.
 
 ---
 
@@ -76,7 +76,7 @@ public async Task<Result<Order>> Handle(GetOrderQuery query, CancellationToken c
     var order = await repository.GetByIdAsync(query.Id, ct);
 
     if (order is null)
-        return OrderErrors.NotFound;  // Implicit operator (see Result.cs): same as Result<order>.Failure(error) 
+        return OrderErrors.NotFound;  // Implicit operator (see Result.cs): same as Result<order>.Failure(error)
 
     return order;  // Implicit operator (see Result.cs): same as Result<order>.Success(order)
 }
@@ -86,111 +86,6 @@ Both conversions are powered by `implicit operator` declarations in `Result<TVal
 (`src/HrastERP.SharedKernel/Results/Result.cs`, lines 66 and 69).
 The compiler applies them automatically whenever it sees a type mismatch between
 `Error`/`TValue` and `Result<TValue>` — no explicit wrapping needed.
-
----
-
-## Mapping Results to HTTP Responses
-
-### `ResultExtensions.ToActionResult()`
-
-The API project provides an extension method that maps `ErrorType` to HTTP status codes. Controllers call it explicitly:
-
-```csharp
-[HttpGet("{id}")]
-public async Task<IActionResult> Get(Guid id, CancellationToken ct)
-{
-    var result = await sender.Send(new GetOrderQuery(id), ct);
-    return result.ToActionResult();
-}
-```
-
-This returns:
-- `200 OK` with the serialized value on success
-- The appropriate error status code (422/403/404/409/500) with `{ code, message }` body on failure; validation (422) responses also include `errors` with field-level messages
-
-### Custom success responses
-
-When the default `200 OK` is not appropriate (e.g. `201 Created` or `204 NoContent`), handle the success branch inline:
-
-```csharp
-[HttpPost]
-public async Task<IActionResult> Create(CreateOrderRequest request, CancellationToken ct)
-{
-    var result = await sender.Send(new CreateOrderCommand(request), ct);
-
-    return result.IsSuccess
-        ? CreatedAtAction(nameof(Get), new { id = result.Value.Id }, result.Value)
-        : result.ToActionResult();
-}
-
-[HttpDelete("{id}")]
-public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
-{
-    var result = await sender.Send(new DeleteOrderCommand(id), ct);
-
-    return result.IsSuccess
-        ? NoContent()
-        : result.ToActionResult();
-}
-```
-
-### Global exception middleware
-
-`GlobalExceptionMiddleware` (registered first in `Program.cs`) is a safety net for unhandled infrastructure or framework exceptions — database connectivity failures, unexpected nulls, framework bugs. It logs the exception and returns:
-
-```json
-{
-    "code": "General.Unexpected",
-    "message": "An unexpected error occurred."
-}
-```
-
-This middleware is **not** the primary error path. Application-layer failures always use `Result.Failure` with an appropriate `ErrorType`. The middleware only fires if something truly unexpected escapes the handler pipeline.
-
-### Model binding error factory
-
-When ASP.NET Core fails to deserialize or bind the request body (malformed JSON, missing `[Required]` fields, wrong types), it short-circuits the pipeline **before** MediatR runs. By default, ASP.NET returns its own `ValidationProblemDetails` format which differs from the application's `ErrorResponse` shape.
-
-`ModelBindingExtensions.ConfigureModelBindingErrorFormat()` (in `HrastERP.API/Extensions/`) replaces the default `InvalidModelStateResponseFactory` so that model binding errors produce the same response format as `ValidationBehavior`:
-
-```json
-{
-    "code": "General.Validation",
-    "message": "One or more validation errors occurred.",
-    "errors": {
-        "email": ["The Email field is required."],
-        "password": ["The Password field is required."]
-    }
-}
-```
-
-Field names are converted to camelCase to match `ValidationBehavior` output. The response status code is 422 Unprocessable Entity.
-
----
-
-### Error response body
-
-All error responses follow a consistent shape:
-
-```json
-{
-    "code": "Auth.InvalidCredentials",
-    "message": "Invalid email or password."
-}
-```
-
-Validation responses (422) additionally include an `errors` field with per-field messages. The `errors` key is omitted entirely from non-validation responses (404, 403, 409, 500).
-
-```json
-{
-    "code": "General.Validation",
-    "message": "One or more validation errors occurred.",
-    "errors": {
-        "quantity": ["Must be greater than zero."],
-        "name": ["Name is required.", "Name must not exceed 100 characters."]
-    }
-}
-```
 
 ---
 
