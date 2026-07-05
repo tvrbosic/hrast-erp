@@ -7,6 +7,7 @@ namespace HrastERP.Inventory;
 
 public static class InventoryModule
 {
+    // Service extension method — called in Program.cs as builder.Services.AddInventoryModule(...)
     public static IServiceCollection AddInventoryModule(
         this IServiceCollection services,
         IConfiguration configuration)

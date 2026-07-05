@@ -26,17 +26,20 @@ internal static class PersistenceServiceExtensions
         // Register EF Core interceptors:
         // - AuditableEntityInterceptor auto-populates CreatedAt/CreatedBy/UpdatedAt/UpdatedBy on save
         // - SoftDeleteInterceptor converts deletes into IsDeleted flag updates
+        // - TenantEntityInterceptor auto-populates TenantId on new entities and guards against missing tenant
         services.AddScoped<AuditableEntityInterceptor>();
         services.AddScoped<SoftDeleteInterceptor>();
+        services.AddScoped<TenantEntityInterceptor>();
 
-        // Register the EF Core DbContext with PostgreSQL and attach both interceptors
+        // Register the EF Core DbContext with PostgreSQL and attach all interceptors
         services.AddDbContext<HrastDbContext>((sp, options) =>
         {
             var settings = sp.GetRequiredService<IOptions<DatabaseSettings>>().Value;
             options.UseNpgsql(settings.ConnectionString);
             options.AddInterceptors(
                 sp.GetRequiredService<AuditableEntityInterceptor>(),
-                sp.GetRequiredService<SoftDeleteInterceptor>());
+                sp.GetRequiredService<SoftDeleteInterceptor>(),
+                sp.GetRequiredService<TenantEntityInterceptor>());
         });
 
         return services;

@@ -7,6 +7,7 @@ namespace HrastERP.Production;
 
 public static class ProductionModule
 {
+    // Service extension method — called in Program.cs as builder.Services.AddProductionModule(...)
     public static IServiceCollection AddProductionModule(
         this IServiceCollection services,
         IConfiguration configuration)

@@ -15,6 +15,9 @@ internal static class BehaviorServiceExtensions
         // LoggingBehavior logs request/response with timing for all handlers
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
 
+        // TenantValidationBehavior short-circuits with Forbidden if no valid tenant context
+        services.AddTransient(typeof(IPipelineBehavior<,>), typeof(TenantValidationBehavior<,>));
+
         // ValidationBehavior runs FluentValidation validators and returns Result.Failure on errors
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
 

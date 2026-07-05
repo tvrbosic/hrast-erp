@@ -29,6 +29,17 @@ Interface for entities that support soft deletion. Exposes two nullable properti
 
 **Soft-delete behavior (Infrastructure):** `SoftDeleteInterceptor` intercepts every `SaveChanges` call. When an entity's EF Core state is `Deleted`, the interceptor flips it to `Modified` and sets `DeletedAt = DateTime.UtcNow` and `DeletedBy = currentUser.UserId`. A global query filter (`DeletedAt == null`) is applied to all `ISoftDeletable` entity types in `HrastDbContext`, so soft-deleted records are invisible to normal queries. Use `.IgnoreQueryFilters()` to include them (e.g. for admin views or purge jobs).
 
+### `ITenantEntity.cs`
+Domain marker interface for entities that require row-level tenant isolation. Exposes a single `Guid TenantId { get; }` property — implementing entities add a setter for EF Core materialization.
+
+Entities opt in by implementing this interface; `BaseEntity` does **not** implement it because not all entities are tenant-scoped (e.g. a `Tenant` entity itself, or system-wide lookup tables).
+
+**Tenant isolation behavior (Infrastructure):** `TenantEntityInterceptor` intercepts every `SaveChanges` call. When a new entity implementing `ITenantEntity` is added, the interceptor sets `TenantId` from `ICurrentTenant.TenantId` and throws `InvalidOperationException` if the result is `Guid.Empty` — a programming error, not a user-recoverable failure. Modified entities are never re-assigned; tenant reassignment must never happen.
+
+A global query filter in `HrastDbContext` compares `entity.TenantId == currentTenant.TenantId` for all `ITenantEntity` types, so cross-tenant records are invisible to normal queries. Use `.IgnoreQueryFilters()` to bypass (admin-only scenarios).
+
+A MediatR pipeline behavior (`TenantValidationBehavior`) provides early defense: before any handler executes, it checks `ICurrentTenant.TenantId != Guid.Empty` and short-circuits with `Result.Failure(Error.Forbidden("General.MissingTenant", ...))` when tenant context is missing.
+
 ### `ValueObject.cs`
 Abstract base class for value objects. Equality is determined by the values returned from the abstract `GetEqualityComponents()` method, not by reference or identity. Overrides `Equals`, `GetHashCode`, `==`, and `!=` accordingly. Use this for types like `Money`, `Address`, or `Dimensions` that have no identity of their own.
 

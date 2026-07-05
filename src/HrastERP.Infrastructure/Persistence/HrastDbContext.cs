@@ -69,10 +69,10 @@ public sealed class HrastDbContext(
             }
 
             // Tenant filter
-            if (typeof(ICurrentTenant).IsAssignableFrom(clrType))
+            if (typeof(ITenantEntity).IsAssignableFrom(clrType))
             {
                 // Create a property expression for the TenantId property.
-                var tenantIdProp = Expression.Property(parameter, nameof(ICurrentTenant.TenantId));
+                var tenantIdProp = Expression.Property(parameter, nameof(ITenantEntity.TenantId));
                 // Create a constant expression for the DbContext instance.
                 var dbContextRef = Expression.Constant(this, typeof(HrastDbContext));
                 // Create a property expression for the CurrentTenantId property.

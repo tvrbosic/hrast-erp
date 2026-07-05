@@ -17,10 +17,10 @@ Behaviors are registered in `HrastERP.Infrastructure/Extensions/BehaviorServiceE
 Behaviors execute in registration order, outermost first:
 
 ```
-LoggingBehavior → ValidationBehavior → Handler
+LoggingBehavior → TenantValidationBehavior → ValidationBehavior → Handler
 ```
 
-`LoggingBehavior` is registered first, so it wraps the entire pipeline including validation. It starts the timer before validation runs and stops it after the handler returns (or after validation short-circuits).
+`LoggingBehavior` is registered first, so it wraps the entire pipeline including tenant validation and input validation. It starts the timer before any downstream behavior runs and stops it after the handler returns (or after any behavior short-circuits).
 
 ---
 
@@ -37,9 +37,31 @@ Logs the start and completion of every MediatR request, including elapsed time i
 [Information] Handled CreateOrderCommand in 42ms
 ```
 
-The second entry is always emitted, even when `ValidationBehavior` short-circuits before reaching the handler — the elapsed time in that case reflects validation overhead only.
+The second entry is always emitted, even when a downstream behavior short-circuits before reaching the handler — the elapsed time in that case reflects only the overhead of the behavior that short-circuited.
 
 **Applies to:** All requests (`where TRequest : IRequest<TResponse>`, no additional constraint).
+
+---
+
+## TenantValidationBehavior
+
+**File:** `src/HrastERP.Infrastructure/Behaviors/TenantValidationBehavior.cs`
+
+Checks that the current request has a valid tenant context before any handler or validator runs. If `ICurrentTenant.TenantId` is `Guid.Empty`, the pipeline is short-circuited and `Result.Failure` is returned immediately — the handler never executes.
+
+**Applies to:** Only requests where `TResponse : Result` (all command and query handlers in this codebase).
+
+### Returned error
+
+```csharp
+Error.Forbidden("General.MissingTenant", "A valid tenant context is required.")
+```
+
+Maps to HTTP 403 via `ToActionResult()`.
+
+### Why before ValidationBehavior
+
+Tenant context is a precondition for all tenant-scoped operations. There is no point running FluentValidation if the request cannot be attributed to a tenant — the database query would either fail or return data from the wrong tenant. Failing fast here also avoids disclosing validation error details to unauthenticated or cross-tenant callers.
 
 ---
 
@@ -120,7 +142,8 @@ If multiple validators exist for the same request type, all of them run in paral
 
 ```csharp
 services.AddTransient(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
+services.AddTransient(typeof(IPipelineBehavior<,>), typeof(TenantValidationBehavior<,>));
 services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
 ```
 
-Both are registered as open generics and resolved per-request by MediatR. Registration order determines pipeline order — `LoggingBehavior` first means it is the outermost wrapper.
+All three are registered as open generics and resolved per-request by MediatR. Registration order determines pipeline order — `LoggingBehavior` first means it is the outermost wrapper, `TenantValidationBehavior` second means it runs before input validation.

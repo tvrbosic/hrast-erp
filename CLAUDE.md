@@ -31,9 +31,10 @@ dotnet run --project src/HrastERP.API/
 
 **CQRS:** MediatR with commands and queries organized by feature inside `Application/`. Structure: `Application/<Feature>/Commands/` and `Application/<Feature>/Queries/`. Handlers return `Result<T>`.
 
-**Pipeline behaviors** (registered in `HrastERP.Infrastructure`):
+**Pipeline behaviors** (registered in `HrastERP.Infrastructure`), in execution order:
+- `LoggingBehavior` — structured request/response logging with timing; outermost wrapper
+- `TenantValidationBehavior` — short-circuits with `Result.Failure(Error.Forbidden("General.MissingTenant", ...))` when `ICurrentTenant.TenantId` is `Guid.Empty`; runs before input validation
 - `ValidationBehavior` — runs FluentValidation validators; on failure groups violations by camelCase property name into a field-level error dictionary and returns `Result.Failure` with `Error.Validation("General.Validation", ..., fieldErrors)`
-- `LoggingBehavior` — structured request/response logging with timing
 
 **Inter-module communication:** Domain events only (MediatR notifications). Modules never reference each other. Cross-module event contracts live in SharedKernel under `IntegrationEvents/`.
 
@@ -49,6 +50,7 @@ Key types and their intended use:
 - **`AggregateRoot<TId>`** — extends `BaseEntity`, adds `AddDomainEvent` / `ClearDomainEvents`
 - **`IAuditable`** — interface with audit trail properties (`CreatedAt`, `CreatedBy`, `UpdatedAt?`, `UpdatedBy?`); `CreatedBy`/`UpdatedBy` are `Guid` (UserId). Implemented by `BaseEntity`.
 - **`ISoftDeletable`** — interface with soft-delete properties (`DeletedAt?`, `DeletedBy?`). Implemented by `BaseEntity`.
+- **`ITenantEntity`** — domain marker interface for entities requiring row-level tenant isolation; exposes `Guid TenantId { get; }`. Entities opt in explicitly — `BaseEntity` does NOT implement it. `TenantId` is auto-populated by `TenantEntityInterceptor` on insert; never set it manually.
 - **`IDomainEvent`** — marker interface for domain events; aggregates raise them, the application layer dispatches after commit
 - **`ValueObject`** — equality by `GetEqualityComponents()`; use for `Money`, `Address`, etc.
 - **`Result` / `Result<TValue>`** — all command and query handlers return these instead of throwing for expected failures; supports implicit conversion from `TValue` and `Error`
@@ -62,6 +64,8 @@ Key types and their intended use:
 **Audit fields:** All entities get `CreatedAt`/`CreatedBy`/`UpdatedAt`/`UpdatedBy` auto-populated by `AuditableEntityInterceptor` in the Infrastructure layer. Uses `DateTime` (UTC) and `ICurrentUser.UserId` (`Guid`). Falls back to `Guid.Empty` when unauthenticated.
 
 **Soft delete:** All entities get `DeletedAt`/`DeletedBy` auto-populated by `SoftDeleteInterceptor` when deleted. A global query filter hides soft-deleted entities by default.
+
+**Tenant isolation:** Entities opt in to row-level tenant scoping by implementing `ITenantEntity`. `TenantEntityInterceptor` auto-populates `TenantId` from `ICurrentTenant` on insert and throws `InvalidOperationException` if `TenantId` is `Guid.Empty` — a programming error caught before reaching the database. A global query filter restricts all `ITenantEntity` queries to the current tenant. `TenantValidationBehavior` provides an early defense at the pipeline level, returning `Result.Failure(Error.Forbidden("General.MissingTenant", ...))` before any handler executes when tenant context is missing.
 
 Nothing in SharedKernel should import from any module.
 

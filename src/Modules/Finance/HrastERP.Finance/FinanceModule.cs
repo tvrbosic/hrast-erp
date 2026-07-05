@@ -7,6 +7,7 @@ namespace HrastERP.Finance;
 
 public static class FinanceModule
 {
+    // Service extension method — called in Program.cs as builder.Services.AddFinanceModule(...)
     public static IServiceCollection AddFinanceModule(
         this IServiceCollection services,
         IConfiguration configuration)

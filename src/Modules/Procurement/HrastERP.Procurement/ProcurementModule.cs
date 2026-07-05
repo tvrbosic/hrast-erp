@@ -7,6 +7,7 @@ namespace HrastERP.Procurement;
 
 public static class ProcurementModule
 {
+    // Service extension method — called in Program.cs as builder.Services.AddProcurementModule(...)
     public static IServiceCollection AddProcurementModule(
         this IServiceCollection services,
         IConfiguration configuration)

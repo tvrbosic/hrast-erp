@@ -7,6 +7,7 @@ namespace HrastERP.Administration;
 
 public static class AdministrationModule
 {
+    // Service extension method — called in Program.cs as builder.Services.AddAdministrationModule(...)
     public static IServiceCollection AddAdministrationModule(
         this IServiceCollection services,
         IConfiguration configuration)

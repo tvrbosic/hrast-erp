@@ -108,6 +108,14 @@ Each property extracts a specific claim and falls back to a safe default when th
 
 `CurrentUser` is the **only** place in the codebase that touches `HttpContext`. Everything above it depends solely on `ICurrentUser` / `ICurrentTenant`, keeping application-layer handlers unaware of HTTP or JWTs:
 
+### Why `IHttpContextAccessor` is always available
+
+`AddHttpContextAccessor()` in `Program.cs` registers `IHttpContextAccessor` as a singleton. ASP.NET Core guarantees that `HttpContext` is set on the accessor for the lifetime of any HTTP request.
+
+`CurrentUser` and `CurrentTenant` are scoped — one instance per request — so `HttpContext` is always live when they are resolved. `HrastDbContext` is also scoped, and it captures `TenantId` once at construction time (the `CurrentTenantId` property). This is safe because the `DbContext` never outlives the request that created it.
+
+The only case where `HttpContext` is `null` is outside an HTTP request (background jobs, tests). Both classes handle this defensively by falling back to `Guid.Empty` / `string.Empty` rather than throwing.
+
 ```csharp
 public class MyCommandHandler(ICurrentUser currentUser) : IRequestHandler<MyCommand, Result>
 {
