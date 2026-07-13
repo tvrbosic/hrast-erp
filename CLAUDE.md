@@ -56,7 +56,8 @@ Key types and their intended use:
 - **`Result` / `Result<TValue>`** — all command and query handlers return these instead of throwing for expected failures; supports implicit conversion from `TValue` and `Error`
 - **`Error`** — `record(string Code, string Message, ErrorType Type)`; code is dot-separated e.g. `"Order.NotFound"`; `ErrorType` enum: `Validation`, `NotFound`, `Forbidden`, `Conflict`, `Unexpected`; factory methods: `Error.NotFound`, `Error.Validation`, `Error.Forbidden`, `Error.Conflict`, `Error.Unexpected`. `Error.Validation` accepts an optional `validationErrors` (`IReadOnlyDictionary<string, string[]>?`) for field-level error detail; populated automatically by `ValidationBehavior`. Each module defines errors as `static readonly` constants in a `<Module>Errors` class. See `docs/error-handling.md` and `docs/api-responses.md`.
 - **`PagedResult<T>`** — returned by all list queries; created via `PagedResult<T>.Create(...)`
-- **`ICurrentUser`** / **`ICurrentTenant`** — injected into application handlers; implemented in API layer from JWT claims
+- **`Permission`** — `[Flags] enum Permission : long` in `HrastERP.SharedKernel/Authorization/`; 20 CRUD permissions across 5 modules (bits 0–19). Use for authorization checks — always reference named enum members, never raw `long` values.
+- **`ICurrentUser`** / **`ICurrentTenant`** — injected into application handlers; implemented in API layer from JWT claims. `ICurrentUser.EffectivePermissions` returns the current user's combined permissions (parsed from the `"permissions"` JWT claim).
 - **Global exception middleware** (`GlobalExceptionMiddleware`, in `HrastERP.API/Middleware/`) — registered as the first middleware in `Program.cs`; catches any unhandled infrastructure/framework exception and returns 500 with `{ code: "General.Unexpected", message: "An unexpected error occurred." }`. Application-layer failures always use `Result.Failure` — the middleware is a safety net only, not the primary error path.
 - **Model binding error factory** (`ModelBindingExtensions.ConfigureModelBindingErrorFormat()`, in `HrastERP.API/Extensions/`) — replaces ASP.NET Core's default `InvalidModelStateResponseFactory` so that model binding failures (malformed JSON, missing `[Required]` fields, type mismatches) return the same `ErrorResponse` shape as application validation: HTTP 422 with `{ code: "General.Validation", message: "...", errors: { ... } }` and camelCase field names.
 - **API response envelope** (`ApiResponse<T>`, in `HrastERP.API/Models/`) — all successful responses from `ToActionResult()` are wrapped as `{ "data": T }`. For `PagedResult<T>`, the envelope includes a `"meta"` field with pagination info (`page`, `pageSize`, `totalCount`, `totalPages`, `hasPreviousPage`, `hasNextPage`). Error responses use `ErrorResponse` (same `Models/` folder) and are **not** enveloped — they remain flat `{ "code", "message", "errors?" }`. Both types are the only response shapes the API produces; all endpoints must use them consistently.
@@ -99,7 +100,7 @@ HrastERP.<Module>/
 JWT Bearer authentication with ASP.NET Core Identity. Key components:
 
 **Infrastructure layer** (`HrastERP.Infrastructure/Authentication/`):
-- **`ApplicationUser`** — extends `IdentityUser<Guid>` with `TenantId` and `FirstName`/`LastName`
+- **`ApplicationUser`** — extends `IdentityUser<Guid>` with `TenantId`, `FirstName`/`LastName`, `IsActive`, and a nullable `RoleId` FK + `Role` navigation (single role per user)
 - **`RefreshToken`** — entity for refresh token rotation, linked to `ApplicationUser`
 - **`IAuthService` / `AuthService`** — login, register, refresh, and logout flows using Identity + token service
 - **`ITokenService` / `TokenService`** — generates JWT access tokens and refresh tokens
@@ -112,6 +113,29 @@ JWT Bearer authentication with ASP.NET Core Identity. Key components:
 **Configuration:** JWT settings are in `appsettings.json` under `"Jwt"` section (`SecretKey`, `Issuer`, `Audience`), bound to `JwtSettings` with validation on startup.
 
 **DbContext:** `HrastDbContext` inherits from `IdentityUserContext<ApplicationUser, Guid>` (not plain `DbContext`), which adds Identity tables to the EF Core model.
+
+## Authorization
+
+Custom RBAC system built on ASP.NET Core policy-based authorization. Permissions are embedded in the JWT at login — no per-request DB query.
+
+**How to protect an endpoint:**
+
+```csharp
+[RequirePermission(Permission.FinanceView)]
+[HttpGet("invoices")]
+public async Task<IActionResult> GetInvoices() { ... }
+```
+
+**Key types** (`HrastERP.API/Authorization/`):
+- **`[RequirePermission]`** — `AuthorizeAttribute` subclass; encodes the permission as policy name `"Permission:<long>"`. Supports `AllowMultiple = true` for stacking multiple required permissions.
+- **`PermissionPolicyProvider`** — `IAuthorizationPolicyProvider` that intercepts `"Permission:*"` policy names and builds them dynamically; delegates all other policies to the default provider. Registered as singleton.
+- **`PermissionAuthorizationHandler`** — evaluates `(ICurrentUser.EffectivePermissions & requirement.Permission) != 0`. Registered as scoped (depends on scoped `ICurrentUser`).
+
+**`Role` entity** (`HrastERP.Infrastructure/Authorization/`):
+- Does NOT inherit `BaseEntity<TId>` — roles have no auditing, soft-delete, or tenant isolation
+- `Permissions` stored as `bigint` via `HasConversion<long>()`
+- Single role per user via nullable `ApplicationUser.RoleId` FK; `OnDelete(SetNull)` clears the FK on all users when a role is deleted
+- See `docs/authorization.md` for the full reference
 
 ## Test stack
 

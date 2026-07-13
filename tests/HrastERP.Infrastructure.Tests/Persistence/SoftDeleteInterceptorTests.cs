@@ -1,5 +1,6 @@
 using FluentAssertions;
 using HrastERP.SharedKernel.Abstractions;
+using HrastERP.SharedKernel.Authorization;
 using HrastERP.SharedKernel.Domain;
 using HrastERP.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -16,7 +17,7 @@ public class SoftDeleteInterceptorTests
         public Guid TenantId => Guid.NewGuid();
         public string Username => "testuser";
         public bool IsAuthenticated => isAuthenticated;
-        public IReadOnlyCollection<string> Permissions => [];
+        public Permission EffectivePermissions => Permission.None;
     }
 
     private sealed class TestDbContext(DbContextOptions<TestDbContext> options) : DbContext(options)

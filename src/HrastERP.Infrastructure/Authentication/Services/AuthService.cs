@@ -22,7 +22,9 @@ internal sealed class AuthService(
         string email, string password, CancellationToken ct = default)
     {
         // Look up user and verify credentials
-        var user = await userManager.FindByEmailAsync(email);
+        var user = await userManager.Users
+            .Include(u => u.Role)
+            .FirstOrDefaultAsync(u => u.Email == email, ct);
         if (user is null)
             return AuthErrors.InvalidCredentials;
 
@@ -48,6 +50,7 @@ internal sealed class AuthService(
         // Verify that hashed token exists in database
         var storedToken = await dbContext.Set<RefreshToken>()
             .Include(rt => rt.User)
+            .ThenInclude(u => u.Role)
             .FirstOrDefaultAsync(rt => rt.Token == hashedToken, ct);
 
         if (storedToken is null || !storedToken.IsActive)

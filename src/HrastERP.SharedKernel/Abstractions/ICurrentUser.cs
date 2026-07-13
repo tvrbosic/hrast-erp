@@ -1,3 +1,5 @@
+using HrastERP.SharedKernel.Authorization;
+
 namespace HrastERP.SharedKernel.Abstractions;
 
 public interface ICurrentUser
@@ -6,5 +8,5 @@ public interface ICurrentUser
     Guid TenantId { get; }
     string Username { get; }
     bool IsAuthenticated { get; }
-    IReadOnlyCollection<string> Permissions { get; }
+    Permission EffectivePermissions { get; }
 }

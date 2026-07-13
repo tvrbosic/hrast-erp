@@ -1,6 +1,7 @@
 using System.Text;
 using HrastERP.Administration;
 using HrastERP.API.Authentication;
+using HrastERP.API.Authorization;
 using HrastERP.API.Extensions;
 using HrastERP.API.Middleware;
 using HrastERP.Finance;
@@ -11,6 +12,7 @@ using HrastERP.Procurement;
 using HrastERP.Production;
 using HrastERP.SharedKernel.Abstractions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -53,6 +55,13 @@ builder.Services
 
 // Register authorization services that evaluate [Authorize] attributes and policies against the authenticated user.
 builder.Services.AddAuthorization();
+
+// Replace the default policy provider with one that builds Permission policies dynamically.
+// Singleton is safe — policy construction uses only static enum values.
+builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
+
+// Scoped because it depends on scoped ICurrentUser (one per HTTP request).
+builder.Services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
 
 // Register each business module's services (MediatR handlers, validators, EF configurations, repositories)
 builder.Services

@@ -20,7 +20,7 @@ Settings are validated at startup with `ValidateDataAnnotations()` + `ValidateOn
 
 ## Entities
 
-- **`ApplicationUser`** — extends `IdentityUser<Guid>` with `TenantId`, `FirstName`, `LastName`, `IsActive`, and a `RefreshTokens` navigation collection.
+- **`ApplicationUser`** — extends `IdentityUser<Guid>` with `TenantId`, `FirstName`, `LastName`, `IsActive`, a `RefreshTokens` navigation collection, and a nullable `RoleId` FK + `Role` navigation (single role per user).
 - **`RefreshToken`** — stores hashed refresh tokens with `ExpiresAt`, `RevokedAt`, and `ReplacedByToken` (for rotation audit trail). Exposes computed `IsActive` = not expired AND not revoked.
 
 ## Services
@@ -40,12 +40,13 @@ When `TokenService.GenerateAccessToken` creates a JWT, it includes:
 | `given_name` | `ApplicationUser.FirstName` |
 | `family_name` | `ApplicationUser.LastName` |
 | `jti` | Random GUID (unique token ID) |
+| `permissions` | `ApplicationUser.Role.Permissions` as `long` (`0` when no role is assigned) |
 
 ## Core Logic
 
 ### Login (`POST /api/auth/login`)
 
-1. Find user by email via `UserManager`
+1. Find user by email via `userManager.Users.Include(u => u.Role)` (eager-loads role so permissions are available for JWT generation)
 2. Reject if `IsActive` is false (`Auth.InactiveUser` error)
 3. Verify password via `UserManager.CheckPasswordAsync`
 4. Generate JWT access token with user claims
@@ -58,7 +59,7 @@ When `TokenService.GenerateAccessToken` creates a JWT, it includes:
 Uses **refresh token rotation** — each use invalidates the old token and issues a new pair:
 
 1. Hash the incoming raw refresh token
-2. Find the matching record in the database (include the `User` navigation)
+2. Find the matching record in the database (include `User` + `ThenInclude(u => u.Role)` so permissions are available for JWT generation)
 3. Reject if not found or not active (`Auth.InvalidRefreshToken` error)
 4. **Revoke** the old token (set `RevokedAt`)
 5. Generate a new refresh token pair
@@ -105,6 +106,7 @@ Each property extracts a specific claim and falls back to a safe default when th
 | `TenantId` | `tenant_id` | `Guid.Empty` |
 | `Username` | `email` (`ClaimTypes.Email`) | `string.Empty` |
 | `IsAuthenticated` | `HttpContext.User.Identity.IsAuthenticated` | `false` |
+| `EffectivePermissions` | `permissions` (parsed as `long`, cast to `Permission`) | `Permission.None` |
 
 `CurrentUser` is the **only** place in the codebase that touches `HttpContext`. Everything above it depends solely on `ICurrentUser` / `ICurrentTenant`, keeping application-layer handlers unaware of HTTP or JWTs:
 

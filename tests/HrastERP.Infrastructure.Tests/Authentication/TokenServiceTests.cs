@@ -2,7 +2,9 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Text;
 using FluentAssertions;
 using HrastERP.Infrastructure.Authentication;
+using HrastERP.Infrastructure.Authorization;
 using HrastERP.Infrastructure.Configuration;
+using HrastERP.SharedKernel.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -39,6 +41,22 @@ public class TokenServiceTests
         TenantId = Guid.NewGuid(),
         FirstName = "John",
         LastName = "Doe"
+    };
+
+    private static ApplicationUser CreateTestUserWithRole(Permission permissions) => new()
+    {
+        Id = Guid.NewGuid(),
+        Email = "test@example.com",
+        UserName = "test@example.com",
+        TenantId = Guid.NewGuid(),
+        FirstName = "John",
+        LastName = "Doe",
+        Role = new Role
+        {
+            Id = Guid.NewGuid(),
+            Name = "TestRole",
+            Permissions = permissions
+        }
     };
 
     [Fact]
@@ -148,5 +166,31 @@ public class TokenServiceTests
         var hash2 = _sut.HashToken("token-b");
 
         hash1.Should().NotBe(hash2);
+    }
+
+    [Fact]
+    public void GenerateAccessToken_WithRole_IncludesPermissionsClaim()
+    {
+        var permissions = Permission.FinanceView | Permission.FinanceCreate;
+        var user = CreateTestUserWithRole(permissions);
+
+        var token = _sut.GenerateAccessToken(user);
+
+        var handler = new JwtSecurityTokenHandler();
+        var jwt = handler.ReadJwtToken(token);
+        jwt.Claims.Should().Contain(c =>
+            c.Type == "permissions" && c.Value == ((long)permissions).ToString());
+    }
+
+    [Fact]
+    public void GenerateAccessToken_WithNoRole_IncludesZeroPermissionsClaim()
+    {
+        var user = CreateTestUser(); // no Role assigned
+
+        var token = _sut.GenerateAccessToken(user);
+
+        var handler = new JwtSecurityTokenHandler();
+        var jwt = handler.ReadJwtToken(token);
+        jwt.Claims.Should().Contain(c => c.Type == "permissions" && c.Value == "0");
     }
 }

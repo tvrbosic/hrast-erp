@@ -3,6 +3,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using HrastERP.Infrastructure.Configuration;
+using HrastERP.SharedKernel.Authorization;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
@@ -29,7 +30,8 @@ internal sealed class TokenService(IOptions<JwtSettings> jwtOptions) : ITokenSer
             new Claim("tenant_id", user.TenantId.ToString()),
             new Claim(JwtRegisteredClaimNames.GivenName, user.FirstName),
             new Claim(JwtRegisteredClaimNames.FamilyName, user.LastName),
-            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+            new Claim("permissions", ((long)(user.Role?.Permissions ?? Permission.None)).ToString())
         };
 
         var token = new JwtSecurityToken(

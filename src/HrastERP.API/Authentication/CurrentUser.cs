@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using HrastERP.SharedKernel.Abstractions;
+using HrastERP.SharedKernel.Authorization;
 
 namespace HrastERP.API.Authentication;
 
@@ -33,6 +34,11 @@ internal sealed class CurrentUser(IHttpContextAccessor httpContextAccessor) : IC
     public bool IsAuthenticated =>
         User?.Identity?.IsAuthenticated ?? false;
 
-    // Permissions are not yet implemented — placeholder for future claim-based authorization.
-    public IReadOnlyCollection<string> Permissions => [];
+    // Parsed from the custom "permissions" claim written by TokenService.
+    // The claim stores the Permission flags enum as a long integer.
+    // Falls back to Permission.None when the claim is absent or malformed.
+    public Permission EffectivePermissions =>
+        long.TryParse(User?.FindFirstValue("permissions"), out var raw)
+            ? (Permission)raw
+            : Permission.None;
 }

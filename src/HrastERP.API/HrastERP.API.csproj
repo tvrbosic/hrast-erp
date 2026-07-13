@@ -11,6 +11,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="HrastERP.API.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\HrastERP.Infrastructure\HrastERP.Infrastructure.csproj" />
     <ProjectReference Include="..\Modules\Administration\HrastERP.Administration\HrastERP.Administration.csproj" />
     <ProjectReference Include="..\Modules\Finance\HrastERP.Finance\HrastERP.Finance.csproj" />
