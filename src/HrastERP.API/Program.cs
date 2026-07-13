@@ -7,6 +7,7 @@ using HrastERP.API.Middleware;
 using HrastERP.Finance;
 using HrastERP.Infrastructure.Configuration;
 using HrastERP.Infrastructure.Extensions;
+using HrastERP.Infrastructure.Persistence;
 using HrastERP.Inventory;
 using HrastERP.Procurement;
 using HrastERP.Production;
@@ -86,6 +87,14 @@ builder.Services
 builder.Services.ConfigureModelBindingErrorFormat();
 
 var app = builder.Build();
+
+// Requires migrations to be applied first: dotnet ef database update
+// Reference seeds always run; dev fixtures run only in Development environment.
+using (var scope = app.Services.CreateScope())
+{
+    var seeder = scope.ServiceProvider.GetRequiredService<DatabaseSeeder>();
+    await seeder.SeedAsync();
+}
 
 // Safety net for unhandled infrastructure/framework exceptions. Must be first so it wraps the entire pipeline.
 // Application-layer failures use Result.Failure — this middleware only catches unexpected exceptions (DB errors, bugs, etc.).

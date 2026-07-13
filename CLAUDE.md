@@ -17,6 +17,9 @@ dotnet test tests/HrastERP.SharedKernel.Tests/
 # Run a single test by name
 dotnet test --filter "FullyQualifiedName~TestMethodName"
 
+# Apply EF Core migrations (before first run and after adding new migrations)
+dotnet ef database update --project src/HrastERP.Infrastructure --startup-project src/HrastERP.API
+
 # Run the API
 dotnet run --project src/HrastERP.API/
 ```
@@ -136,6 +139,28 @@ public async Task<IActionResult> GetInvoices() { ... }
 - `Permissions` stored as `bigint` via `HasConversion<long>()`
 - Single role per user via nullable `ApplicationUser.RoleId` FK; `OnDelete(SetNull)` clears the FK on all users when a role is deleted
 - See `docs/authorization.md` for the full reference
+
+## Database Seeding
+
+`DatabaseSeeder` (`src/HrastERP.Infrastructure/Persistence/DatabaseSeeder.cs`) runs at application startup via `Program.cs` before the middleware pipeline. It requires migrations to be applied first.
+
+Plain SQL scripts live in two folders inside `src/HrastERP.Infrastructure/Seeds/`:
+
+- `Reference/` — always applied in every environment
+- `Fixtures/` — applied only in `Development` environment
+
+**Script naming:** `NNNN_description.sql` (4-digit zero-padded prefix). Scripts execute in ascending numeric order within each folder; Reference scripts always run before Fixtures.
+
+**Idempotency:** Applied scripts are recorded in `seed_history` (a plain table created by the seeder, not managed by EF Core migrations). Scripts themselves use `INSERT ... ON CONFLICT ("Id") DO NOTHING`. A script runs exactly once per database.
+
+**Predefined role UUIDs** (stable across environments — used as FK targets):
+- Administrator: `00000000-0000-0000-0000-000000000001`
+- ProcurementOperator: `00000000-0000-0000-0000-000000000002`
+- ProductionWorker: `00000000-0000-0000-0000-000000000003`
+- WarehouseEmployee: `00000000-0000-0000-0000-000000000004`
+- FinanceEmployee: `00000000-0000-0000-0000-000000000005`
+
+See `docs/database-seeding.md` for the full guide on adding new seed scripts.
 
 ## Test stack
 

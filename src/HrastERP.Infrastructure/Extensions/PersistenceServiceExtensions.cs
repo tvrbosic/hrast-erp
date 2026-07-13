@@ -42,6 +42,8 @@ internal static class PersistenceServiceExtensions
                 sp.GetRequiredService<TenantEntityInterceptor>());
         });
 
+        services.AddScoped<DatabaseSeeder>();
+
         return services;
     }
 }

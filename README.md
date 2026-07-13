@@ -52,3 +52,38 @@ tests/
 - MediatR (CQRS + pipeline behaviors)
 - FluentValidation
 - xUnit + FluentAssertions (testing)
+
+## Development Setup
+
+### Prerequisites
+- [.NET 10 SDK](https://dotnet.microsoft.com/download)
+- [Docker](https://www.docker.com/) (for PostgreSQL)
+
+### Steps
+
+1. **Start the database**
+   ```bash
+   docker compose up -d
+   ```
+
+2. **Apply EF Core migrations**
+   ```bash
+   dotnet ef database update --project src/HrastERP.Infrastructure --startup-project src/HrastERP.API
+   ```
+
+3. **Run the application**
+   ```bash
+   dotnet run --project src/HrastERP.API
+   ```
+   Seed scripts apply automatically on startup. Reference data (roles) is seeded in all environments. Dev fixtures (admin user) are seeded only in the `Development` environment.
+
+### Development Credentials
+
+| Field | Value |
+|---|---|
+| Username | `admin` |
+| Password | `admin` |
+
+### Resetting the Database
+
+To start fresh: stop the app, drop the `hrastErp` database, recreate it, re-apply migrations, and restart the app. Seed scripts will re-apply automatically.

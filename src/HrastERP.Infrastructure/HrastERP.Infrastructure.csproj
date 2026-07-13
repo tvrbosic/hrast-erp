@@ -18,7 +18,14 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Content Include="Seeds\**\*.sql">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
     <InternalsVisibleTo Include="HrastERP.Infrastructure.Tests" />
+    <InternalsVisibleTo Include="HrastERP.API" />
   </ItemGroup>
 
   <ItemGroup>
