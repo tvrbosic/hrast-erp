@@ -142,14 +142,11 @@ HrastERP.<Module>/
 #### 0.7 CQRS Pipeline (MediatR)
 - `ValidationBehavior<TRequest, TResponse>`: runs FluentValidation, returns validation errors
 - `LoggingBehavior<TRequest, TResponse>`: structured request/response logging
-- `AuditBehavior<TRequest, TResponse>`: attaches current user/tenant context to audit enrichment
-- `CachingBehavior<TRequest, TResponse>`: optional cache-aside for queries implementing `ICacheable`
 
 #### 0.8 Audit Log
 - `AuditLogEntry` entity: `EntityName`, `EntityId`, `Action` (Created/Updated/Deleted), `OldValues` (JSON), `NewValues` (JSON), `UserId`, `TenantId`, `Timestamp`
 - EF Core `SaveChangesInterceptor` populates audit entries automatically
 - `AuditLog` table is append-only (no update/delete)
-- Query API: filter by entity type, entity ID, user, date range
 
 #### 0.9 Background Job Infrastructure
 - Hangfire with PostgreSQL storage
@@ -405,7 +402,7 @@ HrastERP.<Module>/
 **Goal:** Complete the system with audit log API, file upload usage in modules, advanced caching, integration testing, and API polish.
 
 #### 6.1 Audit Log API
-- `GET /admin/audit-log` — filterable by entity type, entity ID, user, date range
+- Audit log API: filter by entity type, entity ID, user, date range
 - Returns paged list of `AuditLogEntry` records
 - Accessible only to Administrator role
 
