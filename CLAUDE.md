@@ -71,6 +71,8 @@ Key types and their intended use:
 
 **Tenant isolation:** Entities opt in to row-level tenant scoping by implementing `ITenantEntity`. `TenantEntityInterceptor` auto-populates `TenantId` from `ICurrentTenant` on insert and throws `InvalidOperationException` if `TenantId` is `Guid.Empty` — a programming error caught before reaching the database. A global query filter restricts all `ITenantEntity` queries to the current tenant. `TenantValidationBehavior` provides an early defense at the pipeline level, returning `Result.Failure(Error.Forbidden("General.MissingTenant", ...))` before any handler executes when tenant context is missing.
 
+**Audit log:** All entity state changes (create, update, soft-delete) on `IAuditable` entities are automatically captured by `AuditLogInterceptor` into the `audit_log` table. Each `AuditLogEntry` records `EntityName`, `EntityId`, `Action` (Created/Updated/Deleted), `OldValues`/`NewValues` (JSON), `UserId`, `TenantId`, and `Timestamp`. The entry is a plain class implementing `ITenantEntity` — it does NOT inherit `BaseEntity<TId>`. The interceptor runs last in the chain (after `AuditableEntityInterceptor`, `SoftDeleteInterceptor`, `TenantEntityInterceptor`) so it sees final entity state. Soft-deletes are detected by checking if `DeletedAt` was modified. Value capture: Created → full snapshot in `NewValues`; Updated → changed properties only; Deleted → full snapshot in `OldValues`. The table is append-only. Located at `HrastERP.Infrastructure/Persistence/Audit/`.
+
 Nothing in SharedKernel should import from any module.
 
 ## Module structure
