@@ -19,6 +19,9 @@ public static class InfrastructureServiceExtensions
         // Register MediatR pipeline behaviors (validation, logging) that apply to all module handlers
         services.AddMediatRPipelineBehaviors();
 
+        // Register Hangfire background job infrastructure and cleanup jobs
+        services.AddBackgroundJobs();
+
         return services;
     }
 }

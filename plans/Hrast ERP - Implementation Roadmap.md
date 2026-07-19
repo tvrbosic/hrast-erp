@@ -154,6 +154,7 @@ HrastERP.<Module>/
 - `IBackgroundJobService` abstraction for enqueue/schedule operations
 - Recurring job registration pattern
 - Apply to clean-up soft deleted entites
+- Apply to clean-up revoked and old refresh tokens
 
 #### 0.10 Email Infrastructure
 - `IEmailService` interface with `SendAsync(EmailMessage)` method

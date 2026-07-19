@@ -30,7 +30,7 @@ dotnet run --project src/HrastERP.API/
 
 **Project naming convention:** `HrastERP.<Module>` (e.g. `HrastERP.Inventory`). Each module contains `Domain/`, `Application/`, `Infrastructure/`, and `Web/` folders.
 
-**Dependency wiring:** `HrastERP.API` references all module projects. Each module exposes a `Add<Module>Module()` extension method that registers MediatR handlers, FluentValidation validators, EF Core configurations, and repositories. The API layer calls these and registers controller assemblies via `AddApplicationPart()`. Shared infrastructure is registered via a single `AddInfrastructure()` call, which delegates to focused extension classes: `PersistenceServiceExtensions`, `BehaviorServiceExtensions`, and `AuthenticationServiceExtensions`.
+**Dependency wiring:** `HrastERP.API` references all module projects. Each module exposes a `Add<Module>Module()` extension method that registers MediatR handlers, FluentValidation validators, EF Core configurations, and repositories. The API layer calls these and registers controller assemblies via `AddApplicationPart()`. Shared infrastructure is registered via a single `AddInfrastructure()` call, which delegates to focused extension classes: `PersistenceServiceExtensions`, `BehaviorServiceExtensions`, `AuthenticationServiceExtensions`, and `BackgroundJobServiceExtensions`.
 
 **CQRS:** MediatR with commands and queries organized by feature inside `Application/`. Structure: `Application/<Feature>/Commands/` and `Application/<Feature>/Queries/`. Handlers return `Result<T>`.
 
@@ -61,6 +61,7 @@ Key types and their intended use:
 - **`PagedResult<T>`** — returned by all list queries; created via `PagedResult<T>.Create(...)`
 - **`Permission`** — `[Flags] enum Permission : long` in `HrastERP.SharedKernel/Authorization/`; 20 CRUD permissions across 5 modules (bits 0–19). Use for authorization checks — always reference named enum members, never raw `long` values.
 - **`ICurrentUser`** / **`ICurrentTenant`** — injected into application handlers; implemented in API layer from JWT claims. `ICurrentUser.EffectivePermissions` returns the current user's combined permissions (parsed from the `"permissions"` JWT claim).
+- **`IRecurringJobDefinition`** — interface for self-registering recurring background jobs; exposes `JobId`, `CronExpression`, and `ExecuteAsync(CancellationToken)`. Implementations are auto-discovered at startup by `RecurringJobRegistrar`.
 - **Global exception middleware** (`GlobalExceptionMiddleware`, in `HrastERP.API/Middleware/`) — registered as the first middleware in `Program.cs`; catches any unhandled infrastructure/framework exception and returns 500 with `{ code: "General.Unexpected", message: "An unexpected error occurred." }`. Application-layer failures always use `Result.Failure` — the middleware is a safety net only, not the primary error path.
 - **Model binding error factory** (`ModelBindingExtensions.ConfigureModelBindingErrorFormat()`, in `HrastERP.API/Extensions/`) — replaces ASP.NET Core's default `InvalidModelStateResponseFactory` so that model binding failures (malformed JSON, missing `[Required]` fields, type mismatches) return the same `ErrorResponse` shape as application validation: HTTP 422 with `{ code: "General.Validation", message: "...", errors: { ... } }` and camelCase field names.
 - **API response envelope** (`ApiResponse<T>`, in `HrastERP.API/Models/`) — all successful responses from `ToActionResult()` are wrapped as `{ "data": T }`. For `PagedResult<T>`, the envelope includes a `"meta"` field with pagination info (`page`, `pageSize`, `totalCount`, `totalPages`, `hasPreviousPage`, `hasNextPage`). Error responses use `ErrorResponse` (same `Models/` folder) and are **not** enveloped — they remain flat `{ "code", "message", "errors?" }`. Both types are the only response shapes the API produces; all endpoints must use them consistently.
@@ -71,7 +72,7 @@ Key types and their intended use:
 
 **Tenant isolation:** Entities opt in to row-level tenant scoping by implementing `ITenantEntity`. `TenantEntityInterceptor` auto-populates `TenantId` from `ICurrentTenant` on insert and throws `InvalidOperationException` if `TenantId` is `Guid.Empty` — a programming error caught before reaching the database. A global query filter restricts all `ITenantEntity` queries to the current tenant. `TenantValidationBehavior` provides an early defense at the pipeline level, returning `Result.Failure(Error.Forbidden("General.MissingTenant", ...))` before any handler executes when tenant context is missing.
 
-**Audit log:** All entity state changes (create, update, soft-delete) on `IAuditable` entities are automatically captured by `AuditLogInterceptor` into the `audit_log` table. Each `AuditLogEntry` records `EntityName`, `EntityId`, `Action` (Created/Updated/Deleted), `OldValues`/`NewValues` (JSON), `UserId`, `TenantId`, and `Timestamp`. The entry is a plain class implementing `ITenantEntity` — it does NOT inherit `BaseEntity<TId>`. The interceptor runs last in the chain (after `AuditableEntityInterceptor`, `SoftDeleteInterceptor`, `TenantEntityInterceptor`) so it sees final entity state. Soft-deletes are detected by checking if `DeletedAt` was modified. Value capture: Created → full snapshot in `NewValues`; Updated → changed properties only; Deleted → full snapshot in `OldValues`. The table is append-only. Located at `HrastERP.Infrastructure/Persistence/Audit/`.
+**Audit log:** All entity state changes (create, update, soft-delete) on `IAuditable` entities are automatically captured by `AuditLogInterceptor` into the `audit_log` table. Each `AuditLogEntry` records `EntityName`, `EntityId`, `Action` (Created/Updated/Deleted/Purged), `OldValues`/`NewValues` (JSON), `UserId`, `TenantId`, and `Timestamp`. The entry is a plain class implementing `ITenantEntity` — it does NOT inherit `BaseEntity<TId>`. The interceptor runs last in the chain (after `AuditableEntityInterceptor`, `SoftDeleteInterceptor`, `TenantEntityInterceptor`) so it sees final entity state. Soft-deletes are detected by checking if `DeletedAt` was modified. Value capture: Created → full snapshot in `NewValues`; Updated → changed properties only; Deleted → full snapshot in `OldValues`. The table is append-only. Located at `HrastERP.Infrastructure/Persistence/Audit/`.
 
 Nothing in SharedKernel should import from any module.
 
@@ -163,6 +164,22 @@ Plain SQL scripts live in two folders inside `src/HrastERP.Infrastructure/Seeds/
 - FinanceEmployee: `00000000-0000-0000-0000-000000000005`
 
 See `docs/database-seeding.md` for the full guide on adding new seed scripts.
+
+## Background Jobs
+
+Hangfire with PostgreSQL storage provides background job infrastructure. Configured in `appsettings.json` under `"Hangfire"` section, bound to `HangfireSettings` with validation on startup.
+
+**Key types** (`HrastERP.Infrastructure/Hangfire/`):
+- **`HangfireSettings`** — configuration: `WorkerCount` (default 1), `SoftDeleteRetentionDays` (default 90), `RevokedTokenRetentionDays` (default 7), cron expressions for each cleanup job
+- **`IBackgroundJobService` / `HangfireBackgroundJobService`** — thin wrapper over Hangfire's static APIs for `Enqueue`, `Schedule`, and `AddOrUpdateRecurring`
+- **`RecurringJobRegistrar`** — static class called at startup; resolves all `IRecurringJobDefinition` implementations, validates `JobId` uniqueness, and registers them with Hangfire
+- **`LocalhostDashboardAuthorizationFilter`** — restricts Hangfire dashboard (`/hangfire`) to localhost connections only
+
+**Built-in cleanup jobs** (`HrastERP.Infrastructure/Hangfire/Jobs/`):
+- **`RefreshTokenCleanupJob`** — deletes expired tokens and revoked tokens past retention period; batched raw SQL (no audit — `RefreshToken` doesn't inherit `BaseEntity<TId>`)
+- **`SoftDeleteCleanupJob`** — hard-deletes soft-deleted entities past retention period; uses raw SQL to bypass the interceptor chain (no HTTP context); writes `Purged` audit entries with full entity snapshot before deletion
+
+**Adding a new recurring job:** Create a class implementing `IRecurringJobDefinition` in the appropriate module or Infrastructure layer, register it as `IRecurringJobDefinition` in DI (and by concrete type for Hangfire's activator). It will be auto-discovered at startup. See `docs/background-jobs.md` for the full guide.
 
 ## Test stack
 

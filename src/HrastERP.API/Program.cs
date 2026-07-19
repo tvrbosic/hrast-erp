@@ -1,4 +1,5 @@
 using System.Text;
+using Hangfire;
 using HrastERP.Administration;
 using HrastERP.API.Authentication;
 using HrastERP.API.Authorization;
@@ -7,6 +8,7 @@ using HrastERP.API.Middleware;
 using HrastERP.Finance;
 using HrastERP.Infrastructure.Configuration;
 using HrastERP.Infrastructure.Extensions;
+using HrastERP.Infrastructure.Hangfire;
 using HrastERP.Infrastructure.Persistence;
 using HrastERP.Inventory;
 using HrastERP.Procurement;
@@ -96,9 +98,18 @@ using (var scope = app.Services.CreateScope())
     await seeder.SeedAsync();
 }
 
+// Register recurring background jobs (cleanup tasks, etc.) with Hangfire.
+RecurringJobRegistrar.RegisterAll(app.Services);
+
 // Safety net for unhandled infrastructure/framework exceptions. Must be first so it wraps the entire pipeline.
 // Application-layer failures use Result.Failure — this middleware only catches unexpected exceptions (DB errors, bugs, etc.).
 app.UseMiddleware<GlobalExceptionMiddleware>();
+
+// Hangfire dashboard — restricted to localhost connections only.
+app.UseHangfireDashboard("/hangfire", new DashboardOptions
+{
+    Authorization = [new LocalhostDashboardAuthorizationFilter()]
+});
 
 // UseAuthentication reads the Bearer token from the request, validates it, and populates HttpContext.User.
 // UseAuthorization checks whether the authenticated user is allowed to access the endpoint ([Authorize] etc.).

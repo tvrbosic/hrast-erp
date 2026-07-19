@@ -17,7 +17,9 @@ public class InfrastructureServiceExtensionsTests
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Database:ConnectionString"] = "Host=localhost;Port=5432;Database=test;Username=postgres;Password=postgres"
+                ["Database:ConnectionString"] = "Host=localhost;Port=5432;Database=test;Username=postgres;Password=postgres",
+                ["Hangfire:SoftDeleteCleanupCron"] = "0 2 * * *",
+                ["Hangfire:RefreshTokenCleanupCron"] = "0 2 * * *"
             })
             .Build();
 
@@ -33,7 +35,11 @@ public class InfrastructureServiceExtensionsTests
     public void AddInfrastructure_MissingConnectionString_ThrowsOnOptionsResolution()
     {
         var configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>())
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Hangfire:SoftDeleteCleanupCron"] = "0 2 * * *",
+                ["Hangfire:RefreshTokenCleanupCron"] = "0 2 * * *"
+            })
             .Build();
 
         var services = new ServiceCollection();
