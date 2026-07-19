@@ -1,5 +1,5 @@
 using System.Text.Json;
-using HrastERP.API.Models;
+using HrastERP.API.Responses;
 using Microsoft.AspNetCore.Mvc;
 
 namespace HrastERP.API.Extensions;

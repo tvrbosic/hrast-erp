@@ -1,6 +1,6 @@
 using System.Net;
 using System.Text.Json;
-using HrastERP.API.Models;
+using HrastERP.API.Responses;
 
 namespace HrastERP.API.Middleware;
 

@@ -1,4 +1,4 @@
-namespace HrastERP.API.Models;
+namespace HrastERP.API.Responses;
 
 public record PaginationMeta(
     int Page,

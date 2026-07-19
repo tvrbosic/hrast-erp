@@ -1,4 +1,4 @@
-using HrastERP.API.Contracts.Auth;
+using HrastERP.API.Requests.Auth;
 using HrastERP.API.Extensions;
 using HrastERP.Infrastructure.Authentication;
 using Microsoft.AspNetCore.Mvc;

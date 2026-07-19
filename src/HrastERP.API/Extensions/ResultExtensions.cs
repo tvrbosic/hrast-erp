@@ -1,4 +1,4 @@
-using HrastERP.API.Models;
+using HrastERP.API.Responses;
 using HrastERP.SharedKernel.Common;
 using HrastERP.SharedKernel.Results;
 using Microsoft.AspNetCore.Mvc;

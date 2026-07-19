@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace HrastERP.API.Models;
+namespace HrastERP.API.Responses;
 
 public record ApiResponse<T>(T Data)
 {

@@ -1,6 +1,6 @@
 using FluentAssertions;
 using HrastERP.API.Extensions;
-using HrastERP.API.Models;
+using HrastERP.API.Responses;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Abstractions;
