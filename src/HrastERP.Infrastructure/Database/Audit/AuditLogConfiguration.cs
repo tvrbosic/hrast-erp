@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace HrastERP.Infrastructure.Persistence.Audit;
+namespace HrastERP.Infrastructure.Database.Audit;
 
 internal sealed class AuditLogConfiguration : IEntityTypeConfiguration<AuditLogEntry>
 {

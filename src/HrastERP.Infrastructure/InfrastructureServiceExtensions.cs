@@ -1,6 +1,10 @@
+using HrastERP.Infrastructure.Authentication;
+using HrastERP.Infrastructure.Behaviors;
+using HrastERP.Infrastructure.Hangfire;
+using HrastERP.Infrastructure.Database;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace HrastERP.Infrastructure.Extensions;
+namespace HrastERP.Infrastructure;
 
 public static class InfrastructureServiceExtensions
 {
@@ -10,8 +14,8 @@ public static class InfrastructureServiceExtensions
     /// </summary>
     public static IServiceCollection AddInfrastructure(this IServiceCollection services)
     {
-        // Register EF Core DbContext, database settings, and persistence interceptors
-        services.AddPersistence();
+        // Register EF Core DbContext, database settings, and interceptors
+        services.AddDatabase();
 
         // Register ASP.NET Core Identity, JWT settings, and authentication services
         services.AddIdentityServices();

@@ -3,7 +3,7 @@ using HrastERP.SharedKernel.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 
-namespace HrastERP.Infrastructure.Persistence;
+namespace HrastERP.Infrastructure.Database;
 
 public sealed class AuditableEntityInterceptor(ICurrentUser currentUser)
     : SaveChangesInterceptor

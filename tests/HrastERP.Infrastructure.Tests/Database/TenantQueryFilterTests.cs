@@ -3,7 +3,7 @@ using FluentAssertions;
 using HrastERP.SharedKernel.Domain;
 using Microsoft.EntityFrameworkCore;
 
-namespace HrastERP.Infrastructure.Tests.Persistence;
+namespace HrastERP.Infrastructure.Tests.Database;
 
 public class TenantQueryFilterTests
 {

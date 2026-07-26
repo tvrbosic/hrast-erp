@@ -21,8 +21,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="Seeds\**\*.sql">
+    <Content Include="Database\Seeds\**\*.sql">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>Seeds\%(RecursiveDir)%(Filename)%(Extension)</Link>
     </Content>
   </ItemGroup>
 

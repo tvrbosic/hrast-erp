@@ -1,13 +1,13 @@
 using System.Text.Json;
 using FluentAssertions;
-using HrastERP.Infrastructure.Persistence;
-using HrastERP.Infrastructure.Persistence.Audit;
+using HrastERP.Infrastructure.Database;
+using HrastERP.Infrastructure.Database.Audit;
 using HrastERP.SharedKernel.Abstractions;
 using HrastERP.SharedKernel.Authorization;
 using HrastERP.SharedKernel.Domain;
 using Microsoft.EntityFrameworkCore;
 
-namespace HrastERP.Infrastructure.Tests.Persistence;
+namespace HrastERP.Infrastructure.Tests.Database;
 
 public class AuditLogInterceptorTests : IDisposable
 {

@@ -2,12 +2,12 @@
 
 ## Overview
 
-`DatabaseSeeder` (`src/HrastERP.Infrastructure/Persistence/DatabaseSeeder.cs`) applies plain SQL scripts at application startup. It runs before the middleware pipeline via a scoped DI block in `Program.cs`. EF Core migrations must be applied before the seeder runs.
+`DatabaseSeeder` (`src/HrastERP.Infrastructure/Database/DatabaseSeeder.cs`) applies plain SQL scripts at application startup. It runs before the middleware pipeline via a scoped DI block in `Program.cs`. EF Core migrations must be applied before the seeder runs.
 
 ## Seed Script Locations
 
 ```
-src/HrastERP.Infrastructure/Seeds/
+src/HrastERP.Infrastructure/Database/Seeds/
 ├── Reference/    # Always applied — every environment
 └── Fixtures/     # Applied only in Development environment
 ```
@@ -80,4 +80,4 @@ Drop and recreate the database, re-apply migrations, then restart the app. The s
 ## Notes
 
 - `ON CONFLICT DO NOTHING` means existing rows are not updated. To update reference data (e.g. change a role's permissions), add a new script with an `UPDATE` statement — do not modify existing scripts that have already run against production databases.
-- The dev admin user fixture (`Seeds/Fixtures/0001_dev_admin_user.sql`) uses `TenantId = Guid.Empty` as a placeholder until the Tenant entity is introduced in Phase 1.
+- The dev admin user fixture (`Database/Seeds/Fixtures/0001_dev_admin_user.sql`) uses `TenantId = Guid.Empty` as a placeholder until the Tenant entity is introduced in Phase 1.

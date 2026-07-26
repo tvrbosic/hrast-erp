@@ -1,8 +1,7 @@
-using HrastERP.Infrastructure.Behaviors;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace HrastERP.Infrastructure.Extensions;
+namespace HrastERP.Infrastructure.Behaviors;
 
 internal static class BehaviorServiceExtensions
 {

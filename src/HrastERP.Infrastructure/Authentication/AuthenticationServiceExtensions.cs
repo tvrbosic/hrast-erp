@@ -1,16 +1,14 @@
-using HrastERP.Infrastructure.Authentication;
-using HrastERP.Infrastructure.Configuration;
-using HrastERP.Infrastructure.Persistence;
+using HrastERP.Infrastructure.Database;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace HrastERP.Infrastructure.Extensions;
+namespace HrastERP.Infrastructure.Authentication;
 
 internal static class AuthenticationServiceExtensions
 {
     /// <summary>
     /// Registers ASP.NET Core Identity, JWT settings, and authentication services.
-    /// Called internally by <see cref="ServiceCollectionExtensions.AddInfrastructure"/>.
+    /// Called internally by <see cref="InfrastructureServiceExtensions.AddInfrastructure"/>.
     /// </summary>
     internal static IServiceCollection AddIdentityServices(this IServiceCollection services)
     {

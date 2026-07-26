@@ -3,7 +3,6 @@ using System.Text;
 using FluentAssertions;
 using HrastERP.Infrastructure.Authentication;
 using HrastERP.Infrastructure.Authorization;
-using HrastERP.Infrastructure.Configuration;
 using HrastERP.SharedKernel.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;

@@ -1,6 +1,6 @@
 using System.Reflection;
 
-namespace HrastERP.Infrastructure.Persistence;
+namespace HrastERP.Infrastructure.Database;
 
 /// <summary>
 /// Carries a module's assembly reference so <see cref="HrastDbContext"/> can scan it for

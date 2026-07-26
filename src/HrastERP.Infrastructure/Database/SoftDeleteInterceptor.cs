@@ -3,9 +3,10 @@ using HrastERP.SharedKernel.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 
-namespace HrastERP.Infrastructure.Persistence;
+namespace HrastERP.Infrastructure.Database;
 
-public sealed class TenantEntityInterceptor(ICurrentTenant currentTenant) : SaveChangesInterceptor
+public sealed class SoftDeleteInterceptor(ICurrentUser currentUser)
+    : SaveChangesInterceptor
 {
     public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
         DbContextEventData eventData,
@@ -13,9 +14,7 @@ public sealed class TenantEntityInterceptor(ICurrentTenant currentTenant) : Save
         CancellationToken cancellationToken = default)
     {
         if (eventData.Context is not null)
-        {
-            ApplyTenantId(eventData.Context);
-        }
+            ApplySoftDelete(eventData.Context);
 
         return base.SavingChangesAsync(eventData, result, cancellationToken);
     }
@@ -25,27 +24,24 @@ public sealed class TenantEntityInterceptor(ICurrentTenant currentTenant) : Save
         InterceptionResult<int> result)
     {
         if (eventData.Context is not null)
-        {
-            ApplyTenantId(eventData.Context);
-        }
+            ApplySoftDelete(eventData.Context);
 
         return base.SavingChanges(eventData, result);
     }
 
-    private void ApplyTenantId(DbContext context)
+    private void ApplySoftDelete(DbContext context)
     {
-        foreach (var entry in context.ChangeTracker.Entries<ITenantEntity>())
+        var utcNow = DateTime.UtcNow;
+        var userId = currentUser.IsAuthenticated ? currentUser.UserId : Guid.Empty;
+
+        foreach (var entry in context.ChangeTracker.Entries<ISoftDeletable>())
         {
-            if (entry.State != EntityState.Added)
+            if (entry.State != EntityState.Deleted)
                 continue;
 
-            entry.Property(nameof(ITenantEntity.TenantId)).CurrentValue = currentTenant.TenantId;
-
-            if (currentTenant.TenantId == Guid.Empty)
-            {
-                throw new InvalidOperationException(
-                    "Cannot save a tenant-scoped entity without a valid tenant context.");
-            }
+            entry.State = EntityState.Modified;
+            entry.Property(nameof(ISoftDeletable.DeletedAt)).CurrentValue = utcNow;
+            entry.Property(nameof(ISoftDeletable.DeletedBy)).CurrentValue = userId;
         }
     }
 }

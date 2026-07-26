@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Npgsql;
 
-namespace HrastERP.Infrastructure.Persistence;
+namespace HrastERP.Infrastructure.Database;
 
 internal sealed class DatabaseSeeder
 {

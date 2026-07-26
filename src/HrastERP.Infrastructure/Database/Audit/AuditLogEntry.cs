@@ -1,6 +1,6 @@
 using HrastERP.SharedKernel.Domain;
 
-namespace HrastERP.Infrastructure.Persistence.Audit;
+namespace HrastERP.Infrastructure.Database.Audit;
 
 public sealed class AuditLogEntry : ITenantEntity
 {

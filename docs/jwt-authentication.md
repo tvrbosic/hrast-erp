@@ -6,7 +6,7 @@ The application uses JWT Bearer authentication with refresh token rotation. Acce
 
 ## Configuration
 
-JWT settings are defined in `appsettings.json` under the `"Jwt"` section and bound to `JwtSettings` (`Infrastructure/Configuration/JwtSettings.cs`):
+JWT settings are defined in `appsettings.json` under the `"Jwt"` section and bound to `JwtSettings` (`Infrastructure/Authentication/JwtSettings.cs`):
 
 | Property | Description | Default |
 |----------|-------------|---------|

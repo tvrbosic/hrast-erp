@@ -48,7 +48,7 @@ That is the only change needed in domain code. Do not pass `TenantId` into facto
 Add the `TenantId` column to the entity's `IEntityTypeConfiguration<T>`:
 
 ```csharp
-// src/Modules/Inventory/HrastERP.Inventory/Infrastructure/Persistence/Configurations/ProductConfiguration.cs
+// src/Modules/Inventory/HrastERP.Inventory/Infrastructure/Database/Configurations/ProductConfiguration.cs
 public class ProductConfiguration : IEntityTypeConfiguration<Product>
 {
     public void Configure(EntityTypeBuilder<Product> builder)
@@ -152,4 +152,4 @@ var options = new DbContextOptionsBuilder<TestDbContext>()
     .Options;
 ```
 
-See `tests/HrastERP.Infrastructure.Tests/Persistence/TenantEntityInterceptorTests.cs` for complete examples.
+See `tests/HrastERP.Infrastructure.Tests/Database/TenantEntityInterceptorTests.cs` for complete examples.

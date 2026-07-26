@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace HrastERP.Infrastructure.Configuration;
+namespace HrastERP.Infrastructure.Database;
 
 public sealed class DatabaseSettings
 {

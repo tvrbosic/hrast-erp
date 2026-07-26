@@ -1,4 +1,4 @@
-using HrastERP.Infrastructure.Persistence;
+using HrastERP.Infrastructure.Database;
 using HrastERP.SharedKernel.Abstractions;
 using HrastERP.SharedKernel.Domain;
 using Microsoft.EntityFrameworkCore;

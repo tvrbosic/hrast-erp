@@ -1,5 +1,4 @@
-using HrastERP.Infrastructure.Configuration;
-using HrastERP.Infrastructure.Persistence;
+using HrastERP.Infrastructure.Database;
 using HrastERP.SharedKernel.Results;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;

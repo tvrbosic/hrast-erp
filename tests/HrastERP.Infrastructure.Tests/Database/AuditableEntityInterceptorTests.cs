@@ -2,12 +2,12 @@ using FluentAssertions;
 using HrastERP.SharedKernel.Abstractions;
 using HrastERP.SharedKernel.Authorization;
 using HrastERP.SharedKernel.Domain;
-using HrastERP.Infrastructure.Persistence;
+using HrastERP.Infrastructure.Database;
 using Microsoft.EntityFrameworkCore;
 
-namespace HrastERP.Infrastructure.Tests.Persistence;
+namespace HrastERP.Infrastructure.Tests.Database;
 
-public class SoftDeleteInterceptorTests
+public class AuditableEntityInterceptorTests : IDisposable
 {
     private sealed class TestEntity(Guid id) : BaseEntity<Guid>(id);
 
@@ -26,7 +26,10 @@ public class SoftDeleteInterceptorTests
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<TestEntity>(b => b.HasKey(e => e.Id));
+            modelBuilder.Entity<TestEntity>(b =>
+            {
+                b.HasKey(e => e.Id);
+            });
         }
     }
 
@@ -35,7 +38,7 @@ public class SoftDeleteInterceptorTests
     private TestDbContext CreateContext(bool isAuthenticated = true)
     {
         var currentUser = new FakeCurrentUser(_userId, isAuthenticated);
-        var interceptor = new SoftDeleteInterceptor(currentUser);
+        var interceptor = new AuditableEntityInterceptor(currentUser);
 
         var options = new DbContextOptionsBuilder<TestDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
@@ -46,74 +49,67 @@ public class SoftDeleteInterceptorTests
     }
 
     [Fact]
-    public async Task Removed_entity_is_not_deleted_from_database()
+    public async Task Added_entity_gets_CreatedAt_and_CreatedBy_set()
+    {
+        await using var context = CreateContext();
+        var entity = new TestEntity(Guid.NewGuid());
+
+        context.TestEntities.Add(entity);
+        await context.SaveChangesAsync();
+
+        entity.CreatedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(2));
+        entity.CreatedBy.Should().Be(_userId);
+        entity.UpdatedAt.Should().BeNull();
+        entity.UpdatedBy.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Modified_entity_gets_UpdatedAt_and_UpdatedBy_set()
     {
         await using var context = CreateContext();
         var entity = new TestEntity(Guid.NewGuid());
         context.TestEntities.Add(entity);
         await context.SaveChangesAsync();
 
-        context.TestEntities.Remove(entity);
+        var originalCreatedAt = entity.CreatedAt;
+        var originalCreatedBy = entity.CreatedBy;
+
+        context.Entry(entity).State = EntityState.Modified;
         await context.SaveChangesAsync();
 
-        var count = await context.TestEntities.IgnoreQueryFilters().CountAsync();
-        count.Should().Be(1);
+        entity.CreatedAt.Should().Be(originalCreatedAt);
+        entity.CreatedBy.Should().Be(originalCreatedBy);
+        entity.UpdatedAt.Should().NotBeNull();
+        entity.UpdatedAt!.Value.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(2));
+        entity.UpdatedBy.Should().Be(_userId);
     }
 
     [Fact]
-    public async Task Removed_entity_gets_DeletedAt_set()
-    {
-        await using var context = CreateContext();
-        var entity = new TestEntity(Guid.NewGuid());
-        context.TestEntities.Add(entity);
-        await context.SaveChangesAsync();
-
-        context.TestEntities.Remove(entity);
-        await context.SaveChangesAsync();
-
-        entity.DeletedAt.Should().NotBeNull();
-        entity.DeletedAt!.Value.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(2));
-    }
-
-    [Fact]
-    public async Task Removed_entity_gets_DeletedBy_set_to_current_user()
-    {
-        await using var context = CreateContext();
-        var entity = new TestEntity(Guid.NewGuid());
-        context.TestEntities.Add(entity);
-        await context.SaveChangesAsync();
-
-        context.TestEntities.Remove(entity);
-        await context.SaveChangesAsync();
-
-        entity.DeletedBy.Should().Be(_userId);
-    }
-
-    [Fact]
-    public async Task Unauthenticated_user_sets_empty_guid_for_DeletedBy()
+    public async Task Unauthenticated_user_sets_empty_guid()
     {
         await using var context = CreateContext(isAuthenticated: false);
         var entity = new TestEntity(Guid.NewGuid());
+
         context.TestEntities.Add(entity);
         await context.SaveChangesAsync();
 
-        context.TestEntities.Remove(entity);
-        await context.SaveChangesAsync();
-
-        entity.DeletedBy.Should().Be(Guid.Empty);
+        entity.CreatedBy.Should().Be(Guid.Empty);
     }
 
     [Fact]
-    public async Task DeletedAt_is_utc()
+    public async Task CreatedAt_is_utc()
     {
         await using var context = CreateContext();
         var entity = new TestEntity(Guid.NewGuid());
+
         context.TestEntities.Add(entity);
         await context.SaveChangesAsync();
 
-        context.TestEntities.Remove(entity);
-        await context.SaveChangesAsync();
+        entity.CreatedAt.Kind.Should().Be(DateTimeKind.Utc);
+    }
 
-        entity.DeletedAt!.Value.Kind.Should().Be(DateTimeKind.Utc);
+    public void Dispose()
+    {
+        // InMemory databases are disposed with the context
     }
 }

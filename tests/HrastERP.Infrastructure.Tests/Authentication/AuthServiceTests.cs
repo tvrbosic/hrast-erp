@@ -1,7 +1,6 @@
 using FluentAssertions;
 using HrastERP.Infrastructure.Authentication;
-using HrastERP.Infrastructure.Configuration;
-using HrastERP.Infrastructure.Persistence;
+using HrastERP.Infrastructure.Database;
 using HrastERP.SharedKernel.Abstractions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;

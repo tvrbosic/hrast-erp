@@ -1,13 +1,12 @@
 using Hangfire;
 using Hangfire.PostgreSql;
-using HrastERP.Infrastructure.Configuration;
-using HrastERP.Infrastructure.Hangfire;
 using HrastERP.Infrastructure.Hangfire.Jobs;
+using HrastERP.Infrastructure.Database;
 using HrastERP.SharedKernel.Abstractions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
-namespace HrastERP.Infrastructure.Extensions;
+namespace HrastERP.Infrastructure.Hangfire;
 
 internal static class BackgroundJobServiceExtensions
 {

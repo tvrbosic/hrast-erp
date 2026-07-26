@@ -10,7 +10,7 @@ Any entity implementing `IAuditable` — which means all `BaseEntity<TId>` desce
 
 ## AuditLogEntry
 
-Plain class at `HrastERP.Infrastructure/Persistence/Audit/AuditLogEntry.cs`. Implements `ITenantEntity` for tenant-scoped query filtering. Does NOT inherit `BaseEntity<TId>`.
+Plain class at `HrastERP.Infrastructure/Database/Audit/AuditLogEntry.cs`. Implements `ITenantEntity` for tenant-scoped query filtering. Does NOT inherit `BaseEntity<TId>`.
 
 | Field | Type | Description |
 |---|---|---|
@@ -34,7 +34,7 @@ Plain class at `HrastERP.Infrastructure/Persistence/Audit/AuditLogEntry.cs`. Imp
 
 ## Interceptor Ordering
 
-`AuditLogInterceptor` must be the **last** interceptor registered in `PersistenceServiceExtensions`:
+`AuditLogInterceptor` must be the **last** interceptor registered in `DatabaseServiceExtensions`:
 
 1. `AuditableEntityInterceptor` — populates audit timestamp fields
 2. `SoftDeleteInterceptor` — converts `Deleted` → `Modified` with `DeletedAt`/`DeletedBy`

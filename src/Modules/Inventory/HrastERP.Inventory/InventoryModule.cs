@@ -1,5 +1,5 @@
 using FluentValidation;
-using HrastERP.Infrastructure.Persistence;
+using HrastERP.Infrastructure.Database;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 

@@ -30,7 +30,7 @@ dotnet run --project src/HrastERP.API/
 
 **Project naming convention:** `HrastERP.<Module>` (e.g. `HrastERP.Inventory`). Each module contains `Domain/`, `Application/`, `Infrastructure/`, and `Web/` folders.
 
-**Dependency wiring:** `HrastERP.API` references all module projects. Each module exposes a `Add<Module>Module()` extension method that registers MediatR handlers, FluentValidation validators, EF Core configurations, and repositories. The API layer calls these and registers controller assemblies via `AddApplicationPart()`. Shared infrastructure is registered via a single `AddInfrastructure()` call, which delegates to focused extension classes: `PersistenceServiceExtensions`, `BehaviorServiceExtensions`, `AuthenticationServiceExtensions`, and `BackgroundJobServiceExtensions`.
+**Dependency wiring:** `HrastERP.API` references all module projects. Each module exposes a `Add<Module>Module()` extension method that registers MediatR handlers, FluentValidation validators, EF Core configurations, and repositories. The API layer calls these and registers controller assemblies via `AddApplicationPart()`. Shared infrastructure is registered via a single `AddInfrastructure()` call, which delegates to focused extension classes colocated with each concern: `DatabaseServiceExtensions`, `BehaviorServiceExtensions`, `AuthenticationServiceExtensions`, and `BackgroundJobServiceExtensions`.
 
 **CQRS:** MediatR with commands and queries organized by feature inside `Application/`. Structure: `Application/<Feature>/Commands/` and `Application/<Feature>/Queries/`. Handlers return `Result<T>`.
 
@@ -72,7 +72,7 @@ Key types and their intended use:
 
 **Tenant isolation:** Entities opt in to row-level tenant scoping by implementing `ITenantEntity`. `TenantEntityInterceptor` auto-populates `TenantId` from `ICurrentTenant` on insert and throws `InvalidOperationException` if `TenantId` is `Guid.Empty` — a programming error caught before reaching the database. A global query filter restricts all `ITenantEntity` queries to the current tenant. `TenantValidationBehavior` provides an early defense at the pipeline level, returning `Result.Failure(Error.Forbidden("General.MissingTenant", ...))` before any handler executes when tenant context is missing.
 
-**Audit log:** All entity state changes (create, update, soft-delete) on `IAuditable` entities are automatically captured by `AuditLogInterceptor` into the `audit_log` table. Each `AuditLogEntry` records `EntityName`, `EntityId`, `Action` (Created/Updated/Deleted/Purged), `OldValues`/`NewValues` (JSON), `UserId`, `TenantId`, and `Timestamp`. The entry is a plain class implementing `ITenantEntity` — it does NOT inherit `BaseEntity<TId>`. The interceptor runs last in the chain (after `AuditableEntityInterceptor`, `SoftDeleteInterceptor`, `TenantEntityInterceptor`) so it sees final entity state. Soft-deletes are detected by checking if `DeletedAt` was modified. Value capture: Created → full snapshot in `NewValues`; Updated → changed properties only; Deleted → full snapshot in `OldValues`. The table is append-only. Located at `HrastERP.Infrastructure/Persistence/Audit/`.
+**Audit log:** All entity state changes (create, update, soft-delete) on `IAuditable` entities are automatically captured by `AuditLogInterceptor` into the `audit_log` table. Each `AuditLogEntry` records `EntityName`, `EntityId`, `Action` (Created/Updated/Deleted/Purged), `OldValues`/`NewValues` (JSON), `UserId`, `TenantId`, and `Timestamp`. The entry is a plain class implementing `ITenantEntity` — it does NOT inherit `BaseEntity<TId>`. The interceptor runs last in the chain (after `AuditableEntityInterceptor`, `SoftDeleteInterceptor`, `TenantEntityInterceptor`) so it sees final entity state. Soft-deletes are detected by checking if `DeletedAt` was modified. Value capture: Created → full snapshot in `NewValues`; Updated → changed properties only; Deleted → full snapshot in `OldValues`. The table is append-only. Located at `HrastERP.Infrastructure/Database/Audit/`.
 
 Nothing in SharedKernel should import from any module.
 
@@ -93,7 +93,7 @@ HrastERP.<Module>/
 │       ├── Commands/
 │       └── Queries/
 ├── Infrastructure/
-│   ├── Persistence/
+│   ├── Database/
 │   │   └── Configurations/
 │   └── Repositories/
 ├── Web/
@@ -145,9 +145,9 @@ public async Task<IActionResult> GetInvoices() { ... }
 
 ## Database Seeding
 
-`DatabaseSeeder` (`src/HrastERP.Infrastructure/Persistence/DatabaseSeeder.cs`) runs at application startup via `Program.cs` before the middleware pipeline. It requires migrations to be applied first.
+`DatabaseSeeder` (`src/HrastERP.Infrastructure/Database/DatabaseSeeder.cs`) runs at application startup via `Program.cs` before the middleware pipeline. It requires migrations to be applied first.
 
-Plain SQL scripts live in two folders inside `src/HrastERP.Infrastructure/Seeds/`:
+Plain SQL scripts live in two folders inside `src/HrastERP.Infrastructure/Database/Seeds/`:
 
 - `Reference/` — always applied in every environment
 - `Fixtures/` — applied only in `Development` environment

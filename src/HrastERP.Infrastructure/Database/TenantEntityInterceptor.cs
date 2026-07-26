@@ -3,10 +3,9 @@ using HrastERP.SharedKernel.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 
-namespace HrastERP.Infrastructure.Persistence;
+namespace HrastERP.Infrastructure.Database;
 
-public sealed class SoftDeleteInterceptor(ICurrentUser currentUser)
-    : SaveChangesInterceptor
+public sealed class TenantEntityInterceptor(ICurrentTenant currentTenant) : SaveChangesInterceptor
 {
     public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
         DbContextEventData eventData,
@@ -14,7 +13,9 @@ public sealed class SoftDeleteInterceptor(ICurrentUser currentUser)
         CancellationToken cancellationToken = default)
     {
         if (eventData.Context is not null)
-            ApplySoftDelete(eventData.Context);
+        {
+            ApplyTenantId(eventData.Context);
+        }
 
         return base.SavingChangesAsync(eventData, result, cancellationToken);
     }
@@ -24,24 +25,27 @@ public sealed class SoftDeleteInterceptor(ICurrentUser currentUser)
         InterceptionResult<int> result)
     {
         if (eventData.Context is not null)
-            ApplySoftDelete(eventData.Context);
+        {
+            ApplyTenantId(eventData.Context);
+        }
 
         return base.SavingChanges(eventData, result);
     }
 
-    private void ApplySoftDelete(DbContext context)
+    private void ApplyTenantId(DbContext context)
     {
-        var utcNow = DateTime.UtcNow;
-        var userId = currentUser.IsAuthenticated ? currentUser.UserId : Guid.Empty;
-
-        foreach (var entry in context.ChangeTracker.Entries<ISoftDeletable>())
+        foreach (var entry in context.ChangeTracker.Entries<ITenantEntity>())
         {
-            if (entry.State != EntityState.Deleted)
+            if (entry.State != EntityState.Added)
                 continue;
 
-            entry.State = EntityState.Modified;
-            entry.Property(nameof(ISoftDeletable.DeletedAt)).CurrentValue = utcNow;
-            entry.Property(nameof(ISoftDeletable.DeletedBy)).CurrentValue = userId;
+            entry.Property(nameof(ITenantEntity.TenantId)).CurrentValue = currentTenant.TenantId;
+
+            if (currentTenant.TenantId == Guid.Empty)
+            {
+                throw new InvalidOperationException(
+                    "Cannot save a tenant-scoped entity without a valid tenant context.");
+            }
         }
     }
 }

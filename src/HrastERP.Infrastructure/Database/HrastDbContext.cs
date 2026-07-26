@@ -5,7 +5,7 @@ using HrastERP.SharedKernel.Domain;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
-namespace HrastERP.Infrastructure.Persistence;
+namespace HrastERP.Infrastructure.Database;
 
 /// <summary>
 /// The single EF Core DbContext for the entire application.

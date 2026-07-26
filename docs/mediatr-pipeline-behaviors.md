@@ -8,7 +8,7 @@ This document describes the MediatR pipeline behaviors registered in `HrastERP.I
 
 MediatR pipeline behaviors wrap every request/response cycle. They are the equivalent of middleware, but scoped to the CQRS pipeline. Every `IRequest<TResponse>` dispatched via `ISender.Send()` passes through all registered behaviors before reaching the handler.
 
-Behaviors are registered in `HrastERP.Infrastructure/Extensions/BehaviorServiceExtensions.cs` and wired up automatically when `AddInfrastructure()` is called from `Program.cs`.
+Behaviors are registered in `HrastERP.Infrastructure/Behaviors/BehaviorServiceExtensions.cs` and wired up automatically when `AddInfrastructure()` is called from `Program.cs`.
 
 ---
 
@@ -138,7 +138,7 @@ If multiple validators exist for the same request type, all of them run in paral
 
 ## Registration
 
-**File:** `src/HrastERP.Infrastructure/Extensions/BehaviorServiceExtensions.cs`
+**File:** `src/HrastERP.Infrastructure/Behaviors/BehaviorServiceExtensions.cs`
 
 ```csharp
 services.AddTransient(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));

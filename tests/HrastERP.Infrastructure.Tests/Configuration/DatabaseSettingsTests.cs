@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using FluentAssertions;
-using HrastERP.Infrastructure.Configuration;
+using HrastERP.Infrastructure.Database;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;

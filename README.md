@@ -3,18 +3,39 @@ Hrast ERP is an imaginary practice project created for educational and portfolio
 
 ## Architecture
 
-The solution follows a **modular monolith** architecture — a single deployable unit divided into independent business modules with clear boundaries. Each module internally follows **Clean Architecture** principles, with dependencies pointing inward: Infrastructure and Application depend on Domain, never the other way around.
+The solution follows a **modular monolith** architecture — a single deployable unit divided into independent business modules with clear boundaries.
 
-Each business module is a **single project** (`HrastERP.<Module>`) with Clean Architecture layers organized as folders:
+### Clean Architecture Layers
 
-| Folder | Role |
-|---|---|
-| **Domain/** | Domain models, value objects, events, and repository interfaces |
-| **Application/** | Use cases organized by feature (commands and queries via CQRS) |
-| **Infrastructure/** | Persistence (EF Core configurations) and repository implementations |
-| **Web/** | API controllers |
+The codebase maps to Clean Architecture at two levels: **shared projects** provide cross-cutting concerns, while each **module** contains its own layers as folders.
 
-The API project (`HrastERP.API`) is a pure composition root — it references all modules and registers their services. A shared `HrastERP.SharedKernel` library provides common abstractions used across modules. A shared `HrastERP.Infrastructure` library provides the `HrastDbContext`, pipeline behaviors, and core infrastructure.
+| Clean Architecture Layer | Shared (project) | Per-module (folder) |
+|---|---|---|
+| **Domain** | `HrastERP.SharedKernel` — base entities, value objects, Result pattern, interfaces | `Domain/` — module-specific entities, value objects, events, repository interfaces |
+| **Application** | — | `Application/` — use cases organized by feature (commands and queries via CQRS) |
+| **Infrastructure** | `HrastERP.Infrastructure` — DbContext, interceptors, Identity, Hangfire, pipeline behaviors | `Infrastructure/` — EF Core configurations, repository implementations |
+| **Presentation** | `HrastERP.API` — composition root, middleware, authorization | `Web/` — module-specific API controllers |
+
+`HrastERP.SharedKernel` is the shared **Domain** layer — pure C# with no framework dependencies. It defines the abstractions (`BaseEntity`, `AggregateRoot`, `ValueObject`, `Result`, `Error`, `ICurrentUser`, `ICurrentTenant`) that all modules build on.
+
+`HrastERP.Infrastructure` is the shared **Infrastructure** layer — it owns the single `HrastDbContext`, EF Core interceptors, ASP.NET Core Identity, Hangfire, and MediatR pipeline behaviors.
+
+`HrastERP.API` is the **composition root** — it references all modules and shared infrastructure, wires everything together in `Program.cs`, and hosts the middleware pipeline. It contains no business logic.
+
+### Project Dependencies
+
+All dependencies point inward, following the Clean Architecture dependency rule:
+
+```
+HrastERP.API (composition root)
+├── HrastERP.Infrastructure (shared infrastructure)
+│   └── HrastERP.SharedKernel (shared domain)
+└── HrastERP.<Module> (x5 — each business module)
+    ├── HrastERP.Infrastructure
+    └── HrastERP.SharedKernel
+```
+
+Modules never reference each other — cross-module communication uses domain events only.
 
 ## Modules
 
@@ -36,7 +57,7 @@ src/
       HrastERP.<Module>/                     # Single project per module
         Domain/                              # Domain layer (entities, value objects, events, repositories)
         Application/                         # Application layer (features with commands/queries)
-        Infrastructure/                      # Infrastructure layer (persistence, repositories)
+        Infrastructure/                      # Infrastructure layer (database, repositories)
         Web/                                 # Presentation layer (controllers)
 tests/
   HrastERP.SharedKernel.Tests/

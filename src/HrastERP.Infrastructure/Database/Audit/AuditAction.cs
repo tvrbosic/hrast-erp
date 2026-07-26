@@ -1,4 +1,4 @@
-namespace HrastERP.Infrastructure.Persistence.Audit;
+namespace HrastERP.Infrastructure.Database.Audit;
 
 public enum AuditAction
 {

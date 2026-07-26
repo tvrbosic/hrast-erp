@@ -1,10 +1,10 @@
 using FluentAssertions;
 using HrastERP.SharedKernel.Abstractions;
 using HrastERP.SharedKernel.Domain;
-using HrastERP.Infrastructure.Persistence;
+using HrastERP.Infrastructure.Database;
 using Microsoft.EntityFrameworkCore;
 
-namespace HrastERP.Infrastructure.Tests.Persistence;
+namespace HrastERP.Infrastructure.Tests.Database;
 
 public class TenantEntityInterceptorTests
 {

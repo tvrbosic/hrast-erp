@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 
-namespace HrastERP.Infrastructure.Persistence.Audit;
+namespace HrastERP.Infrastructure.Database.Audit;
 
 public sealed class AuditLogInterceptor(ICurrentUser currentUser, ICurrentTenant currentTenant)
     : SaveChangesInterceptor

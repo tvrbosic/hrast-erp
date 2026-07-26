@@ -6,10 +6,10 @@ using HrastERP.API.Authorization;
 using HrastERP.API.Extensions;
 using HrastERP.API.Middleware;
 using HrastERP.Finance;
-using HrastERP.Infrastructure.Configuration;
-using HrastERP.Infrastructure.Extensions;
+using HrastERP.Infrastructure;
+using HrastERP.Infrastructure.Authentication;
 using HrastERP.Infrastructure.Hangfire;
-using HrastERP.Infrastructure.Persistence;
+using HrastERP.Infrastructure.Database;
 using HrastERP.Inventory;
 using HrastERP.Procurement;
 using HrastERP.Production;
@@ -98,7 +98,8 @@ using (var scope = app.Services.CreateScope())
     await seeder.SeedAsync();
 }
 
-// Register recurring background jobs (cleanup tasks, etc.) with Hangfire.
+// Register recurring background jobs (cleanup tasks, etc.) with Hangfire. Must be run after DI container is fully build.
+// For that reason it is called here and not in BackgroundJobServiceExtensions.
 RecurringJobRegistrar.RegisterAll(app.Services);
 
 // Safety net for unhandled infrastructure/framework exceptions. Must be first so it wraps the entire pipeline.

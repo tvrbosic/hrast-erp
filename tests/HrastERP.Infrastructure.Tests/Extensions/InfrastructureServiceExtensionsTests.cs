@@ -1,11 +1,10 @@
 using FluentAssertions;
-using HrastERP.Infrastructure.Extensions;
-using HrastERP.Infrastructure.Persistence;
+using HrastERP.Infrastructure;
+using HrastERP.Infrastructure.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using HrastERP.Infrastructure.Configuration;
 
 namespace HrastERP.Infrastructure.Tests.Extensions;
 

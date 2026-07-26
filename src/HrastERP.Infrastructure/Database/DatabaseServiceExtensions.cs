@@ -1,19 +1,17 @@
-using HrastERP.Infrastructure.Configuration;
-using HrastERP.Infrastructure.Persistence;
-using HrastERP.Infrastructure.Persistence.Audit;
+using HrastERP.Infrastructure.Database.Audit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
-namespace HrastERP.Infrastructure.Extensions;
+namespace HrastERP.Infrastructure.Database;
 
-internal static class PersistenceServiceExtensions
+internal static class DatabaseServiceExtensions
 {
     /// <summary>
     /// Registers EF Core DbContext, database settings, and persistence interceptors.
-    /// Called internally by <see cref="ServiceCollectionExtensions.AddInfrastructure"/>.
+    /// Called internally by <see cref="InfrastructureServiceExtensions.AddInfrastructure"/>.
     /// </summary>
-    internal static IServiceCollection AddPersistence(this IServiceCollection services)
+    internal static IServiceCollection AddDatabase(this IServiceCollection services)
     {
         // Bind DatabaseSettings from appsettings.json and validate at startup.
         // ValidateDataAnnotations enforces [Required], [Range], etc. on the settings class.

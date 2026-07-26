@@ -2,7 +2,6 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
-using HrastERP.Infrastructure.Configuration;
 using HrastERP.SharedKernel.Authorization;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
