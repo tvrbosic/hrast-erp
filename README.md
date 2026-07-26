@@ -1,5 +1,5 @@
 # hrast-erp
-Hrast ERP is an imaginary practice project created for educational and portfolio purposes. The project is intended to demonstrate software engineering knowledge, backend architecture design, and implementation practices using ASP.NET and related technologies.
+Hrast ERP is a practice project created for educational and portfolio purposes. The project is intended to demonstrate software engineering knowledge, backend architecture design, and implementation practices using ASP.NET and related technologies.
 
 ## Architecture
 
@@ -72,6 +72,8 @@ tests/
 - ASP.NET Core Identity + JWT Bearer authentication
 - MediatR (CQRS + pipeline behaviors)
 - FluentValidation
+- Hangfire (background jobs)
+- MailKit (SMTP email)
 - xUnit + FluentAssertions (testing)
 
 ## Development Setup

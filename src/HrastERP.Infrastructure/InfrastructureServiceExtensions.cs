@@ -1,5 +1,6 @@
 using HrastERP.Infrastructure.Authentication;
 using HrastERP.Infrastructure.Behaviors;
+using HrastERP.Infrastructure.Email;
 using HrastERP.Infrastructure.Hangfire;
 using HrastERP.Infrastructure.Database;
 using Microsoft.Extensions.DependencyInjection;
@@ -25,6 +26,9 @@ public static class InfrastructureServiceExtensions
 
         // Register Hangfire background job infrastructure and cleanup jobs
         services.AddBackgroundJobs();
+
+        // Register SMTP settings and email service
+        services.AddEmailServices();
 
         return services;
     }

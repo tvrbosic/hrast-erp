@@ -30,7 +30,7 @@ dotnet run --project src/HrastERP.API/
 
 **Project naming convention:** `HrastERP.<Module>` (e.g. `HrastERP.Inventory`). Each module contains `Domain/`, `Application/`, `Infrastructure/`, and `Web/` folders.
 
-**Dependency wiring:** `HrastERP.API` references all module projects. Each module exposes a `Add<Module>Module()` extension method that registers MediatR handlers, FluentValidation validators, EF Core configurations, and repositories. The API layer calls these and registers controller assemblies via `AddApplicationPart()`. Shared infrastructure is registered via a single `AddInfrastructure()` call, which delegates to focused extension classes colocated with each concern: `DatabaseServiceExtensions`, `BehaviorServiceExtensions`, `AuthenticationServiceExtensions`, and `BackgroundJobServiceExtensions`.
+**Dependency wiring:** `HrastERP.API` references all module projects. Each module exposes a `Add<Module>Module()` extension method that registers MediatR handlers, FluentValidation validators, EF Core configurations, and repositories. The API layer calls these and registers controller assemblies via `AddApplicationPart()`. Shared infrastructure is registered via a single `AddInfrastructure()` call, which delegates to focused extension classes colocated with each concern: `DatabaseServiceExtensions`, `BehaviorServiceExtensions`, `AuthenticationServiceExtensions`, `BackgroundJobServiceExtensions`, and `EmailServiceExtensions`.
 
 **CQRS:** MediatR with commands and queries organized by feature inside `Application/`. Structure: `Application/<Feature>/Commands/` and `Application/<Feature>/Queries/`. Handlers return `Result<T>`.
 
@@ -180,6 +180,18 @@ Hangfire with PostgreSQL storage provides background job infrastructure. Configu
 - **`SoftDeleteCleanupJob`** — hard-deletes soft-deleted entities past retention period; uses raw SQL to bypass the interceptor chain (no HTTP context); writes `Purged` audit entries with full entity snapshot before deletion
 
 **Adding a new recurring job:** Create a class implementing `IRecurringJobDefinition` in the appropriate module or Infrastructure layer, register it as `IRecurringJobDefinition` in DI (and by concrete type for Hangfire's activator). It will be auto-discovered at startup. See `docs/background-jobs.md` for the full guide.
+
+## Email
+
+MailKit-based SMTP email infrastructure. Configured in `appsettings.json` under `"Smtp"` section, bound to `SmtpSettings` with validation on startup. Development uses localhost:1025 (local SMTP server like MailHog).
+
+**Key types** (`HrastERP.Infrastructure/Email/`):
+- **`SmtpSettings`** — configuration: `Host`, `Port` (default 587), `Username`, `Password`, `FromAddress`, `FromName`, `UseSsl` (default true)
+- **`IEmailService` / `MailKitEmailService`** — `SendAsync(EmailMessage)` for plain sends, `SendTemplatedAsync(templateName, placeholders, EmailMessage)` for templated sends; both return `Result`
+- **`EmailMessage`** — model with `To`, `Cc`, `Bcc`, `Subject`, `Body`, `IsHtml` (default true)
+- **`EmailErrors`** — predefined `Error` constants: `Email.SendFailed`, `Email.TemplateNotFound`
+
+**HTML templates:** Embedded resources in `Email/Templates/`. Use `{{placeholder}}` syntax for variable substitution. Templates are loaded by name (e.g. `"welcome"` loads `Email/Templates/welcome.html`). Add new templates as `.html` files in that folder — they're automatically included via the `<EmbeddedResource>` glob in the `.csproj`.
 
 ## Test stack
 
