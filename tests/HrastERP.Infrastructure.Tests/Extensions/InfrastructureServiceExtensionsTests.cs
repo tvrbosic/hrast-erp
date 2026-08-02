@@ -1,6 +1,7 @@
 using FluentAssertions;
 using HrastERP.Infrastructure;
 using HrastERP.Infrastructure.Database;
+using HrastERP.Infrastructure.FileStorage;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -49,5 +50,25 @@ public class InfrastructureServiceExtensionsTests
         var act = () => provider.GetRequiredService<IOptions<DatabaseSettings>>().Value;
 
         act.Should().Throw<OptionsValidationException>();
+    }
+
+    [Fact]
+    public void AddInfrastructure_RegistersIFileStorageService()
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Database:ConnectionString"] = "Host=localhost;Port=5432;Database=test;Username=postgres;Password=postgres",
+                ["Hangfire:SoftDeleteCleanupCron"] = "0 2 * * *",
+                ["Hangfire:RefreshTokenCleanupCron"] = "0 2 * * *"
+            })
+            .Build();
+
+        var services = new ServiceCollection();
+        services.AddSingleton<IConfiguration>(configuration);
+        services.AddInfrastructure();
+
+        var descriptor = services.FirstOrDefault(d => d.ServiceType == typeof(IFileStorageService));
+        descriptor.Should().NotBeNull();
     }
 }

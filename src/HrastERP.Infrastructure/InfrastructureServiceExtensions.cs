@@ -1,6 +1,7 @@
 using HrastERP.Infrastructure.Authentication;
 using HrastERP.Infrastructure.Behaviors;
 using HrastERP.Infrastructure.Email;
+using HrastERP.Infrastructure.FileStorage;
 using HrastERP.Infrastructure.Hangfire;
 using HrastERP.Infrastructure.Database;
 using Microsoft.Extensions.DependencyInjection;
@@ -29,6 +30,9 @@ public static class InfrastructureServiceExtensions
 
         // Register SMTP settings and email service
         services.AddEmailServices();
+
+        // Register file storage settings and service
+        services.AddFileStorageServices();
 
         return services;
     }

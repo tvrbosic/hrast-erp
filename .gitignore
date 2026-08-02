@@ -63,3 +63,6 @@ nunit-*.xml
 
 # Git worktrees
 .worktrees/
+
+# Local file storage
+storage/
