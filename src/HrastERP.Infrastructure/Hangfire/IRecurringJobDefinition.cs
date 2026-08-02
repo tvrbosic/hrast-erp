@@ -1,4 +1,4 @@
-namespace HrastERP.SharedKernel.Abstractions;
+namespace HrastERP.Infrastructure.Hangfire;
 
 public interface IRecurringJobDefinition
 {

@@ -4,6 +4,16 @@
 
 Nothing in SharedKernel should import from any module. It has no dependency on EF Core, MediatR, or any other framework — it is pure C#.
 
+## Folder Quick Reference
+
+| Folder | Purpose | What goes here | What does NOT go here |
+|---|---|---|---|
+| `Domain/` | Domain model building blocks | Base entities, aggregate roots, value objects, domain marker interfaces (`IAuditable`, `ISoftDeletable`, `ITenantEntity`, `IDomainEvent`) | Business logic, module-specific entities |
+| `Results/` | Operation outcome types | `Result<T>`, `Error`, `ErrorType` — success/failure representation | Data envelopes, pagination, DTOs |
+| `Abstractions/` | Ambient request context | `ICurrentUser`, `ICurrentTenant` — "who is calling?" | Infrastructure service interfaces (email, file storage, jobs) |
+| `Authorization/` | Authorization primitives | `Permission` flags enum | Authorization handlers, policy providers |
+| `Common/` | Shared utility types | `PagedResult<T>`, sorting descriptors, date/time wrappers | Domain model types, result types |
+
 ---
 
 ## Domain
@@ -69,13 +79,24 @@ Two closely related types:
 
 Contains interfaces that give application-layer code access to the current request context — who is calling and on behalf of which tenant. These are injected via DI and implemented in the API layer.
 
-**When to add here:** Interfaces for cross-cutting runtime context (identity, tenancy, current time). Implementations live in `HrastERP.API` or module Infrastructure projects, never here.
+**When to add here:** Interfaces that represent ambient request context — information about who is making the current request. These are pure C# contracts with no framework dependencies. Implementations live in `HrastERP.API` (reading from JWT claims), never here. Do NOT put infrastructure service interfaces here (email, file storage, background jobs) — those belong in `HrastERP.Infrastructure` alongside their implementations.
 
 ### `ICurrentTenant.cs`
 Provides the `TenantId` of the current request. Implemented in the API layer by reading the `TenantId` claim from the JWT. Used in EF Core global query filters and in application layer validation to enforce tenant isolation.
 
 ### `ICurrentUser.cs`
-Provides identity and permission information for the authenticated user making the current request: `UserId`, `TenantId`, `Username`, `IsAuthenticated`, and a `Permissions` collection. Consumed by application handlers and authorization checks.
+Provides identity and permission information for the authenticated user making the current request: `UserId`, `TenantId`, `Username`, `IsAuthenticated`, and `EffectivePermissions` (the `Permission` flags enum representing the user's combined permissions). Consumed by application handlers and authorization checks.
+
+---
+
+## Authorization
+
+Contains authorization primitives shared across all modules.
+
+**When to add here:** Types that define the authorization model — permission definitions, policy names. Do NOT put authorization handlers or policy providers here — those belong in `HrastERP.API/Authorization/`.
+
+### `Permission.cs`
+`[Flags] enum Permission : long` defining all CRUD permissions across the five business modules (bits 0–19). Used by the `[RequirePermission]` attribute on controller endpoints and by `ICurrentUser.EffectivePermissions` for authorization checks. Always reference named enum members, never raw `long` values.
 
 ---
 
@@ -83,24 +104,7 @@ Provides identity and permission information for the authenticated user making t
 
 General-purpose types that do not belong to a specific concern but are shared across all modules.
 
-**When to add here:** Reusable utility types with no business-module affiliation — pagination, sorting descriptors, date/time wrappers, etc.
+**When to add here:** Reusable utility types with no business-module affiliation — pagination envelopes, sorting descriptors, date/time wrappers, etc. Types here should be pure data carriers or utility abstractions, not domain model building blocks (those go in `Domain/`).
 
 ### `PagedResult.cs`
 Generic `PagedResult<T>` returned by all list queries. Carries the `Items` collection along with pagination metadata: `TotalCount`, `Page`, `PageSize`, and computed properties `TotalPages`, `HasPreviousPage`, and `HasNextPage`. Created via the static `Create` factory method.
-
----
-
-## Exceptions
-
-Custom exception types for well-known error conditions. These are thrown by application handlers when something structurally wrong occurs and caught by the global exception handler middleware in the API layer, which maps them to appropriate HTTP status codes.
-
-**When to add here:** Exception types that map to a specific HTTP response or that carry structured error data. Do not put domain-specific exceptions here — only generic cross-cutting ones.
-
-### `NotFoundException.cs`
-Thrown when a requested entity does not exist. Takes an entity name and id; formats them into the message automatically (e.g. `"User with id '42' was not found."`). The global exception handler maps this to HTTP 404.
-
-### `ForbiddenException.cs`
-Thrown when the current user lacks permission to perform an operation. Accepts an optional custom message; defaults to `"Access is forbidden."`. The global exception handler maps this to HTTP 403.
-
-### `ValidationException.cs`
-Thrown by the MediatR validation pipeline behavior when FluentValidation reports failures. Carries an `Errors` dictionary keyed by field name, with an array of error messages per field. The global exception handler maps this to HTTP 422 and includes the errors in the response body.

@@ -1,5 +1,4 @@
 using HrastERP.Infrastructure.Database;
-using HrastERP.SharedKernel.Abstractions;
 using HrastERP.SharedKernel.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;

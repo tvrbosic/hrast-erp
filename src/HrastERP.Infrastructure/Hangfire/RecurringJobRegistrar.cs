@@ -1,5 +1,4 @@
 using Hangfire;
-using HrastERP.SharedKernel.Abstractions;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace HrastERP.Infrastructure.Hangfire;
