@@ -193,6 +193,8 @@ MailKit-based SMTP email infrastructure. Configured in `appsettings.json` under 
 
 **HTML templates:** Embedded resources in `Email/Templates/`. Use `{{placeholder}}` syntax for variable substitution. Templates are loaded by name (e.g. `"welcome"` loads `Email/Templates/welcome.html`). Add new templates as `.html` files in that folder — they're automatically included via the `<EmbeddedResource>` glob in the `.csproj`.
 
+See `docs/email.md` for the developer guide on sending emails and adding templates.
+
 ## Test stack
 
 xUnit + FluentAssertions. Each module has a dedicated test project under `tests/`. `xunit` is a global using in test projects — no need to add `using Xunit;`.
