@@ -1,7 +1,7 @@
 using Hangfire;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace HrastERP.Infrastructure.Hangfire;
+namespace HrastERP.Infrastructure.Hangfire.Services;
 
 internal static class RecurringJobRegistrar
 {

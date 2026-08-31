@@ -1,7 +1,7 @@
 using System.Linq.Expressions;
 using Hangfire;
 
-namespace HrastERP.Infrastructure.Hangfire;
+namespace HrastERP.Infrastructure.Hangfire.Services;
 
 internal sealed class HangfireBackgroundJobService : IBackgroundJobService
 {

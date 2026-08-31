@@ -1,6 +1,6 @@
 using System.Linq.Expressions;
 
-namespace HrastERP.Infrastructure.Hangfire;
+namespace HrastERP.Infrastructure.Hangfire.Services;
 
 public interface IBackgroundJobService
 {

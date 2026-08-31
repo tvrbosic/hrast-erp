@@ -1,4 +1,5 @@
 using HrastERP.Infrastructure.Database;
+using HrastERP.Infrastructure.Hangfire.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;

@@ -1,6 +1,6 @@
 using Hangfire.Dashboard;
 
-namespace HrastERP.Infrastructure.Hangfire;
+namespace HrastERP.Infrastructure.Hangfire.Filters;
 
 internal sealed class LocalhostDashboardAuthorizationFilter : IDashboardAuthorizationFilter
 {

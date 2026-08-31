@@ -36,7 +36,7 @@ The Hangfire dashboard is available at `/hangfire` and restricted to localhost c
 
 ### IRecurringJobDefinition
 
-Pure C# interface in `HrastERP.Infrastructure/Hangfire/` — no Hangfire dependency:
+Pure C# interface in `HrastERP.Infrastructure/Hangfire/Services/` — no Hangfire dependency:
 
 ```csharp
 public interface IRecurringJobDefinition

@@ -169,11 +169,11 @@ See `docs/database-seeding.md` for the full guide on adding new seed scripts.
 Hangfire with PostgreSQL storage provides background job infrastructure. Configured in `appsettings.json` under `"Hangfire"` section, bound to `HangfireSettings` with validation on startup.
 
 **Key types** (`HrastERP.Infrastructure/Hangfire/`):
-- **`IRecurringJobDefinition`** — pure C# interface for self-registering recurring background jobs; exposes `JobId`, `CronExpression`, and `ExecuteAsync(CancellationToken)`. Implementations are auto-discovered at startup by `RecurringJobRegistrar`.
 - **`HangfireSettings`** — configuration: `WorkerCount` (default 1), `SoftDeleteRetentionDays` (default 90), `RevokedTokenRetentionDays` (default 7), cron expressions for each cleanup job
-- **`IBackgroundJobService` / `HangfireBackgroundJobService`** — thin wrapper over Hangfire's static APIs for `Enqueue`, `Schedule`, and `AddOrUpdateRecurring`
-- **`RecurringJobRegistrar`** — static class called at startup; resolves all `IRecurringJobDefinition` implementations, validates `JobId` uniqueness, and registers them with Hangfire
-- **`LocalhostDashboardAuthorizationFilter`** — restricts Hangfire dashboard (`/hangfire`) to localhost connections only
+- **`IRecurringJobDefinition`** — (`Services/`) pure C# interface for self-registering recurring background jobs; exposes `JobId`, `CronExpression`, and `ExecuteAsync(CancellationToken)`. Implementations are auto-discovered at startup by `RecurringJobRegistrar`.
+- **`IBackgroundJobService` / `HangfireBackgroundJobService`** — (`Services/`) thin wrapper over Hangfire's static APIs for `Enqueue`, `Schedule`, and `AddOrUpdateRecurring`
+- **`RecurringJobRegistrar`** — (`Services/`) static class called at startup; resolves all `IRecurringJobDefinition` implementations, validates `JobId` uniqueness, and registers them with Hangfire
+- **`LocalhostDashboardAuthorizationFilter`** — (`Filters/`) restricts Hangfire dashboard (`/hangfire`) to localhost connections only
 
 **Built-in cleanup jobs** (`HrastERP.Infrastructure/Hangfire/Jobs/`):
 - **`RefreshTokenCleanupJob`** — deletes expired tokens and revoked tokens past retention period; batched raw SQL (no audit — `RefreshToken` doesn't inherit `BaseEntity<TId>`)

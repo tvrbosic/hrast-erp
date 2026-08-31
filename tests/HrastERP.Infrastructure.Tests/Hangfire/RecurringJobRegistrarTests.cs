@@ -1,5 +1,5 @@
 using FluentAssertions;
-using HrastERP.Infrastructure.Hangfire;
+using HrastERP.Infrastructure.Hangfire.Services;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace HrastERP.Infrastructure.Tests.Hangfire;
