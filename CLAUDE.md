@@ -30,7 +30,7 @@ dotnet run --project src/HrastERP.API/
 
 **Project naming convention:** `HrastERP.<Module>` (e.g. `HrastERP.Inventory`). Each module contains `Domain/`, `Application/`, `Infrastructure/`, and `Web/` folders.
 
-**Dependency wiring:** `HrastERP.API` references all module projects. Each module exposes a `Add<Module>Module()` extension method that registers MediatR handlers, FluentValidation validators, EF Core configurations, and repositories. The API layer calls these and registers controller assemblies via `AddApplicationPart()`. Shared infrastructure is registered via a single `AddInfrastructure()` call, which delegates to focused extension classes colocated with each concern: `DatabaseServiceExtensions`, `BehaviorServiceExtensions`, `AuthenticationServiceExtensions`, `BackgroundJobServiceExtensions`, and `EmailServiceExtensions`.
+**Dependency wiring:** `HrastERP.API` references all module projects. Each module exposes a `Add<Module>Module()` extension method that registers MediatR handlers, FluentValidation validators, EF Core configurations, and repositories. The API layer calls these and registers controller assemblies via `AddApplicationPart()`. Shared infrastructure is registered via a single `AddInfrastructure()` call, which delegates to focused extension classes colocated with each concern: `DatabaseServiceExtensions`, `BehaviorServiceExtensions`, `AuthenticationServiceExtensions`, `BackgroundJobServiceExtensions`, `EmailServiceExtensions`, and `FileStorageServiceExtensions`.
 
 **CQRS:** MediatR with commands and queries organized by feature inside `Application/`. Structure: `Application/<Feature>/Commands/` and `Application/<Feature>/Queries/`. Handlers return `Result<T>`.
 
@@ -194,6 +194,21 @@ MailKit-based SMTP email infrastructure. Configured in `appsettings.json` under 
 **HTML templates:** Embedded resources in `Email/Templates/`. Use `{{placeholder}}` syntax for variable substitution. Templates are loaded by name (e.g. `"welcome"` loads `Email/Templates/welcome.html`). Add new templates as `.html` files in that folder — they're automatically included via the `<EmbeddedResource>` glob in the `.csproj`.
 
 See `docs/email.md` for the developer guide on sending emails and adding templates.
+
+## File Storage
+
+Local file storage infrastructure with tenant-isolated directory structure. Configured in `appsettings.json` under `"FileStorage"` section, bound to `FileStorageSettings` with validation on startup.
+
+**Key types** (`HrastERP.Infrastructure/FileStorage/`):
+- **`FileStorageSettings`** — configuration: `RootPath` (default `./storage/files`), `MaxFileSizeBytes` (default 10 MB), `AllowedContentTypes` (PDF, images, CSV, XLSX, DOCX)
+- **`IFileStorageService` / `LocalFileStorageService`** — `UploadAsync(stream, fileName, contentType)`, `DownloadAsync(fileId)`, `DeleteAsync(fileId)`, `GetUrlAsync(fileId)`; all return `Result<T>` or `Result`
+- **`StoredFile`** — entity extending `BaseEntity<Guid>` + `ITenantEntity`; tracks `FileName`, `ContentType`, `SizeInBytes`, `StoragePath` in the `stored_files` table
+- **`FileUploadResult` / `FileDownloadResult`** — models returned by upload and download operations
+- **`FileStorageErrors`** — predefined `Error` constants: `FileStorage.FileNotFound`, `FileStorage.FileTooLarge`, `FileStorage.ContentTypeNotAllowed`, `FileStorage.StorageFailed`
+
+**Storage layout:** Files are stored under `{RootPath}/{TenantId}/{Year}/{Month}/{FileId}{Extension}`. The `storage/` directory is git-ignored.
+
+See `docs/file-storage.md` for the developer guide on uploading, downloading, and managing files.
 
 ## Test stack
 

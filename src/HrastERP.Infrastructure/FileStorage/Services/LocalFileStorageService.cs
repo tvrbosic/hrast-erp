@@ -15,6 +15,12 @@ internal sealed class LocalFileStorageService(
 {
     private readonly FileStorageSettings _settings = settings.Value;
 
+    /// <summary>
+    /// Validates file size and content type, writes the file to disk under
+    /// a tenant-isolated path ({TenantId}/{Year}/{Month}/{FileId}{Extension}),
+    /// and persists a StoredFile record in the database.
+    /// On failure, attempts best-effort cleanup of the partially written file.
+    /// </summary>
     public async Task<Result<FileUploadResult>> UploadAsync(
         Stream fileStream, string fileName, string contentType,
         CancellationToken ct = default)
@@ -69,6 +75,11 @@ internal sealed class LocalFileStorageService(
         }
     }
 
+    /// <summary>
+    /// Looks up the StoredFile record by ID and opens a read-only stream to the
+    /// physical file. Returns FileNotFound if the record or the physical file is missing.
+    /// The caller is responsible for disposing the returned stream.
+    /// </summary>
     public async Task<Result<FileDownloadResult>> DownloadAsync(
         Guid fileId, CancellationToken ct = default)
     {
@@ -96,6 +107,11 @@ internal sealed class LocalFileStorageService(
         };
     }
 
+    /// <summary>
+    /// Deletes the physical file from disk and removes the StoredFile record from
+    /// the database (soft-delete via interceptor). If the physical file is already
+    /// missing, the database record is still removed.
+    /// </summary>
     public async Task<Result> DeleteAsync(Guid fileId, CancellationToken ct = default)
     {
         var storedFile = await dbContext.Set<StoredFile>()
@@ -120,6 +136,11 @@ internal sealed class LocalFileStorageService(
         return Result.Success();
     }
 
+    /// <summary>
+    /// Returns a relative API URL (/api/files/{fileId}) for the given file.
+    /// Intended for embedding download links in API responses or emails.
+    /// The URL must be served by a controller endpoint that calls DownloadAsync.
+    /// </summary>
     public async Task<Result<string>> GetUrlAsync(Guid fileId, CancellationToken ct = default)
     {
         var exists = await dbContext.Set<StoredFile>()
