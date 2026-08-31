@@ -3,6 +3,7 @@ using HrastERP.Infrastructure.Behaviors;
 using HrastERP.Infrastructure.Email;
 using HrastERP.Infrastructure.FileStorage;
 using HrastERP.Infrastructure.Hangfire;
+using HrastERP.Infrastructure.PdfGeneration;
 using HrastERP.Infrastructure.Database;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -33,6 +34,9 @@ public static class InfrastructureServiceExtensions
 
         // Register file storage settings and service
         services.AddFileStorageServices();
+
+        // Register QuestPDF settings, fonts, and report builder
+        services.AddPdfGenerationServices();
 
         return services;
     }

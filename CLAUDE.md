@@ -30,7 +30,7 @@ dotnet run --project src/HrastERP.API/
 
 **Project naming convention:** `HrastERP.<Module>` (e.g. `HrastERP.Inventory`). Each module contains `Domain/`, `Application/`, `Infrastructure/`, and `Web/` folders.
 
-**Dependency wiring:** `HrastERP.API` references all module projects. Each module exposes a `Add<Module>Module()` extension method that registers MediatR handlers, FluentValidation validators, EF Core configurations, and repositories. The API layer calls these and registers controller assemblies via `AddApplicationPart()`. Shared infrastructure is registered via a single `AddInfrastructure()` call, which delegates to focused extension classes colocated with each concern: `DatabaseServiceExtensions`, `BehaviorServiceExtensions`, `AuthenticationServiceExtensions`, `BackgroundJobServiceExtensions`, `EmailServiceExtensions`, and `FileStorageServiceExtensions`.
+**Dependency wiring:** `HrastERP.API` references all module projects. Each module exposes a `Add<Module>Module()` extension method that registers MediatR handlers, FluentValidation validators, EF Core configurations, and repositories. The API layer calls these and registers controller assemblies via `AddApplicationPart()`. Shared infrastructure is registered via a single `AddInfrastructure()` call, which delegates to focused extension classes colocated with each concern: `DatabaseServiceExtensions`, `BehaviorServiceExtensions`, `AuthenticationServiceExtensions`, `BackgroundJobServiceExtensions`, `EmailServiceExtensions`, `FileStorageServiceExtensions`, and `PdfGenerationServiceExtensions`.
 
 **CQRS:** MediatR with commands and queries organized by feature inside `Application/`. Structure: `Application/<Feature>/Commands/` and `Application/<Feature>/Queries/`. Handlers return `Result<T>`.
 
@@ -209,6 +209,21 @@ Local file storage infrastructure with tenant-isolated directory structure. Conf
 **Storage layout:** Files are stored under `{RootPath}/{TenantId}/{Year}/{Month}/{FileId}{Extension}`. The `storage/` directory is git-ignored.
 
 See `docs/file-storage.md` for the developer guide on uploading, downloading, and managing files.
+
+## PDF Generation
+
+QuestPDF-based PDF report generation infrastructure. Configured in `appsettings.json` under `"PdfGeneration"` section, bound to `PdfGenerationSettings` with validation on startup.
+
+**Key types** (`HrastERP.Infrastructure/PdfGeneration/`):
+- **`PdfGenerationSettings`** — configuration: `CompanyName` (default `"Hrast ERP"`), `LogoPath` (nullable, falls back to embedded default), `PrimaryColor`, `AccentColor`, `TextColor` (hex), `FontFamily` (default `"Open Sans"`)
+- **`IReportGenerator<TData>`** — generic interface for PDF report generators; each module implements this in its `Infrastructure/Reports/` folder. Synchronous `Generate(TData data)` returns `Result<ReportResult>`
+- **`ReportBuilder`** — singleton service providing shared report layout: `ApplyDefaultPageSettings` (A4, 2cm margins, font), `ApplyHeader` (logo, company name, report title, date), `ApplyFooter` (timestamp, page numbering), and formatting helpers (`FormatCurrency`, `FormatDate`, color accessors)
+- **`ReportResult`** — output model with `Content` (byte[]), `FileName`, `ContentType`
+- **`PdfGenerationErrors`** — predefined `Error` constants: `PdfGeneration.GenerationFailed`, `PdfGeneration.LogoNotFound`
+
+**Fonts and logo:** Open Sans fonts and a placeholder logo are embedded resources in `PdfGeneration/Assets/`. Custom logo can be set via `LogoPath` in settings.
+
+See `docs/pdf-generation.md` for the developer guide on writing report generators.
 
 ## Test stack
 
