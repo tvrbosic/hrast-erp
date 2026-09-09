@@ -58,9 +58,9 @@ HrastERP.<Module>/
 ### Cross-Cutting Concerns (SharedKernel + API)
 - Multi-tenancy: row-level tenant isolation via `TenantId` on all entities, resolved from JWT claims
 - Audit log: EF Core `SaveChanges` interceptor capturing entity state changes to `AuditLog` table
-- CQRS pipeline behaviors: logging, validation, audit enrichment, caching
+- CQRS pipeline behaviors: logging, validation, audit enrichment
 - Background jobs: Hangfire with PostgreSQL storage
-- Caching: in-memory (`IMemoryCache`) for Phase 0–3, optionally Redis in later phases
+- Caching: Redis via `ICacheService` abstraction over `IDistributedCache` with JSON serialization
 - Email: MailKit with SMTP configuration; abstracted via `IEmailService`
 - File storage: local filesystem abstracted via `IFileStorageService`; replaceable with Azure Blob Storage
 - PDF generation: QuestPDF abstracted via `IReportGenerator`
@@ -79,7 +79,7 @@ HrastERP.<Module>/
 | Authentication | ASP.NET Core Identity + JWT Bearer |
 | Authorization | Custom RBAC policy handlers |
 | Background Jobs | Hangfire |
-| Caching | IMemoryCache (Phase 0–3), Redis optional |
+| Caching | Redis (`StackExchange.Redis` + `IDistributedCache`) |
 | Email | MailKit |
 | File Storage | Local filesystem / IFileStorageService abstraction |
 | PDF Reports | QuestPDF |
@@ -175,10 +175,12 @@ HrastERP.<Module>/
 - Base report template (header, footer, page numbering)
 
 #### 0.13 Caching Infrastructure
-- `ICacheService` abstraction wrapping `IMemoryCache`
-- Cache key conventions per module
-- Cache invalidation via MediatR notifications on write operations
-- TTL configuration per cache key category
+- `ICacheService` abstraction wrapping `IDistributedCache` + `IConnectionMultiplexer`
+- Redis via `Microsoft.Extensions.Caching.StackExchangeRedis` (Docker Compose container)
+- `CacheSettings` with `ConnectionString` and `DefaultTtlMinutes`
+- JSON serialization via `System.Text.Json`
+- Prefix-based bulk invalidation via Redis SCAN
+- Cache key conventions: `Module:Entity:Identifier`
 
 #### 0.14 API Project Setup
 - Controller-based routing
@@ -414,8 +416,9 @@ HrastERP.<Module>/
 - `FileReference` entity linked to parent aggregate
 
 #### 6.3 Caching Enhancements
-- Apply `ICacheable` to high-read, low-write queries: `GetMaterialTypes`, `GetProductTypes`, `GetRoles`, `GetPermissions`, `GetMachines`
-- Cache invalidation on corresponding write commands via MediatR notifications
+- Apply `ICacheService` to high-read, low-write query handlers: `GetMaterialTypes`, `GetProductTypes`, `GetRoles`, `GetPermissions`, `GetMachines`
+- Cache invalidation in corresponding write command handlers
+- Optional: event-driven invalidation via `INotificationHandler<TDomainEvent>`
 - Cache warm-up on application startup for reference data
 
 #### 6.4 Integration & Health

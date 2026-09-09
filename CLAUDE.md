@@ -30,7 +30,7 @@ dotnet run --project src/HrastERP.API/
 
 **Project naming convention:** `HrastERP.<Module>` (e.g. `HrastERP.Inventory`). Each module contains `Domain/`, `Application/`, `Infrastructure/`, and `Web/` folders.
 
-**Dependency wiring:** `HrastERP.API` references all module projects. Each module exposes a `Add<Module>Module()` extension method that registers MediatR handlers, FluentValidation validators, EF Core configurations, and repositories. The API layer calls these and registers controller assemblies via `AddApplicationPart()`. Shared infrastructure is registered via a single `AddInfrastructure()` call, which delegates to focused extension classes colocated with each concern: `DatabaseServiceExtensions`, `BehaviorServiceExtensions`, `AuthenticationServiceExtensions`, `BackgroundJobServiceExtensions`, `EmailServiceExtensions`, `FileStorageServiceExtensions`, and `PdfGenerationServiceExtensions`.
+**Dependency wiring:** `HrastERP.API` references all module projects. Each module exposes a `Add<Module>Module()` extension method that registers MediatR handlers, FluentValidation validators, EF Core configurations, and repositories. The API layer calls these and registers controller assemblies via `AddApplicationPart()`. Shared infrastructure is registered via a single `AddInfrastructure()` call, which delegates to focused extension classes colocated with each concern: `DatabaseServiceExtensions`, `BehaviorServiceExtensions`, `AuthenticationServiceExtensions`, `BackgroundJobServiceExtensions`, `EmailServiceExtensions`, `FileStorageServiceExtensions`, `PdfGenerationServiceExtensions`, and `CacheServiceExtensions`.
 
 **CQRS:** MediatR with commands and queries organized by feature inside `Application/`. Structure: `Application/<Feature>/Commands/` and `Application/<Feature>/Queries/`. Handlers return `Result<T>`.
 
@@ -224,6 +224,21 @@ QuestPDF-based PDF report generation infrastructure. Configured in `appsettings.
 **Fonts and logo:** Open Sans fonts and a placeholder logo are embedded resources in `PdfGeneration/Assets/`. Custom logo can be set via `LogoPath` in settings.
 
 See `docs/pdf-generation.md` for the developer guide on writing report generators.
+
+## Caching
+
+Redis-based distributed caching infrastructure. Configured in `appsettings.json` under `"Cache"` section, bound to `CacheSettings` with validation on startup. Development uses localhost:6379 (Docker Compose Redis container).
+
+**Key types** (`HrastERP.Infrastructure/Caching/`):
+- **`CacheSettings`** — configuration: `ConnectionString` (required), `DefaultTtlMinutes` (default 60, range 1-1440)
+- **`ICacheService` / `RedisCacheService`** — `GetAsync<T>(key)`, `SetAsync<T>(key, value, expiration?)`, `RemoveAsync(key)`, `RemoveByPrefixAsync(prefix)`; non-throwing — failures are logged and return null/silently complete
+- **`CacheErrors`** — predefined `Error` constants: `Cache.SerializationFailed`, `Cache.OperationFailed`
+
+**Cache key conventions:** `Module:Entity:Identifier` (e.g. `Roles:all`, `Roles:{id}`). Prefix-based invalidation: `RemoveByPrefixAsync("Roles")` clears all role-related entries using Redis SCAN.
+
+**Service lifetime:** Singleton. All dependencies (`IDistributedCache`, `IConnectionMultiplexer`, `CacheSettings`) are singletons.
+
+See `docs/caching.md` for the developer guide on caching patterns and key conventions.
 
 ## Test stack
 

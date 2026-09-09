@@ -74,13 +74,15 @@ tests/
 - FluentValidation
 - Hangfire (background jobs)
 - MailKit (SMTP email)
+- QuestPDF (PDF generation)
+- Redis (distributed caching)
 - xUnit + FluentAssertions (testing)
 
 ## Development Setup
 
 ### Prerequisites
 - [.NET 10 SDK](https://dotnet.microsoft.com/download)
-- [Docker](https://www.docker.com/) (for PostgreSQL)
+- [Docker](https://www.docker.com/) (for PostgreSQL and Redis)
 
 ### Steps
 

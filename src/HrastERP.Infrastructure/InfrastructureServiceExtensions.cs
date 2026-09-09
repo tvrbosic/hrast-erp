@@ -1,5 +1,6 @@
 using HrastERP.Infrastructure.Authentication;
 using HrastERP.Infrastructure.Behaviors;
+using HrastERP.Infrastructure.Caching;
 using HrastERP.Infrastructure.Email;
 using HrastERP.Infrastructure.FileStorage;
 using HrastERP.Infrastructure.Hangfire;
@@ -37,6 +38,9 @@ public static class InfrastructureServiceExtensions
 
         // Register QuestPDF settings, fonts, and report builder
         services.AddPdfGenerationServices();
+
+        // Register Redis cache settings and service
+        services.AddCacheServices();
 
         return services;
     }

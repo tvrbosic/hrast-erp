@@ -1,5 +1,6 @@
 using FluentAssertions;
 using HrastERP.Infrastructure;
+using HrastERP.Infrastructure.Caching;
 using HrastERP.Infrastructure.Database;
 using HrastERP.Infrastructure.FileStorage;
 using HrastERP.Infrastructure.PdfGeneration;
@@ -20,7 +21,8 @@ public class InfrastructureServiceExtensionsTests
             {
                 ["Database:ConnectionString"] = "Host=localhost;Port=5432;Database=test;Username=postgres;Password=postgres",
                 ["Hangfire:SoftDeleteCleanupCron"] = "0 2 * * *",
-                ["Hangfire:RefreshTokenCleanupCron"] = "0 2 * * *"
+                ["Hangfire:RefreshTokenCleanupCron"] = "0 2 * * *",
+                ["Cache:ConnectionString"] = "localhost:6379"
             })
             .Build();
 
@@ -39,7 +41,8 @@ public class InfrastructureServiceExtensionsTests
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["Hangfire:SoftDeleteCleanupCron"] = "0 2 * * *",
-                ["Hangfire:RefreshTokenCleanupCron"] = "0 2 * * *"
+                ["Hangfire:RefreshTokenCleanupCron"] = "0 2 * * *",
+                ["Cache:ConnectionString"] = "localhost:6379"
             })
             .Build();
 
@@ -61,7 +64,8 @@ public class InfrastructureServiceExtensionsTests
             {
                 ["Database:ConnectionString"] = "Host=localhost;Port=5432;Database=test;Username=postgres;Password=postgres",
                 ["Hangfire:SoftDeleteCleanupCron"] = "0 2 * * *",
-                ["Hangfire:RefreshTokenCleanupCron"] = "0 2 * * *"
+                ["Hangfire:RefreshTokenCleanupCron"] = "0 2 * * *",
+                ["Cache:ConnectionString"] = "localhost:6379"
             })
             .Build();
 
@@ -81,7 +85,8 @@ public class InfrastructureServiceExtensionsTests
             {
                 ["Database:ConnectionString"] = "Host=localhost;Port=5432;Database=test;Username=postgres;Password=postgres",
                 ["Hangfire:SoftDeleteCleanupCron"] = "0 2 * * *",
-                ["Hangfire:RefreshTokenCleanupCron"] = "0 2 * * *"
+                ["Hangfire:RefreshTokenCleanupCron"] = "0 2 * * *",
+                ["Cache:ConnectionString"] = "localhost:6379"
             })
             .Build();
 
@@ -90,6 +95,27 @@ public class InfrastructureServiceExtensionsTests
         services.AddInfrastructure();
 
         var descriptor = services.FirstOrDefault(d => d.ServiceType == typeof(ReportBuilder));
+        descriptor.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void AddInfrastructure_RegistersICacheService()
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Database:ConnectionString"] = "Host=localhost;Port=5432;Database=test;Username=postgres;Password=postgres",
+                ["Hangfire:SoftDeleteCleanupCron"] = "0 2 * * *",
+                ["Hangfire:RefreshTokenCleanupCron"] = "0 2 * * *",
+                ["Cache:ConnectionString"] = "localhost:6379"
+            })
+            .Build();
+
+        var services = new ServiceCollection();
+        services.AddSingleton<IConfiguration>(configuration);
+        services.AddInfrastructure();
+
+        var descriptor = services.FirstOrDefault(d => d.ServiceType == typeof(ICacheService));
         descriptor.Should().NotBeNull();
     }
 }
