@@ -30,12 +30,12 @@ dotnet run --project src/HrastERP.API/
 
 **Project naming convention:** `HrastERP.<Module>` (e.g. `HrastERP.Inventory`). Each module contains `Domain/`, `Application/`, `Infrastructure/`, and `Web/` folders.
 
-**Dependency wiring:** `HrastERP.API` references all module projects. Each module exposes a `Add<Module>Module()` extension method that registers MediatR handlers, FluentValidation validators, EF Core configurations, and repositories. The API layer calls these and registers controller assemblies via `AddApplicationPart()`. Shared infrastructure is registered via a single `AddInfrastructure()` call, which delegates to focused extension classes colocated with each concern: `DatabaseServiceExtensions`, `BehaviorServiceExtensions`, `AuthenticationServiceExtensions`, `BackgroundJobServiceExtensions`, `EmailServiceExtensions`, `FileStorageServiceExtensions`, `PdfGenerationServiceExtensions`, and `CacheServiceExtensions`.
+**Dependency wiring:** `HrastERP.API` references all module projects. Each module exposes a `Add<Module>Module()` extension method that registers MediatR handlers, FluentValidation validators, EF Core configurations, and repositories. The API layer calls these and registers controller assemblies via `AddApplicationPart()`. Shared infrastructure is registered via a single `AddInfrastructure()` call, which delegates to focused extension classes colocated with each concern: `DatabaseServiceExtensions`, `BehaviorServiceExtensions`, `AuthenticationServiceExtensions`, `BackgroundJobServiceExtensions`, `EmailServiceExtensions`, `FileStorageServiceExtensions`, `PdfGenerationServiceExtensions`, and `CacheServiceExtensions`. Exception: `LoggingServiceExtensions` is called directly on `WebApplicationBuilder` in `Program.cs` (not through `AddInfrastructure()`) because Serilog's `UseSerilog()` requires access to `builder.Host`.
 
 **CQRS:** MediatR with commands and queries organized by feature inside `Application/`. Structure: `Application/<Feature>/Commands/` and `Application/<Feature>/Queries/`. Handlers return `Result<T>`.
 
 **Pipeline behaviors** (registered in `HrastERP.Infrastructure`), in execution order:
-- `LoggingBehavior` — structured request/response logging with timing; outermost wrapper
+- `LoggingBehavior` — structured request/response logging with timing and sanitized request payload; properties marked with `[SensitiveData]` are masked as `"***"`; outermost wrapper
 - `TenantValidationBehavior` — short-circuits with `Result.Failure(Error.Forbidden("General.MissingTenant", ...))` when `ICurrentTenant.TenantId` is `Guid.Empty`; runs before input validation
 - `ValidationBehavior` — runs FluentValidation validators; on failure groups violations by camelCase property name into a field-level error dictionary and returns `Result.Failure` with `Error.Validation("General.Validation", ..., fieldErrors)`
 
@@ -60,6 +60,7 @@ Key types and their intended use:
 - **`Error`** — `record(string Code, string Message, ErrorType Type)`; code is dot-separated e.g. `"Order.NotFound"`; `ErrorType` enum: `Validation`, `NotFound`, `Forbidden`, `Conflict`, `Unexpected`; factory methods: `Error.NotFound`, `Error.Validation`, `Error.Forbidden`, `Error.Conflict`, `Error.Unexpected`. `Error.Validation` accepts an optional `validationErrors` (`IReadOnlyDictionary<string, string[]>?`) for field-level error detail; populated automatically by `ValidationBehavior`. Each module defines errors as `static readonly` constants in a `<Module>Errors` class. See `docs/error-handling.md` and `docs/api-responses.md`.
 - **`PagedResult<T>`** — returned by all list queries; created via `PagedResult<T>.Create(...)`
 - **`Permission`** — `[Flags] enum Permission : long` in `HrastERP.SharedKernel/Authorization/`; 20 CRUD permissions across 5 modules (bits 0–19). Use for authorization checks — always reference named enum members, never raw `long` values.
+- **`[SensitiveData]`** — marker attribute (`HrastERP.SharedKernel/Logging/`) for MediatR request properties containing sensitive data (passwords, tokens). `LoggingBehavior` masks these with `"***"` when logging request payloads. Apply with `[property: SensitiveData]` on record constructor parameters.
 - **`ICurrentUser`** / **`ICurrentTenant`** — injected into application handlers; implemented in API layer from JWT claims. `ICurrentUser.EffectivePermissions` returns the current user's combined permissions (parsed from the `"permissions"` JWT claim). These represent ambient request context and belong in SharedKernel. Infrastructure service interfaces (email, file storage, jobs) belong in `HrastERP.Infrastructure` instead.
 - **Global exception middleware** (`GlobalExceptionMiddleware`, in `HrastERP.API/Middleware/`) — registered as the first middleware in `Program.cs`; catches any unhandled infrastructure/framework exception and returns 500 with `{ code: "General.Unexpected", message: "An unexpected error occurred." }`. Application-layer failures always use `Result.Failure` — the middleware is a safety net only, not the primary error path.
 - **Model binding error factory** (`ModelBindingExtensions.ConfigureModelBindingErrorFormat()`, in `HrastERP.API/Extensions/`) — replaces ASP.NET Core's default `InvalidModelStateResponseFactory` so that model binding failures (malformed JSON, missing `[Required]` fields, type mismatches) return the same `ErrorResponse` shape as application validation: HTTP 422 with `{ code: "General.Validation", message: "...", errors: { ... } }` and camelCase field names.
@@ -239,6 +240,24 @@ Redis-based distributed caching infrastructure. Configured in `appsettings.json`
 **Service lifetime:** Singleton. All dependencies (`IDistributedCache`, `IConnectionMultiplexer`, `CacheSettings`) are singletons.
 
 See `docs/caching.md` for the developer guide on caching patterns and key conventions.
+
+## Logging
+
+Serilog-based structured logging infrastructure. Replaces the default ASP.NET Core logging provider — all existing `ILogger<T>` usage routes through Serilog automatically. Configured in `appsettings.json` under `"Serilog"` section. Log files are written to `logs/` (git-ignored).
+
+**Sinks:** Console (human-readable, colored), Debug (debugger output), Rolling File (JSON, one file per day, 30-day retention under `./logs/`).
+
+**Enrichment:** Every log entry is automatically enriched with `UserId`, `TenantId` (via `LoggingEnrichmentMiddleware` after authentication), `RequestId` (from `HttpContext.TraceIdentifier`), `MachineName`, and `EnvironmentName`. For unauthenticated requests, `UserId`/`TenantId` are `Guid.Empty`.
+
+**Key types** (`HrastERP.Infrastructure/Logging/`):
+- **`LoggingServiceExtensions`** — `AddLoggingInfrastructure(WebApplicationBuilder)` configures Serilog provider with enrichers and sinks; `UseLoggingInfrastructure(WebApplication)` adds HTTP request logging; `UseLoggingEnrichment(WebApplication)` adds enrichment middleware
+- **`LoggingEnrichmentMiddleware`** — pushes `UserId` and `TenantId` into Serilog's `LogContext` per request; runs after `UseAuthentication()`, before `UseAuthorization()`
+
+**Configuration (hybrid):** Structural setup (enrichers, sinks) in C# via `LoggingServiceExtensions`. Tunable values (log levels, file path, retention) in `appsettings.json` under `"Serilog"`. Per-namespace log level overrides suppress framework noise (`Microsoft.AspNetCore`, `Microsoft.EntityFrameworkCore`, `Hangfire`, `System.Net.Http`) to `Warning` in production, relaxed to `Information` in Development.
+
+**Middleware order in Program.cs:** `GlobalExceptionMiddleware` → `UseSerilogRequestLogging()` → ... → `UseAuthentication()` → `LoggingEnrichmentMiddleware` → `UseAuthorization()`.
+
+See `docs/logging.md` for the developer guide on logging conventions and configuration.
 
 ## Test stack
 

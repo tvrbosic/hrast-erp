@@ -182,13 +182,19 @@ HrastERP.<Module>/
 - Prefix-based bulk invalidation via Redis SCAN
 - Cache key conventions: `Module:Entity:Identifier`
 
-#### 0.14 API Project Setup
-- Controller-based routing
-- Global exception handler middleware returning `ProblemDetails`
-- Request correlation ID middleware
+#### 0.14 Structured Logging Infrastructure
+- Serilog as logging provider via `Serilog.AspNetCore` (replaces default providers; all existing `ILogger<T>` usage routes through Serilog automatically)
+- Three sinks: Console (human-readable, colored), Debug (debugger output), Rolling File (JSON, one file per day, 30-day retention)
+- Enrichment middleware: pushes `UserId`, `TenantId` from `ICurrentUser`/`ICurrentTenant` into Serilog `LogContext` per request
+- Built-in enrichers: `RequestId` (from `HttpContext.TraceIdentifier`), `MachineName`, `Environment`
+- HTTP request logging via `UseSerilogRequestLogging()` (method, path, status code, elapsed time)
+- Enhanced `LoggingBehavior`: logs request payload with `[SensitiveData]` attribute masking on sensitive properties
+- Hybrid configuration: structural setup in C# (`Program.cs`), tunable values in `appsettings.json` (log levels, file path, retention)
+- Sink architecture supports future addition of aggregation tools (Seq, Elasticsearch, etc.)
+
+#### 0.15 API Project Setup
 - Swagger/Scalar OpenAPI with JWT auth support
 - Health check endpoint
-- `appsettings.json` / `appsettings.Development.json` configuration structure
 
 ---
 

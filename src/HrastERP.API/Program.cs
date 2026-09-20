@@ -8,6 +8,7 @@ using HrastERP.API.Middleware;
 using HrastERP.Finance;
 using HrastERP.Infrastructure;
 using HrastERP.Infrastructure.Authentication;
+using HrastERP.Infrastructure.Logging;
 using HrastERP.Infrastructure.Hangfire.Filters;
 using HrastERP.Infrastructure.Hangfire.Services;
 using HrastERP.Infrastructure.Database;
@@ -20,6 +21,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Configure Serilog as the logging provider (replaces default providers).
+// Called on builder directly (not through AddInfrastructure) because UseSerilog is on builder.Host.
+builder.AddLoggingInfrastructure();
 
 // Register all shared infrastructure: persistence (EF Core, interceptors), identity, and MediatR behaviors
 builder.Services.AddInfrastructure();
@@ -107,6 +112,9 @@ RecurringJobRegistrar.RegisterAll(app.Services);
 // Application-layer failures use Result.Failure — this middleware only catches unexpected exceptions (DB errors, bugs, etc.).
 app.UseMiddleware<GlobalExceptionMiddleware>();
 
+// Serilog HTTP request logging — one structured log line per request (method, path, status code, elapsed time).
+app.UseLoggingInfrastructure();
+
 // Hangfire dashboard — restricted to localhost connections only.
 app.UseHangfireDashboard("/hangfire", new DashboardOptions
 {
@@ -117,6 +125,11 @@ app.UseHangfireDashboard("/hangfire", new DashboardOptions
 // UseAuthorization checks whether the authenticated user is allowed to access the endpoint ([Authorize] etc.).
 // Order matters: authentication must run before authorization.
 app.UseAuthentication();
+
+// Enrich all subsequent log entries with UserId and TenantId from JWT claims.
+// Must run after UseAuthentication so claims are populated.
+app.UseLoggingEnrichment();
+
 app.UseAuthorization();
 
 // Build the routing table by mapping HTTP routes to controller actions discovered in all application parts.

@@ -26,13 +26,18 @@ internal static class CacheServiceExtensions
             return ConnectionMultiplexer.Connect(settings.ConnectionString);
         });
 
-        // Register IDistributedCache backed by Redis
+        // Register IDistributedCache backed by Redis.
+        // Options are left empty here because AddStackExchangeRedisCache only accepts a plain
+        // Action<RedisCacheOptions> with no access to DI services — we can't resolve the
+        // IConnectionMultiplexer singleton registered above from inside that lambda.
         services.AddStackExchangeRedisCache(_ => { });
 
-        // Wire IDistributedCache to reuse the shared IConnectionMultiplexer above
-        // instead of creating a second Redis connection.
-        // ConnectionMultiplexerFactory is Func<Task<IConnectionMultiplexer>> (no service provider),
-        // so we use Configure<TDep> to inject the singleton.
+        // Patch RedisCacheOptions via AddOptions<T>().Configure<TDep>() — this overload
+        // resolves TDep (IConnectionMultiplexer) from DI and passes it into the lambda,
+        // letting us wire IDistributedCache to reuse the shared connection above instead
+        // of opening a second one.
+        // ConnectionMultiplexerFactory is Func<Task<IConnectionMultiplexer>>; Task.FromResult
+        // wraps the already-created multiplexer in a completed Task to satisfy the async signature.
         services.AddOptions<Microsoft.Extensions.Caching.StackExchangeRedis.RedisCacheOptions>()
             .Configure<IConnectionMultiplexer>((options, mux) =>
             {
