@@ -2,6 +2,7 @@ using FluentAssertions;
 using HrastERP.Infrastructure.Authentication;
 using HrastERP.Infrastructure.Database;
 using HrastERP.SharedKernel.Abstractions;
+using HrastERP.SharedKernel.Constants;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -13,7 +14,7 @@ public class AuthServiceTests : IAsyncDisposable
 {
     private sealed class FakeCurrentTenant : ICurrentTenant
     {
-        public Guid TenantId => Guid.Empty;
+        public Guid TenantId => TenantConstants.SuperAdminTenantId;
     }
 
     private readonly JwtSettings _settings = new()

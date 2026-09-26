@@ -7,6 +7,8 @@ namespace HrastERP.Infrastructure.Tests.Database;
 
 public class TenantQueryFilterTests
 {
+    private static readonly Guid SuperAdminTenantId = Guid.Parse("00000000-0000-0000-0000-100000000000");
+
     private sealed class TenantTestEntity(Guid id) : BaseEntity<Guid>(id), ITenantEntity
     {
         public Guid TenantId { get; set; }
@@ -35,8 +37,13 @@ public class TenantQueryFilterTests
                 var tenantIdProp = Expression.Property(parameter, nameof(ITenantEntity.TenantId));
                 var dbContextRef = Expression.Constant(this, typeof(TestDbContext));
                 var currentTenantIdProp = Expression.Property(dbContextRef, nameof(CurrentTenantId));
+
+                var superAdminConst = Expression.Constant(SuperAdminTenantId, typeof(Guid));
+                var isSuperAdmin = Expression.Equal(currentTenantIdProp, superAdminConst);
                 var tenantEquals = Expression.Equal(tenantIdProp, currentTenantIdProp);
-                modelBuilder.Entity(entityType.ClrType).HasQueryFilter(Expression.Lambda(tenantEquals, parameter));
+                var tenantFilter = Expression.OrElse(isSuperAdmin, tenantEquals);
+
+                modelBuilder.Entity(entityType.ClrType).HasQueryFilter(Expression.Lambda(tenantFilter, parameter));
             }
         }
     }
@@ -106,5 +113,35 @@ public class TenantQueryFilterTests
         var count = await context.TenantEntities.IgnoreQueryFilters().CountAsync();
 
         count.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task Super_admin_tenant_sees_all_entities()
+    {
+        var tenantA = Guid.NewGuid();
+        var tenantB = Guid.NewGuid();
+        await using var context = CreateContext(SuperAdminTenantId);
+
+        context.TenantEntities.Add(new TenantTestEntity(Guid.NewGuid()) { TenantId = tenantA });
+        context.TenantEntities.Add(new TenantTestEntity(Guid.NewGuid()) { TenantId = tenantB });
+        await context.SaveChangesAsync();
+
+        var count = await context.TenantEntities.CountAsync();
+        count.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task Regular_tenant_does_not_see_other_tenants()
+    {
+        var tenantA = Guid.NewGuid();
+        var tenantB = Guid.NewGuid();
+        await using var context = CreateContext(tenantA);
+
+        context.TenantEntities.Add(new TenantTestEntity(Guid.NewGuid()) { TenantId = tenantA });
+        context.TenantEntities.Add(new TenantTestEntity(Guid.NewGuid()) { TenantId = tenantB });
+        await context.SaveChangesAsync();
+
+        var count = await context.TenantEntities.CountAsync();
+        count.Should().Be(1);
     }
 }

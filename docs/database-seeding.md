@@ -61,17 +61,18 @@ VALUES ('...', 'devuser', ...)
 ON CONFLICT ("Id") DO NOTHING;
 ```
 
-## Predefined Role UUIDs
+## Predefined UUIDs
 
-These are stable across all environments and used as FK targets:
+These are stable across all environments and used as FK targets and constants:
 
-| Role | UUID |
-|---|---|
-| Administrator | `00000000-0000-0000-0000-000000000001` |
-| ProcurementOperator | `00000000-0000-0000-0000-000000000002` |
-| ProductionWorker | `00000000-0000-0000-0000-000000000003` |
-| WarehouseEmployee | `00000000-0000-0000-0000-000000000004` |
-| FinanceEmployee | `00000000-0000-0000-0000-000000000005` |
+| Entity | UUID | Seed Script |
+|---|---|---|
+| Super Admin Tenant | `00000000-0000-0000-0000-100000000000` | `Reference/0002_super_admin_tenant.sql` |
+| Administrator role | `00000000-0000-0000-0000-000000000001` | `Reference/0001_roles.sql` |
+| ProcurementOperator role | `00000000-0000-0000-0000-000000000002` | `Reference/0001_roles.sql` |
+| ProductionWorker role | `00000000-0000-0000-0000-000000000003` | `Reference/0001_roles.sql` |
+| WarehouseEmployee role | `00000000-0000-0000-0000-000000000004` | `Reference/0001_roles.sql` |
+| FinanceEmployee role | `00000000-0000-0000-0000-000000000005` | `Reference/0001_roles.sql` |
 
 ## Resetting Seed Data
 
@@ -80,4 +81,4 @@ Drop and recreate the database, re-apply migrations, then restart the app. The s
 ## Notes
 
 - `ON CONFLICT DO NOTHING` means existing rows are not updated. To update reference data (e.g. change a role's permissions), add a new script with an `UPDATE` statement — do not modify existing scripts that have already run against production databases.
-- The dev admin user fixture (`Database/Seeds/Fixtures/0001_dev_admin_user.sql`) uses `TenantId = Guid.Empty` as a placeholder until the Tenant entity is introduced in Phase 1.
+- The dev admin user fixture (`Database/Seeds/Fixtures/0001_dev_admin_user.sql`) uses `TenantId = SuperAdminTenantId` (`00000000-0000-0000-0000-100000000000`), assigning the dev admin to the super admin tenant.

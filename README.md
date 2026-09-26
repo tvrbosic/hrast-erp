@@ -11,16 +11,16 @@ The codebase maps to Clean Architecture at two levels: **shared projects** provi
 
 | Clean Architecture Layer | Shared (project) | Per-module (folder) |
 |---|---|---|
-| **Domain** | `HrastERP.SharedKernel` — base entities, value objects, Result pattern, interfaces | `Domain/` — module-specific entities, value objects, events, repository interfaces |
+| **Domain** | `HrastERP.SharedKernel` — base entities, value objects, Result pattern, interfaces | `Domain/` — module-specific entities, value objects, events |
 | **Application** | — | `Application/` — use cases organized by feature (commands and queries via CQRS) |
-| **Infrastructure** | `HrastERP.Infrastructure` — DbContext, interceptors, Identity, Hangfire, pipeline behaviors | `Infrastructure/` — EF Core configurations, repository implementations |
-| **Presentation** | `HrastERP.API` — composition root, middleware, authorization | `Web/` — module-specific API controllers |
+| **Infrastructure** | `HrastERP.Infrastructure` — DbContext, interceptors, Identity, Hangfire, pipeline behaviors | `Infrastructure/` — EF Core configurations |
+| **Presentation** | `HrastERP.API` — composition root, controllers, middleware, authorization | — |
 
 `HrastERP.SharedKernel` is the shared **Domain** layer — pure C# with no framework dependencies. It defines the abstractions (`BaseEntity`, `AggregateRoot`, `ValueObject`, `Result`, `Error`, `ICurrentUser`, `ICurrentTenant`) that all modules build on.
 
 `HrastERP.Infrastructure` is the shared **Infrastructure** layer — it owns the single `HrastDbContext`, EF Core interceptors, ASP.NET Core Identity, Hangfire, and MediatR pipeline behaviors.
 
-`HrastERP.API` is the **composition root** — it references all modules and shared infrastructure, wires everything together in `Program.cs`, and hosts the middleware pipeline. It contains no business logic.
+`HrastERP.API` is the **composition root** — it references all modules and shared infrastructure, wires everything together in `Program.cs`, owns all controllers, and hosts the middleware pipeline. It contains no business logic.
 
 ### Project Dependencies
 
@@ -55,10 +55,9 @@ src/
   Modules/
     <Module>/
       HrastERP.<Module>/                     # Single project per module
-        Domain/                              # Domain layer (entities, value objects, events, repositories)
+        Domain/                              # Domain layer (entities, value objects, events)
         Application/                         # Application layer (features with commands/queries)
-        Infrastructure/                      # Infrastructure layer (database, repositories)
-        Web/                                 # Presentation layer (controllers)
+        Infrastructure/                      # Infrastructure layer (database configurations)
 tests/
   HrastERP.SharedKernel.Tests/
   HrastERP.Infrastructure.Tests/
@@ -100,7 +99,7 @@ tests/
    ```bash
    dotnet run --project src/HrastERP.API
    ```
-   Seed scripts apply automatically on startup. Reference data (roles) is seeded in all environments. Dev fixtures (admin user) are seeded only in the `Development` environment.
+   Seed scripts apply automatically on startup. Reference data (roles, super admin tenant) is seeded in all environments. Dev fixtures (admin user) are seeded only in the `Development` environment.
 
 ### Development Credentials
 

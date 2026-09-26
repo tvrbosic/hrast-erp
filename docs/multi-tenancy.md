@@ -81,7 +81,7 @@ Once an entity implements `ITenantEntity`, the following behaviors activate with
 
 `TenantEntityInterceptor` runs on every `SaveChanges` / `SaveChangesAsync` call:
 
-- **Added entities:** `TenantId` is set from `ICurrentTenant.TenantId`. If `TenantId` is `Guid.Empty` after this assignment, an `InvalidOperationException` is thrown — this is a programming error (no valid tenant in context), not a user-facing failure.
+- **Added entities:** If the entity's `TenantId` is already set (not `Guid.Empty`), the interceptor skips it — this allows super admin users to create entities for other tenants by explicitly setting `TenantId` in the handler. If `TenantId` is `Guid.Empty`, it is populated from `ICurrentTenant.TenantId`. If `TenantId` is still `Guid.Empty` after this (no valid tenant in context), an `InvalidOperationException` is thrown — a programming error, not a user-facing failure.
 - **Modified entities:** `TenantId` is never touched — tenant reassignment is not permitted.
 - **Deleted entities:** Not relevant; soft-delete is handled by `SoftDeleteInterceptor`.
 
@@ -90,12 +90,12 @@ Once an entity implements `ITenantEntity`, the following behaviors activate with
 `HrastDbContext` registers a global query filter for every entity type implementing `ITenantEntity`:
 
 ```
-WHERE TenantId = @currentTenantId
+WHERE CurrentTenantId = SuperAdminTenantId OR TenantId = @currentTenantId
 ```
 
-This filter is applied automatically to every LINQ query, so cross-tenant rows are invisible to normal queries. You never need to add `.Where(x => x.TenantId == ...)` manually.
+This filter is applied automatically to every LINQ query. For regular tenant users, cross-tenant rows are invisible. For super admin tenant users (`TenantConstants.SuperAdminTenantId`), the filter is bypassed and all tenant records are visible. You never need to add `.Where(x => x.TenantId == ...)` manually.
 
-To bypass the filter (admin-only scenarios, purge jobs):
+To bypass the filter explicitly (purge jobs, middleware lookups):
 
 ```csharp
 await dbContext.Products.IgnoreQueryFilters().ToListAsync();
@@ -123,9 +123,11 @@ Not all entities belong to a tenant. Examples:
 
 - The `Tenant` entity itself — it is a system-wide record
 - System-wide lookup tables (currencies, units of measure, countries)
-- Identity / authentication entities (`ApplicationUser`, `RefreshToken`)
+- `RefreshToken` — linked to `ApplicationUser` via FK, not tenant-scoped directly
 
 For these, simply do not implement `ITenantEntity`. No query filter will be applied, and `TenantEntityInterceptor` will ignore them.
+
+Note: `ApplicationUser` **does** implement `ITenantEntity` — users are tenant-scoped. The super admin tenant bypass ensures admin users can still see and manage users across all tenants.
 
 ---
 

@@ -81,8 +81,8 @@ builder.Services
     .AddProductionModule(builder.Configuration);
 
 // Register MVC controllers from the API project.
-// AddApplicationPart tells MVC to also scan each module assembly for controllers,
-// since controllers live in module projects rather than in HrastERP.API.
+// AddApplicationPart tells MVC to also scan each module assembly for discoverable types
+// (e.g. controllers that may be added to modules in the future).
 builder.Services
     .AddControllers()
     .AddApplicationPart(typeof(AdministrationModule).Assembly)
@@ -135,6 +135,11 @@ app.UseAuthentication();
 // Enrich all subsequent log entries with UserId and TenantId from JWT claims.
 // Must run after UseAuthentication so claims are populated.
 app.UseLoggingEnrichment();
+
+// Block requests from deactivated users or tenants. Checks cached IsActive status
+// and returns 403 if either the user or their tenant has been deactivated.
+// Must run after authentication (needs JWT claims) and before authorization.
+app.UseMiddleware<BlockInactiveEntityMiddleware>();
 
 app.UseAuthorization();
 

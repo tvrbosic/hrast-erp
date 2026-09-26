@@ -32,6 +32,8 @@ public class Product : AggregateRoot<Guid>
 }
 ```
 
+To make an entity **tenant-scoped**, also implement `ITenantEntity` and add a `TenantId` property. See `docs/multi-tenancy.md` for the full guide. Note: `TenantEntityInterceptor` auto-populates `TenantId` only when it is `Guid.Empty` — if you set it explicitly in the handler (e.g. super admin creating for another tenant), the interceptor skips it.
+
 ---
 
 ## 2. Create the EF Core configuration (Infrastructure layer)

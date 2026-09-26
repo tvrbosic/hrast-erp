@@ -1,6 +1,7 @@
 using System.Linq.Expressions;
 using HrastERP.Infrastructure.Authentication;
 using HrastERP.SharedKernel.Abstractions;
+using HrastERP.SharedKernel.Constants;
 using HrastERP.SharedKernel.Domain;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -71,16 +72,18 @@ public sealed class HrastDbContext(
             // Tenant filter
             if (typeof(ITenantEntity).IsAssignableFrom(clrType))
             {
-                // Create a property expression for the TenantId property.
                 var tenantIdProp = Expression.Property(parameter, nameof(ITenantEntity.TenantId));
-                // Create a constant expression for the DbContext instance.
                 var dbContextRef = Expression.Constant(this, typeof(HrastDbContext));
-                // Create a property expression for the CurrentTenantId property.
                 var currentTenantIdProp = Expression.Property(dbContextRef, nameof(CurrentTenantId));
-                // Create a filter expression to check if the TenantId property is equal to the CurrentTenantId property.
+
+                // Super admin tenant bypass: if the current tenant is the super admin tenant,
+                // all entities are visible regardless of their TenantId.
+                var superAdminConst = Expression.Constant(TenantConstants.SuperAdminTenantId, typeof(Guid));
+                var isSuperAdmin = Expression.Equal(currentTenantIdProp, superAdminConst);
                 var tenantEquals = Expression.Equal(tenantIdProp, currentTenantIdProp);
-                // Combine the filter expressions with an AND operator.
-                filter = filter is null ? tenantEquals : Expression.AndAlso(filter, tenantEquals);
+                var tenantFilter = Expression.OrElse(isSuperAdmin, tenantEquals);
+
+                filter = filter is null ? tenantFilter : Expression.AndAlso(filter, tenantFilter);
             }
 
             // If the filter expression is not null, apply it to the entity type.

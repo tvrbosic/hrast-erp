@@ -100,4 +100,31 @@ public class TenantEntityInterceptorTests
 
         await act.Should().NotThrowAsync();
     }
+
+    [Fact]
+    public async Task Added_entity_with_TenantId_already_set_is_not_overwritten()
+    {
+        var currentTenantId = Guid.NewGuid();
+        var presetTenantId = Guid.NewGuid();
+        await using var context = CreateContext(currentTenantId);
+        var entity = new TestTenantEntity(Guid.NewGuid()) { TenantId = presetTenantId };
+
+        context.TenantEntities.Add(entity);
+        await context.SaveChangesAsync();
+
+        entity.TenantId.Should().Be(presetTenantId);
+    }
+
+    [Fact]
+    public async Task Added_entity_with_empty_TenantId_gets_current_tenant()
+    {
+        var tenantId = Guid.NewGuid();
+        await using var context = CreateContext(tenantId);
+        var entity = new TestTenantEntity(Guid.NewGuid()) { TenantId = Guid.Empty };
+
+        context.TenantEntities.Add(entity);
+        await context.SaveChangesAsync();
+
+        entity.TenantId.Should().Be(tenantId);
+    }
 }

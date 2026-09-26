@@ -39,13 +39,18 @@ public sealed class TenantEntityInterceptor(ICurrentTenant currentTenant) : Save
             if (entry.State != EntityState.Added)
                 continue;
 
-            entry.Property(nameof(ITenantEntity.TenantId)).CurrentValue = currentTenant.TenantId;
+            var currentValue = (Guid)entry.Property(nameof(ITenantEntity.TenantId)).CurrentValue!;
+
+            if (currentValue != Guid.Empty)
+                continue;
 
             if (currentTenant.TenantId == Guid.Empty)
             {
                 throw new InvalidOperationException(
                     "Cannot save a tenant-scoped entity without a valid tenant context.");
             }
+
+            entry.Property(nameof(ITenantEntity.TenantId)).CurrentValue = currentTenant.TenantId;
         }
     }
 }

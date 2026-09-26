@@ -1,9 +1,10 @@
-using Microsoft.AspNetCore.Identity;
 using HrastERP.Infrastructure.Authorization;
+using HrastERP.SharedKernel.Domain;
+using Microsoft.AspNetCore.Identity;
 
 namespace HrastERP.Infrastructure.Authentication;
 
-public sealed class ApplicationUser : IdentityUser<Guid>
+public sealed class ApplicationUser : IdentityUser<Guid>, ITenantEntity
 {
     public Guid TenantId { get; set; }
     public string FirstName { get; set; } = string.Empty;
