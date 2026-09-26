@@ -255,9 +255,25 @@ Serilog-based structured logging infrastructure. Replaces the default ASP.NET Co
 
 **Configuration (hybrid):** Structural setup (enrichers, sinks) in C# via `LoggingServiceExtensions`. Tunable values (log levels, file path, retention) in `appsettings.json` under `"Serilog"`. Per-namespace log level overrides suppress framework noise (`Microsoft.AspNetCore`, `Microsoft.EntityFrameworkCore`, `Hangfire`, `System.Net.Http`) to `Warning` in production, relaxed to `Information` in Development.
 
-**Middleware order in Program.cs:** `GlobalExceptionMiddleware` → `UseSerilogRequestLogging()` → ... → `UseAuthentication()` → `LoggingEnrichmentMiddleware` → `UseAuthorization()`.
+**Middleware order in Program.cs:** `GlobalExceptionMiddleware` → `UseSerilogRequestLogging()` → ... → `UseAuthentication()` → `LoggingEnrichmentMiddleware` → `UseAuthorization()` → `MapControllers()` → `MapHealthChecks("/health")` → `MapOpenApi()` + `MapScalarApiReference()` (Development only).
 
 See `docs/logging.md` for the developer guide on logging conventions and configuration.
+
+## API Documentation & Health Checks
+
+**OpenAPI + Scalar UI** — Development-only interactive API documentation. Configured in `HrastERP.API/Extensions/OpenApiServiceExtensions.cs`.
+
+- `AddOpenApiServices()` registers OpenAPI document generation with a JWT `BearerAuth` security scheme applied globally
+- `UseOpenApiInfrastructure()` maps the OpenAPI JSON endpoint and Scalar UI; guarded by `IsDevelopment()`
+- **URLs:** OpenAPI document at `/openapi/v1.json`, Scalar UI at `/scalar/v1`
+
+**Health checks** — `GET /health` returns JSON with per-dependency status for PostgreSQL, Redis, and SMTP. Unauthenticated (`.AllowAnonymous()`), available in all environments. Configured in `HrastERP.API/Extensions/HealthCheckServiceExtensions.cs`.
+
+- **Response:** `{ status, checks: { database, redis, smtp }, totalDuration }` — 200 for Healthy/Degraded, 503 for Unhealthy
+- **Custom SMTP check** (`HrastERP.API/HealthChecks/SmtpHealthCheck.cs`) — TCP connectivity only, 3-second timeout
+- **JSON response writer** (`HrastERP.API/HealthChecks/HealthCheckResponseWriter.cs`) — formats the health report as camelCase JSON
+
+**Adding a new health check:** Register it in `HealthCheckServiceExtensions.AddHealthCheckServices()` via `.AddCheck<T>(name)`. It will appear automatically in the `/health` response.
 
 ## Test stack
 

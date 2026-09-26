@@ -66,3 +66,6 @@ nunit-*.xml
 
 # Local file storage
 storage/
+
+# Superpowers skill files
+docs/superpowers/

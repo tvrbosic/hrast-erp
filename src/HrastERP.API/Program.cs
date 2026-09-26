@@ -94,6 +94,12 @@ builder.Services
 // Configure the model binding error format to return consistent error message (ErrorResponse type) in case of API layer validation errors.
 builder.Services.ConfigureModelBindingErrorFormat();
 
+// Register OpenAPI document generation with JWT security scheme for Scalar UI.
+builder.Services.AddOpenApiServices();
+
+// Register health checks for PostgreSQL, Redis, and SMTP connectivity.
+builder.Services.AddHealthCheckServices(builder.Configuration);
+
 var app = builder.Build();
 
 // Requires migrations to be applied first: dotnet ef database update
@@ -134,4 +140,11 @@ app.UseAuthorization();
 
 // Build the routing table by mapping HTTP routes to controller actions discovered in all application parts.
 app.MapControllers();
+
+// Health check endpoint — unauthenticated, available in all environments.
+app.UseHealthCheckEndpoint();
+
+// OpenAPI document + Scalar UI — Development only.
+app.UseOpenApiInfrastructure();
+
 app.Run();
