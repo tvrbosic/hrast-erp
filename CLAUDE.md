@@ -124,8 +124,8 @@ JWT Bearer authentication with ASP.NET Core Identity. Key components:
 
 **Infrastructure layer** (`HrastERP.Infrastructure/Authentication/`):
 - **`ApplicationUser`** — extends `IdentityUser<Guid>`, implements `ITenantEntity`; has `TenantId` (FK to `Tenant`), `FirstName`/`LastName`, `IsActive`, and a nullable `RoleId` FK + `Role` navigation (single role per user)
-- **`RefreshToken`** — entity for refresh token rotation, linked to `ApplicationUser`
-- **`IAuthService` / `AuthService`** — login, register, refresh, and logout flows using Identity + token service
+- **`RefreshToken`** — entity for refresh token rotation, linked to `ApplicationUser`; implements `ITenantEntity` with `TenantId` set explicitly from `user.TenantId` in `AuthService` (not auto-populated by interceptor, since login has no JWT context)
+- **`IAuthService` / `AuthService`** — login, refresh, and logout flows using Identity + token service. All queries use `IgnoreQueryFilters()` because auth flows run without a JWT (no tenant context), so tenant and soft-delete filters would otherwise hide all records. `IsActive` is checked explicitly after lookup.
 - **`ITokenService` / `TokenService`** — generates JWT access tokens and refresh tokens
 - **`AuthErrors`** — predefined `Error` constants for auth failures (e.g. `Auth.InvalidCredentials`)
 
@@ -192,7 +192,7 @@ Hangfire with PostgreSQL storage provides background job infrastructure. Configu
 - **`HangfireSettings`** — configuration: `WorkerCount` (default 1), `SoftDeleteRetentionDays` (default 90), `RevokedTokenRetentionDays` (default 7), cron expressions for each cleanup job
 - **`IRecurringJobDefinition`** — (`Services/`) pure C# interface for self-registering recurring background jobs; exposes `JobId`, `CronExpression`, and `ExecuteAsync(CancellationToken)`. Implementations are auto-discovered at startup by `RecurringJobRegistrar`.
 - **`IBackgroundJobService` / `HangfireBackgroundJobService`** — (`Services/`) thin wrapper over Hangfire's static APIs for `Enqueue`, `Schedule`, and `AddOrUpdateRecurring`
-- **`RecurringJobRegistrar`** — (`Services/`) static class called at startup; resolves all `IRecurringJobDefinition` implementations, validates `JobId` uniqueness, and registers them with Hangfire
+- **`RecurringJobRegistrar`** — (`Services/`) static class called at startup; resolves all `IRecurringJobDefinition` implementations and `IRecurringJobManager` from DI, validates `JobId` uniqueness, and registers them with Hangfire. Uses `Job.FromExpression<T>()` via reflection (concrete job type only known at runtime) and `IRecurringJobManager` (not the static `RecurringJob` class, which requires `JobStorage` to be initialized first).
 - **`LocalhostDashboardAuthorizationFilter`** — (`Filters/`) restricts Hangfire dashboard (`/hangfire`) to localhost connections only
 
 **Built-in cleanup jobs** (`HrastERP.Infrastructure/Hangfire/Jobs/`):

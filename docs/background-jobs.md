@@ -49,7 +49,7 @@ public interface IRecurringJobDefinition
 
 ### RecurringJobRegistrar
 
-Called once at startup in `Program.cs`. Resolves all `IRecurringJobDefinition` implementations from DI, validates `JobId` uniqueness (throws `InvalidOperationException` on duplicates), and registers each with Hangfire.
+Called once at startup in `Program.cs`. Resolves all `IRecurringJobDefinition` implementations and `IRecurringJobManager` from DI, validates `JobId` uniqueness (throws `InvalidOperationException` on duplicates), and registers each with Hangfire. Uses `Job.FromExpression<T>()` via reflection because the concrete job type is only known at runtime, then passes the `Job` object to `IRecurringJobManager.AddOrUpdate()`.
 
 ### IBackgroundJobService
 

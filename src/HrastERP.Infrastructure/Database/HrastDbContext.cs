@@ -92,5 +92,6 @@ public sealed class HrastDbContext(
                 modelBuilder.Entity(clrType).HasQueryFilter(Expression.Lambda(filter, parameter));
             }
         }
+
     }
 }

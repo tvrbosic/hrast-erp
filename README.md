@@ -105,7 +105,7 @@ tests/
 
 | Field | Value |
 |---|---|
-| Username | `admin` |
+| Email | `admin@hrasterp.local` |
 | Password | `admin` |
 
 ### Resetting the Database

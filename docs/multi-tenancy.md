@@ -101,6 +101,8 @@ To bypass the filter explicitly (purge jobs, middleware lookups):
 await dbContext.Products.IgnoreQueryFilters().ToListAsync();
 ```
 
+**Auth flows bypass the filter:** `AuthService` uses `IgnoreQueryFilters()` for login, refresh, and logout queries. These run before a JWT exists (login) or use a token value for lookup (refresh/logout), so the tenant filter would exclude all records. User active status is checked explicitly after lookup.
+
 ### On request — `TenantValidationBehavior`
 
 Before any MediatR handler executes, `TenantValidationBehavior` checks that `ICurrentTenant.TenantId` is not `Guid.Empty`. If it is, the pipeline short-circuits:
@@ -123,7 +125,6 @@ Not all entities belong to a tenant. Examples:
 
 - The `Tenant` entity itself — it is a system-wide record
 - System-wide lookup tables (currencies, units of measure, countries)
-- `RefreshToken` — linked to `ApplicationUser` via FK, not tenant-scoped directly
 
 For these, simply do not implement `ITenantEntity`. No query filter will be applied, and `TenantEntityInterceptor` will ignore them.
 

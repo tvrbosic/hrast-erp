@@ -1,4 +1,7 @@
 using FluentAssertions;
+using Hangfire;
+using Hangfire.Common;
+using Hangfire.States;
 using HrastERP.Infrastructure.Hangfire.Services;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -13,13 +16,31 @@ public class RecurringJobRegistrarTests
         public Task ExecuteAsync(CancellationToken cancellationToken) => Task.CompletedTask;
     }
 
+    private sealed class StubRecurringJobManager : IRecurringJobManager
+    {
+        public void AddOrUpdate(string recurringJobId, Job job, string cronExpression, RecurringJobOptions options)
+        {
+        }
+
+        public void RemoveIfExists(string recurringJobId) { }
+        public void Trigger(string recurringJobId) { }
+    }
+
+    private static ServiceProvider BuildProvider(params FakeJob[] jobs)
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<IRecurringJobManager>(new StubRecurringJobManager());
+        foreach (var job in jobs)
+            services.AddSingleton<IRecurringJobDefinition>(job);
+        return services.BuildServiceProvider();
+    }
+
     [Fact]
     public void RegisterAll_DuplicateJobIds_ThrowsInvalidOperationException()
     {
-        var services = new ServiceCollection();
-        services.AddSingleton<IRecurringJobDefinition>(new FakeJob("duplicate-id", "0 * * * *"));
-        services.AddSingleton<IRecurringJobDefinition>(new FakeJob("duplicate-id", "0 * * * *"));
-        var provider = services.BuildServiceProvider();
+        using var provider = BuildProvider(
+            new FakeJob("duplicate-id", "0 * * * *"),
+            new FakeJob("duplicate-id", "0 * * * *"));
 
         var act = () => RecurringJobRegistrar.RegisterAll(provider);
 
@@ -30,8 +51,7 @@ public class RecurringJobRegistrarTests
     [Fact]
     public void RegisterAll_EmptyDefinitions_DoesNotThrow()
     {
-        var services = new ServiceCollection();
-        var provider = services.BuildServiceProvider();
+        using var provider = BuildProvider();
 
         var act = () => RecurringJobRegistrar.RegisterAll(provider);
 

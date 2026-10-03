@@ -1,9 +1,12 @@
+using HrastERP.SharedKernel.Domain;
+
 namespace HrastERP.Infrastructure.Authentication;
 
-public sealed class RefreshToken
+public sealed class RefreshToken : ITenantEntity
 {
     public Guid Id { get; set; }
     public Guid UserId { get; set; }
+    public Guid TenantId { get; set; }
     public string Token { get; set; } = string.Empty;
     public DateTime ExpiresAt { get; set; }
     public DateTime CreatedAt { get; set; }

@@ -20,8 +20,10 @@ internal sealed class AuthService(
     public async Task<Result<AuthResponse>> LoginAsync(
         string email, string password, CancellationToken ct = default)
     {
-        // Look up user and verify credentials
+        // Look up user and verify credentials.
+        // IgnoreQueryFilters: no JWT exists yet at login, so tenant filter would exclude all users.
         var user = await userManager.Users
+            .IgnoreQueryFilters()
             .Include(u => u.Role)
             .FirstOrDefaultAsync(u => u.Email == email, ct);
         if (user is null)
@@ -46,8 +48,10 @@ internal sealed class AuthService(
         // Hash inbound refresh token
         var hashedToken = tokenService.HashToken(refreshToken);
 
-        // Verify that hashed token exists in database
+        // Verify that hashed token exists in database.
+        // IgnoreQueryFilters: refresh tokens are looked up by token value, not tenant context.
         var storedToken = await dbContext.Set<RefreshToken>()
+            .IgnoreQueryFilters()
             .Include(rt => rt.User)
             .ThenInclude(u => u.Role)
             .FirstOrDefaultAsync(rt => rt.Token == hashedToken, ct);
@@ -67,6 +71,7 @@ internal sealed class AuthService(
         {
             Id = Guid.NewGuid(),
             UserId = storedToken.UserId,
+            TenantId = storedToken.User.TenantId,
             Token = hashedNewToken,
             CreatedAt = DateTime.UtcNow,
             ExpiresAt = DateTime.UtcNow.AddDays(_settings.RefreshTokenExpirationDays)
@@ -92,6 +97,7 @@ internal sealed class AuthService(
         var hashedToken = tokenService.HashToken(refreshToken);
 
         var storedToken = await dbContext.Set<RefreshToken>()
+            .IgnoreQueryFilters()
             .FirstOrDefaultAsync(rt => rt.Token == hashedToken, ct);
 
         // Revoke if found and not already revoked; silently succeed otherwise
@@ -119,6 +125,7 @@ internal sealed class AuthService(
         {
             Id = Guid.NewGuid(),
             UserId = user.Id,
+            TenantId = user.TenantId,
             Token = hashedRefreshToken,
             CreatedAt = DateTime.UtcNow,
             ExpiresAt = DateTime.UtcNow.AddDays(_settings.RefreshTokenExpirationDays)
