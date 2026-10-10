@@ -15,7 +15,7 @@ public class ValueObjectTests
     }
 
     [Fact]
-    public void Value_objects_with_same_components_should_be_equal()
+    public void Is_equal_When_components_are_identical()
     {
         var a = new Money(10m, "EUR");
         var b = new Money(10m, "EUR");
@@ -24,7 +24,7 @@ public class ValueObjectTests
     }
 
     [Fact]
-    public void Value_objects_with_different_components_should_not_be_equal()
+    public void Is_not_equal_When_any_component_differs()
     {
         var a = new Money(10m, "EUR");
         var b = new Money(20m, "EUR");
@@ -33,7 +33,7 @@ public class ValueObjectTests
     }
 
     [Fact]
-    public void Value_objects_with_same_components_have_equal_hash_codes()
+    public void Has_equal_hash_codes_When_components_are_identical()
     {
         var a = new Money(10m, "EUR");
         var b = new Money(10m, "EUR");
@@ -42,7 +42,7 @@ public class ValueObjectTests
     }
 
     [Fact]
-    public void Equality_operator_returns_true_for_equal_value_objects()
+    public void Equality_operator_returns_true_When_components_are_identical()
     {
         var a = new Money(10m, "EUR");
         var b = new Money(10m, "EUR");
@@ -51,7 +51,7 @@ public class ValueObjectTests
     }
 
     [Fact]
-    public void Inequality_operator_returns_true_for_different_value_objects()
+    public void Inequality_operator_returns_true_When_any_component_differs()
     {
         var a = new Money(10m, "EUR");
         var b = new Money(10m, "USD");

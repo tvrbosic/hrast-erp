@@ -6,7 +6,7 @@ namespace HrastERP.Infrastructure.Tests.Authentication;
 public class RefreshTokenTests
 {
     [Fact]
-    public void IsExpired_WhenExpiresAtInPast_ReturnsTrue()
+    public void IsExpired_is_true_When_ExpiresAt_is_in_the_past()
     {
         var token = new RefreshToken { ExpiresAt = DateTime.UtcNow.AddMinutes(-1) };
 
@@ -14,7 +14,7 @@ public class RefreshTokenTests
     }
 
     [Fact]
-    public void IsExpired_WhenExpiresAtInFuture_ReturnsFalse()
+    public void IsExpired_is_false_When_ExpiresAt_is_in_the_future()
     {
         var token = new RefreshToken { ExpiresAt = DateTime.UtcNow.AddMinutes(10) };
 
@@ -22,7 +22,7 @@ public class RefreshTokenTests
     }
 
     [Fact]
-    public void IsRevoked_WhenRevokedAtIsSet_ReturnsTrue()
+    public void IsRevoked_is_true_When_RevokedAt_is_set()
     {
         var token = new RefreshToken { RevokedAt = DateTime.UtcNow };
 
@@ -30,7 +30,7 @@ public class RefreshTokenTests
     }
 
     [Fact]
-    public void IsRevoked_WhenRevokedAtIsNull_ReturnsFalse()
+    public void IsRevoked_is_false_When_RevokedAt_is_null()
     {
         var token = new RefreshToken { RevokedAt = null };
 
@@ -38,7 +38,7 @@ public class RefreshTokenTests
     }
 
     [Fact]
-    public void IsActive_WhenNotExpiredAndNotRevoked_ReturnsTrue()
+    public void IsActive_is_true_When_not_expired_and_not_revoked()
     {
         var token = new RefreshToken
         {
@@ -50,7 +50,7 @@ public class RefreshTokenTests
     }
 
     [Fact]
-    public void IsActive_WhenExpired_ReturnsFalse()
+    public void IsActive_is_false_When_token_is_expired()
     {
         var token = new RefreshToken
         {
@@ -62,7 +62,7 @@ public class RefreshTokenTests
     }
 
     [Fact]
-    public void IsActive_WhenRevoked_ReturnsFalse()
+    public void IsActive_is_false_When_token_is_revoked()
     {
         var token = new RefreshToken
         {

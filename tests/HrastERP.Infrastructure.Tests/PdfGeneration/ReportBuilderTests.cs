@@ -24,7 +24,7 @@ public class ReportBuilderTests
     }
 
     [Fact]
-    public void FormatCurrency_PositiveAmount_ReturnsFormattedString()
+    public void Formats_positive_amount_as_string_When_currency_is_formatted()
     {
         var result = _sut.FormatCurrency(1234.56m);
 
@@ -32,7 +32,7 @@ public class ReportBuilderTests
     }
 
     [Fact]
-    public void FormatCurrency_Zero_ReturnsFormattedZero()
+    public void Formats_zero_correctly_When_currency_is_formatted()
     {
         var result = _sut.FormatCurrency(0m);
 
@@ -40,7 +40,7 @@ public class ReportBuilderTests
     }
 
     [Fact]
-    public void FormatCurrency_NegativeAmount_ReturnsFormattedNegative()
+    public void Formats_negative_amount_correctly_When_currency_is_formatted()
     {
         var result = _sut.FormatCurrency(-500.00m);
 
@@ -48,7 +48,7 @@ public class ReportBuilderTests
     }
 
     [Fact]
-    public void FormatDate_ReturnsIsoFormat()
+    public void Returns_ISO_date_format_When_date_is_formatted()
     {
         var result = _sut.FormatDate(new DateTime(2026, 8, 31));
 
@@ -56,25 +56,25 @@ public class ReportBuilderTests
     }
 
     [Fact]
-    public void PrimaryColor_ReturnsConfiguredHex()
+    public void Returns_configured_hex_When_primary_color_is_accessed()
     {
         _sut.PrimaryColor().Should().Be("#2D5016");
     }
 
     [Fact]
-    public void AccentColor_ReturnsConfiguredHex()
+    public void Returns_configured_hex_When_accent_color_is_accessed()
     {
         _sut.AccentColor().Should().Be("#4A7C28");
     }
 
     [Fact]
-    public void TextColor_ReturnsConfiguredHex()
+    public void Returns_configured_hex_When_text_color_is_accessed()
     {
         _sut.TextColor().Should().Be("#1A1A1A");
     }
 
     [Fact]
-    public void Generate_WithReportBuilder_ProducesValidPdf()
+    public void Produces_valid_PDF_bytes_When_document_is_generated()
     {
         var document = Document.Create(container =>
         {

@@ -1,61 +1,76 @@
 using FluentAssertions;
 using HrastERP.Infrastructure.Caching;
-using Microsoft.Extensions.Caching.Distributed;
-using Microsoft.Extensions.Caching.Memory;
+using HrastERP.Infrastructure.Tests.Fixtures;
+using Microsoft.Extensions.Caching.StackExchangeRedis;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using StackExchange.Redis;
 
 namespace HrastERP.Infrastructure.Tests.Caching;
 
-public class RedisCacheServiceTests
+[Trait("Category", "Integration")]
+public class RedisCacheServiceTests : IClassFixture<RedisContainerFixture>, IAsyncLifetime
 {
-    private readonly RedisCacheService _sut;
+    private readonly RedisContainerFixture _fixture;
+    private IConnectionMultiplexer _multiplexer = null!;
+    private RedisCacheService _sut = null!;
 
-    public RedisCacheServiceTests()
+    public RedisCacheServiceTests(RedisContainerFixture fixture)
     {
-        var cache = new MemoryDistributedCache(
-            Options.Create(new MemoryDistributedCacheOptions()));
+        _fixture = fixture;
+    }
+
+    public async Task InitializeAsync()
+    {
+        _multiplexer = await ConnectionMultiplexer.ConnectAsync(_fixture.ConnectionString);
+
+        var cache = new RedisCache(Options.Create(new RedisCacheOptions
+        {
+            Configuration = _fixture.ConnectionString
+        }));
 
         var settings = Options.Create(new CacheSettings
         {
-            ConnectionString = "localhost:6379",
+            ConnectionString = _fixture.ConnectionString,
             DefaultTtlMinutes = 5
         });
 
-        // IConnectionMultiplexer is null — RemoveByPrefixAsync tests verify graceful failure only.
-        // Full prefix removal requires a live Redis connection.
-        _sut = new RedisCacheService(
-            cache,
-            null!,
-            settings,
-            NullLogger<RedisCacheService>.Instance);
+        _sut = new RedisCacheService(cache, _multiplexer, settings, NullLogger<RedisCacheService>.Instance);
+    }
+
+    public Task DisposeAsync()
+    {
+        _multiplexer.Dispose();
+        return Task.CompletedTask;
     }
 
     [Fact]
-    public async Task GetAsync_NonExistentKey_ReturnsNull()
+    public async Task Returns_null_When_key_does_not_exist()
     {
-        var result = await _sut.GetAsync<string>("nonexistent");
+        var result = await _sut.GetAsync<string>("nonexistent-" + Guid.NewGuid());
 
         result.Should().BeNull();
     }
 
     [Fact]
-    public async Task SetAsync_ThenGetAsync_ReturnsStoredValue()
+    public async Task Returns_stored_value_When_key_exists()
     {
-        await _sut.SetAsync("test-key", "test-value");
+        var key = "test-key-" + Guid.NewGuid();
+        await _sut.SetAsync(key, "test-value");
 
-        var result = await _sut.GetAsync<string>("test-key");
+        var result = await _sut.GetAsync<string>(key);
 
         result.Should().Be("test-value");
     }
 
     [Fact]
-    public async Task SetAsync_ComplexObject_RoundTripsCorrectly()
+    public async Task Serializes_and_deserializes_complex_object_correctly_When_stored_and_retrieved()
     {
+        var key = "complex-key-" + Guid.NewGuid();
         var data = new TestData { Name = "test", Value = 42 };
 
-        await _sut.SetAsync("complex-key", data);
-        var result = await _sut.GetAsync<TestData>("complex-key");
+        await _sut.SetAsync(key, data);
+        var result = await _sut.GetAsync<TestData>(key);
 
         result.Should().NotBeNull();
         result!.Name.Should().Be("test");
@@ -63,33 +78,42 @@ public class RedisCacheServiceTests
     }
 
     [Fact]
-    public async Task RemoveAsync_ExistingKey_RemovesFromCache()
+    public async Task Removes_key_from_cache_When_key_exists()
     {
-        await _sut.SetAsync("remove-me", "value");
+        var key = "remove-me-" + Guid.NewGuid();
+        await _sut.SetAsync(key, "value");
 
-        await _sut.RemoveAsync("remove-me");
+        await _sut.RemoveAsync(key);
 
-        var result = await _sut.GetAsync<string>("remove-me");
+        var result = await _sut.GetAsync<string>(key);
         result.Should().BeNull();
     }
 
     [Fact]
-    public async Task SetAsync_WithCustomExpiration_UsesProvidedTtl()
+    public async Task Expires_key_When_custom_ttl_elapses()
     {
-        await _sut.SetAsync("short-ttl", "value", TimeSpan.FromMilliseconds(1));
+        var key = "short-ttl-" + Guid.NewGuid();
+        await _sut.SetAsync(key, "value", TimeSpan.FromMilliseconds(100));
 
-        await Task.Delay(50);
+        await Task.Delay(500);
 
-        var result = await _sut.GetAsync<string>("short-ttl");
+        var result = await _sut.GetAsync<string>(key);
         result.Should().BeNull();
     }
 
     [Fact]
-    public async Task RemoveByPrefixAsync_WhenRedisUnavailable_DoesNotThrow()
+    public async Task Removes_all_matching_keys_When_prefix_matches()
     {
-        var act = () => _sut.RemoveByPrefixAsync("some-prefix");
+        var prefix = "test-prefix-" + Guid.NewGuid().ToString("N");
+        await _sut.SetAsync($"{prefix}:key1", "value1");
+        await _sut.SetAsync($"{prefix}:key2", "value2");
 
-        await act.Should().NotThrowAsync();
+        await _sut.RemoveByPrefixAsync(prefix);
+
+        var result1 = await _sut.GetAsync<string>($"{prefix}:key1");
+        var result2 = await _sut.GetAsync<string>($"{prefix}:key2");
+        result1.Should().BeNull();
+        result2.Should().BeNull();
     }
 
     private sealed class TestData

@@ -5,6 +5,7 @@ using HrastERP.SharedKernel.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using NSubstitute;
 
 namespace HrastERP.Infrastructure.Tests.FileStorage;
 
@@ -12,27 +13,25 @@ public class LocalFileStorageServiceTests : IDisposable
 {
     private readonly string _tempDir;
     private readonly Guid _tenantId = Guid.NewGuid();
+    private readonly ICurrentTenant _currentTenant;
 
     public LocalFileStorageServiceTests()
     {
         _tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
         Directory.CreateDirectory(_tempDir);
-    }
 
-    private sealed class StubCurrentTenant(Guid tenantId) : ICurrentTenant
-    {
-        public Guid TenantId => tenantId;
+        _currentTenant = Substitute.For<ICurrentTenant>();
+        _currentTenant.TenantId.Returns(_tenantId);
     }
 
     private HrastDbContext CreateDbContext()
     {
-        var tenant = new StubCurrentTenant(_tenantId);
         var options = new DbContextOptionsBuilder<HrastDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .AddInterceptors(new TenantEntityInterceptor(tenant))
+            .AddInterceptors(new TenantEntityInterceptor(_currentTenant))
             .Options;
 
-        return new HrastDbContext(options, [], tenant);
+        return new HrastDbContext(options, [], _currentTenant);
     }
 
     private LocalFileStorageService CreateService(HrastDbContext dbContext, FileStorageSettings? settings = null)
@@ -41,7 +40,7 @@ public class LocalFileStorageServiceTests : IDisposable
         return new LocalFileStorageService(
             Options.Create(settings),
             dbContext,
-            new StubCurrentTenant(_tenantId),
+            _currentTenant,
             NullLogger<LocalFileStorageService>.Instance);
     }
 
@@ -53,7 +52,7 @@ public class LocalFileStorageServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task UploadAsync_ValidFile_SavesFileToDiskAndDatabase()
+    public async Task Saves_file_to_disk_and_database_When_upload_succeeds()
     {
         await using var dbContext = CreateDbContext();
         var service = CreateService(dbContext);
@@ -77,7 +76,7 @@ public class LocalFileStorageServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task UploadAsync_ExceedsMaxSize_ReturnsFileTooLarge()
+    public async Task Returns_FileTooLarge_error_When_file_exceeds_max_size()
     {
         await using var dbContext = CreateDbContext();
         var settings = new FileStorageSettings { RootPath = _tempDir, MaxFileSizeBytes = 50 };
@@ -91,7 +90,7 @@ public class LocalFileStorageServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task UploadAsync_DisallowedContentType_ReturnsContentTypeNotAllowed()
+    public async Task Returns_ContentTypeNotAllowed_error_When_content_type_is_not_allowed()
     {
         await using var dbContext = CreateDbContext();
         var service = CreateService(dbContext);
@@ -104,7 +103,7 @@ public class LocalFileStorageServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task DownloadAsync_ExistingFile_ReturnsStream()
+    public async Task Returns_file_stream_When_file_exists()
     {
         await using var dbContext = CreateDbContext();
         var service = CreateService(dbContext);
@@ -127,7 +126,7 @@ public class LocalFileStorageServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task DownloadAsync_NonExistentId_ReturnsFileNotFound()
+    public async Task Returns_FileNotFound_error_When_file_id_does_not_exist()
     {
         await using var dbContext = CreateDbContext();
         var service = CreateService(dbContext);
@@ -139,7 +138,7 @@ public class LocalFileStorageServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task DownloadAsync_DbRecordExistsButFileGone_ReturnsFileNotFound()
+    public async Task Returns_FileNotFound_error_When_physical_file_is_missing()
     {
         await using var dbContext = CreateDbContext();
         var service = CreateService(dbContext);
@@ -160,7 +159,7 @@ public class LocalFileStorageServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task DeleteAsync_ExistingFile_RemovesPhysicalFile()
+    public async Task Removes_physical_file_When_file_exists()
     {
         await using var dbContext = CreateDbContext();
         var service = CreateService(dbContext);
@@ -179,7 +178,7 @@ public class LocalFileStorageServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task DeleteAsync_NonExistentId_ReturnsFileNotFound()
+    public async Task Returns_FileNotFound_error_When_deleting_nonexistent_file()
     {
         await using var dbContext = CreateDbContext();
         var service = CreateService(dbContext);
@@ -191,7 +190,7 @@ public class LocalFileStorageServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task GetUrlAsync_ExistingFile_ReturnsUrl()
+    public async Task Returns_file_url_When_file_exists()
     {
         await using var dbContext = CreateDbContext();
         var service = CreateService(dbContext);
@@ -206,7 +205,7 @@ public class LocalFileStorageServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task GetUrlAsync_NonExistentId_ReturnsFileNotFound()
+    public async Task Returns_FileNotFound_error_When_getting_url_for_nonexistent_file()
     {
         await using var dbContext = CreateDbContext();
         var service = CreateService(dbContext);

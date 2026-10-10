@@ -59,7 +59,7 @@ public class TokenServiceTests
     };
 
     [Fact]
-    public void GenerateAccessToken_ContainsExpectedClaims()
+    public void Contains_expected_claims_When_access_token_is_generated()
     {
         var user = CreateTestUser();
 
@@ -76,7 +76,7 @@ public class TokenServiceTests
     }
 
     [Fact]
-    public void GenerateAccessToken_HasCorrectExpiry()
+    public void Has_correct_expiry_When_access_token_is_generated()
     {
         var user = CreateTestUser();
         var beforeGeneration = DateTime.UtcNow;
@@ -91,7 +91,7 @@ public class TokenServiceTests
     }
 
     [Fact]
-    public void GenerateAccessToken_IsSignedWithHmacSha256()
+    public void Is_signed_with_HmacSha256_When_access_token_is_generated()
     {
         var user = CreateTestUser();
 
@@ -104,7 +104,7 @@ public class TokenServiceTests
     }
 
     [Fact]
-    public void GenerateAccessToken_CanBeValidated()
+    public void Can_be_validated_When_correct_signing_key_is_used()
     {
         var user = CreateTestUser();
         var token = _sut.GenerateAccessToken(user);
@@ -129,7 +129,7 @@ public class TokenServiceTests
     }
 
     [Fact]
-    public void GenerateRefreshToken_ReturnsUniqueTokens()
+    public void Returns_unique_tokens_When_called_multiple_times()
     {
         var (raw1, _) = _sut.GenerateRefreshToken();
         var (raw2, _) = _sut.GenerateRefreshToken();
@@ -138,7 +138,7 @@ public class TokenServiceTests
     }
 
     [Fact]
-    public void GenerateRefreshToken_HashMatchesRawToken()
+    public void Hash_matches_raw_token_When_rehashed()
     {
         var (rawToken, hashedToken) = _sut.GenerateRefreshToken();
 
@@ -148,7 +148,7 @@ public class TokenServiceTests
     }
 
     [Fact]
-    public void HashToken_IsDeterministic()
+    public void Produces_same_hash_When_same_input_is_provided()
     {
         const string input = "test-token-value";
 
@@ -159,7 +159,7 @@ public class TokenServiceTests
     }
 
     [Fact]
-    public void HashToken_DifferentInputs_ProduceDifferentHashes()
+    public void Produces_different_hashes_When_inputs_differ()
     {
         var hash1 = _sut.HashToken("token-a");
         var hash2 = _sut.HashToken("token-b");
@@ -168,7 +168,7 @@ public class TokenServiceTests
     }
 
     [Fact]
-    public void GenerateAccessToken_WithRole_IncludesPermissionsClaim()
+    public void Includes_permissions_claim_When_user_has_role()
     {
         var permissions = Permission.FinanceView | Permission.FinanceCreate;
         var user = CreateTestUserWithRole(permissions);
@@ -182,7 +182,7 @@ public class TokenServiceTests
     }
 
     [Fact]
-    public void GenerateAccessToken_WithNoRole_IncludesZeroPermissionsClaim()
+    public void Includes_zero_permissions_claim_When_user_has_no_role()
     {
         var user = CreateTestUser(); // no Role assigned
 

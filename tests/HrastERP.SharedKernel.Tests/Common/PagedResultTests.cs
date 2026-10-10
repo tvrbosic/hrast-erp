@@ -6,7 +6,7 @@ namespace HrastERP.SharedKernel.Tests.Common;
 public class PagedResultTests
 {
     [Fact]
-    public void Create_sets_items_totalCount_page_and_pageSize()
+    public void Sets_all_properties_When_created()
     {
         var items = new[] { 1, 2, 3 };
         var result = PagedResult<int>.Create(items, totalCount: 10, page: 1, pageSize: 3);
@@ -18,7 +18,7 @@ public class PagedResultTests
     }
 
     [Fact]
-    public void TotalPages_rounds_up()
+    public void Rounds_TotalPages_up_When_items_do_not_divide_evenly()
     {
         var result = PagedResult<int>.Create([], totalCount: 10, page: 1, pageSize: 3);
 
@@ -26,7 +26,7 @@ public class PagedResultTests
     }
 
     [Fact]
-    public void TotalPages_is_exact_when_evenly_divisible()
+    public void Returns_exact_TotalPages_When_items_divide_evenly()
     {
         var result = PagedResult<int>.Create([], totalCount: 9, page: 1, pageSize: 3);
 
@@ -34,7 +34,7 @@ public class PagedResultTests
     }
 
     [Fact]
-    public void HasPreviousPage_is_false_on_first_page()
+    public void HasPreviousPage_is_false_When_on_first_page()
     {
         var result = PagedResult<int>.Create([], totalCount: 10, page: 1, pageSize: 3);
 
@@ -42,7 +42,7 @@ public class PagedResultTests
     }
 
     [Fact]
-    public void HasPreviousPage_is_true_after_first_page()
+    public void HasPreviousPage_is_true_When_past_first_page()
     {
         var result = PagedResult<int>.Create([], totalCount: 10, page: 2, pageSize: 3);
 
@@ -50,7 +50,7 @@ public class PagedResultTests
     }
 
     [Fact]
-    public void HasNextPage_is_false_on_last_page()
+    public void HasNextPage_is_false_When_on_last_page()
     {
         var result = PagedResult<int>.Create([], totalCount: 9, page: 3, pageSize: 3);
 
@@ -58,7 +58,7 @@ public class PagedResultTests
     }
 
     [Fact]
-    public void HasNextPage_is_true_before_last_page()
+    public void HasNextPage_is_true_When_before_last_page()
     {
         var result = PagedResult<int>.Create([], totalCount: 10, page: 1, pageSize: 3);
 

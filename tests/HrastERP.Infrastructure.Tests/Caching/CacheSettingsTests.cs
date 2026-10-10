@@ -9,13 +9,13 @@ namespace HrastERP.Infrastructure.Tests.Caching;
 public class CacheSettingsTests
 {
     [Fact]
-    public void SectionName_IsCache()
+    public void Has_correct_SectionName_When_class_is_defined()
     {
         CacheSettings.SectionName.Should().Be("Cache");
     }
 
     [Fact]
-    public void DefaultValues_AreCorrect()
+    public void Has_expected_default_values_When_instantiated()
     {
         var settings = new CacheSettings();
 
@@ -24,7 +24,7 @@ public class CacheSettingsTests
     }
 
     [Fact]
-    public void BindsFromConfiguration()
+    public void Binds_all_properties_When_configuration_section_is_present()
     {
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
@@ -47,7 +47,7 @@ public class CacheSettingsTests
     }
 
     [Fact]
-    public void MissingConnectionString_FailsValidation()
+    public void Fails_validation_When_ConnectionString_is_missing()
     {
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
@@ -69,7 +69,7 @@ public class CacheSettingsTests
     }
 
     [Fact]
-    public void EmptyConnectionString_FailsValidation()
+    public void Fails_validation_When_ConnectionString_is_empty()
     {
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
@@ -94,7 +94,7 @@ public class CacheSettingsTests
     [Theory]
     [InlineData(0)]
     [InlineData(1441)]
-    public void DefaultTtlMinutes_OutOfRange_FailsValidation(int ttl)
+    public void Fails_validation_When_DefaultTtlMinutes_is_out_of_range(int ttl)
     {
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>

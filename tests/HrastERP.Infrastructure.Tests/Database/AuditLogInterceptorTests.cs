@@ -2,32 +2,20 @@ using System.Text.Json;
 using FluentAssertions;
 using HrastERP.Infrastructure.Database;
 using HrastERP.Infrastructure.Database.Audit;
+using HrastERP.Infrastructure.Tests.Fixtures;
 using HrastERP.SharedKernel.Abstractions;
-using HrastERP.SharedKernel.Authorization;
 using HrastERP.SharedKernel.Domain;
 using Microsoft.EntityFrameworkCore;
+using NSubstitute;
 
 namespace HrastERP.Infrastructure.Tests.Database;
 
-public class AuditLogInterceptorTests : IDisposable
+[Trait("Category", "Integration")]
+public class AuditLogInterceptorTests : IClassFixture<PostgresContainerFixture>
 {
     private sealed class TestEntity(Guid id) : BaseEntity<Guid>(id)
     {
         public string Name { get; set; } = string.Empty;
-    }
-
-    private sealed class FakeCurrentUser(Guid userId, Guid tenantId, bool isAuthenticated) : ICurrentUser
-    {
-        public Guid UserId => userId;
-        public Guid TenantId => tenantId;
-        public string Username => "testuser";
-        public bool IsAuthenticated => isAuthenticated;
-        public Permission EffectivePermissions => Permission.None;
-    }
-
-    private sealed class FakeCurrentTenant(Guid tenantId) : ICurrentTenant
-    {
-        public Guid TenantId => tenantId;
     }
 
     private sealed class TestDbContext(DbContextOptions<TestDbContext> options) : DbContext(options)
@@ -51,16 +39,27 @@ public class AuditLogInterceptorTests : IDisposable
         }
     }
 
+    private readonly PostgresContainerFixture _fixture;
     private readonly Guid _userId = Guid.NewGuid();
     private readonly Guid _tenantId = Guid.NewGuid();
 
+    public AuditLogInterceptorTests(PostgresContainerFixture fixture)
+    {
+        _fixture = fixture;
+    }
+
     private TestDbContext CreateContext(bool isAuthenticated = true)
     {
-        var currentUser = new FakeCurrentUser(_userId, _tenantId, isAuthenticated);
-        var currentTenant = new FakeCurrentTenant(_tenantId);
+        var currentUser = Substitute.For<ICurrentUser>();
+        currentUser.IsAuthenticated.Returns(isAuthenticated);
+        currentUser.UserId.Returns(isAuthenticated ? _userId : Guid.Empty);
+        currentUser.TenantId.Returns(_tenantId);
+
+        var currentTenant = Substitute.For<ICurrentTenant>();
+        currentTenant.TenantId.Returns(_tenantId);
 
         var options = new DbContextOptionsBuilder<TestDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .UseNpgsql(_fixture.NewConnectionString())
             .AddInterceptors(
                 new AuditableEntityInterceptor(currentUser),
                 new SoftDeleteInterceptor(currentUser),
@@ -68,13 +67,15 @@ public class AuditLogInterceptorTests : IDisposable
                 new AuditLogInterceptor(currentUser, currentTenant))
             .Options;
 
-        return new TestDbContext(options);
+        var context = new TestDbContext(options);
+        context.Database.EnsureCreated();
+        return context;
     }
 
     // --- Created entity tests ---
 
     [Fact]
-    public async Task Created_entity_produces_audit_log_with_Created_action()
+    public async Task Produces_audit_log_with_Created_action_When_entity_is_added()
     {
         await using var context = CreateContext();
         var entity = new TestEntity(Guid.NewGuid()) { Name = "Widget" };
@@ -88,7 +89,7 @@ public class AuditLogInterceptorTests : IDisposable
     }
 
     [Fact]
-    public async Task Created_entity_audit_log_has_correct_entity_name_and_id()
+    public async Task Records_correct_entity_name_and_id_When_entity_is_added()
     {
         await using var context = CreateContext();
         var entityId = Guid.NewGuid();
@@ -103,7 +104,7 @@ public class AuditLogInterceptorTests : IDisposable
     }
 
     [Fact]
-    public async Task Created_entity_audit_log_has_null_OldValues_and_all_properties_in_NewValues()
+    public async Task Records_null_OldValues_and_full_NewValues_snapshot_When_entity_is_added()
     {
         await using var context = CreateContext();
         var entity = new TestEntity(Guid.NewGuid()) { Name = "Widget" };
@@ -121,7 +122,7 @@ public class AuditLogInterceptorTests : IDisposable
     }
 
     [Fact]
-    public async Task Created_entity_audit_log_has_correct_user_id()
+    public async Task Records_correct_user_id_When_entity_is_added()
     {
         await using var context = CreateContext();
         var entity = new TestEntity(Guid.NewGuid()) { Name = "Widget" };
@@ -134,7 +135,7 @@ public class AuditLogInterceptorTests : IDisposable
     }
 
     [Fact]
-    public async Task Created_entity_audit_log_has_correct_tenant_id()
+    public async Task Records_correct_tenant_id_When_entity_is_added()
     {
         await using var context = CreateContext();
         var entity = new TestEntity(Guid.NewGuid()) { Name = "Widget" };
@@ -147,7 +148,7 @@ public class AuditLogInterceptorTests : IDisposable
     }
 
     [Fact]
-    public async Task Created_entity_audit_log_has_utc_timestamp()
+    public async Task Records_UTC_timestamp_When_entity_is_added()
     {
         await using var context = CreateContext();
         var entity = new TestEntity(Guid.NewGuid()) { Name = "Widget" };
@@ -163,7 +164,7 @@ public class AuditLogInterceptorTests : IDisposable
     // --- Updated entity tests ---
 
     [Fact]
-    public async Task Updated_entity_produces_audit_log_with_Updated_action()
+    public async Task Produces_audit_log_with_Updated_action_When_entity_is_modified()
     {
         await using var context = CreateContext();
         var entity = new TestEntity(Guid.NewGuid()) { Name = "Widget" };
@@ -180,7 +181,7 @@ public class AuditLogInterceptorTests : IDisposable
     }
 
     [Fact]
-    public async Task Updated_entity_audit_log_captures_changed_properties_only()
+    public async Task Records_changed_properties_only_When_entity_is_modified()
     {
         await using var context = CreateContext();
         var entity = new TestEntity(Guid.NewGuid()) { Name = "Widget" };
@@ -206,7 +207,7 @@ public class AuditLogInterceptorTests : IDisposable
     // --- Soft-deleted entity tests ---
 
     [Fact]
-    public async Task Soft_deleted_entity_produces_audit_log_with_Deleted_action()
+    public async Task Produces_audit_log_with_Deleted_action_When_entity_is_soft_deleted()
     {
         await using var context = CreateContext();
         var entity = new TestEntity(Guid.NewGuid()) { Name = "Widget" };
@@ -222,7 +223,7 @@ public class AuditLogInterceptorTests : IDisposable
     }
 
     [Fact]
-    public async Task Soft_deleted_entity_audit_log_has_populated_OldValues_and_null_NewValues()
+    public async Task Records_OldValues_snapshot_and_null_NewValues_When_entity_is_soft_deleted()
     {
         await using var context = CreateContext();
         var entity = new TestEntity(Guid.NewGuid()) { Name = "Widget" };
@@ -243,7 +244,7 @@ public class AuditLogInterceptorTests : IDisposable
     // --- Edge case tests ---
 
     [Fact]
-    public async Task Unauthenticated_user_sets_empty_guid_for_UserId()
+    public async Task Records_empty_guid_for_UserId_When_user_is_unauthenticated()
     {
         await using var context = CreateContext(isAuthenticated: false);
         var entity = new TestEntity(Guid.NewGuid()) { Name = "Widget" };
@@ -256,7 +257,7 @@ public class AuditLogInterceptorTests : IDisposable
     }
 
     [Fact]
-    public async Task Audit_log_entry_itself_is_not_audit_logged()
+    public async Task Does_not_create_recursive_audit_log_entry_When_entity_is_saved()
     {
         await using var context = CreateContext();
         var entity = new TestEntity(Guid.NewGuid()) { Name = "Widget" };
@@ -269,7 +270,7 @@ public class AuditLogInterceptorTests : IDisposable
     }
 
     [Fact]
-    public async Task Each_audit_log_entry_has_unique_non_empty_id()
+    public async Task Creates_unique_non_empty_id_for_each_audit_log_entry_When_multiple_entities_saved()
     {
         await using var context = CreateContext();
         context.TestEntities.Add(new TestEntity(Guid.NewGuid()) { Name = "A" });
@@ -280,10 +281,5 @@ public class AuditLogInterceptorTests : IDisposable
         logs.Should().HaveCount(2);
         logs[0].Id.Should().NotBe(Guid.Empty);
         logs[0].Id.Should().NotBe(logs[1].Id);
-    }
-
-    public void Dispose()
-    {
-        // InMemory databases are disposed with the context
     }
 }

@@ -1,11 +1,13 @@
 using System.Linq.Expressions;
 using FluentAssertions;
+using HrastERP.Infrastructure.Tests.Fixtures;
 using HrastERP.SharedKernel.Domain;
 using Microsoft.EntityFrameworkCore;
 
 namespace HrastERP.Infrastructure.Tests.Database;
 
-public class SoftDeleteQueryFilterTests
+[Trait("Category", "Integration")]
+public class SoftDeleteQueryFilterTests : IClassFixture<PostgresContainerFixture>
 {
     private sealed class TestEntity(Guid id) : BaseEntity<Guid>(id);
 
@@ -32,17 +34,26 @@ public class SoftDeleteQueryFilterTests
         }
     }
 
-    private static TestDbContext CreateContext()
+    private readonly PostgresContainerFixture _fixture;
+
+    public SoftDeleteQueryFilterTests(PostgresContainerFixture fixture)
+    {
+        _fixture = fixture;
+    }
+
+    private TestDbContext CreateContext()
     {
         var options = new DbContextOptionsBuilder<TestDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .UseNpgsql(_fixture.NewConnectionString())
             .Options;
 
-        return new TestDbContext(options);
+        var context = new TestDbContext(options);
+        context.Database.EnsureCreated();
+        return context;
     }
 
     [Fact]
-    public async Task Non_deleted_entities_are_returned_by_default()
+    public async Task Returns_non_deleted_entities_When_no_filter_override()
     {
         await using var context = CreateContext();
         context.TestEntities.Add(new TestEntity(Guid.NewGuid()));
@@ -54,7 +65,7 @@ public class SoftDeleteQueryFilterTests
     }
 
     [Fact]
-    public async Task Entities_with_DeletedAt_set_are_hidden_from_queries()
+    public async Task Hides_entity_from_queries_When_DeletedAt_is_set()
     {
         await using var context = CreateContext();
         var entity = new TestEntity(Guid.NewGuid());
@@ -69,7 +80,7 @@ public class SoftDeleteQueryFilterTests
     }
 
     [Fact]
-    public async Task IgnoreQueryFilters_returns_soft_deleted_entities()
+    public async Task Returns_soft_deleted_entities_When_IgnoreQueryFilters_is_used()
     {
         await using var context = CreateContext();
         var entity = new TestEntity(Guid.NewGuid());

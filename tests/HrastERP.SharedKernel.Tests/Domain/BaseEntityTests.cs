@@ -8,7 +8,7 @@ public class BaseEntityTests
     private sealed class FakeEntity(Guid id) : BaseEntity<Guid>(id);
 
     [Fact]
-    public void Entities_with_same_id_should_be_equal()
+    public void Is_equal_When_ids_match()
     {
         var id = Guid.NewGuid();
         var a = new FakeEntity(id);
@@ -18,7 +18,7 @@ public class BaseEntityTests
     }
 
     [Fact]
-    public void Entities_with_different_ids_should_not_be_equal()
+    public void Is_not_equal_When_ids_differ()
     {
         var a = new FakeEntity(Guid.NewGuid());
         var b = new FakeEntity(Guid.NewGuid());
@@ -27,7 +27,7 @@ public class BaseEntityTests
     }
 
     [Fact]
-    public void Entity_equality_operator_returns_true_for_same_id()
+    public void Equality_operator_returns_true_When_ids_match()
     {
         var id = Guid.NewGuid();
         var a = new FakeEntity(id);
@@ -37,7 +37,7 @@ public class BaseEntityTests
     }
 
     [Fact]
-    public void Entity_inequality_operator_returns_true_for_different_ids()
+    public void Inequality_operator_returns_true_When_ids_differ()
     {
         var a = new FakeEntity(Guid.NewGuid());
         var b = new FakeEntity(Guid.NewGuid());
@@ -46,7 +46,7 @@ public class BaseEntityTests
     }
 
     [Fact]
-    public void Entity_id_is_set_via_constructor()
+    public void Exposes_id_When_set_via_constructor()
     {
         var id = Guid.NewGuid();
         var entity = new FakeEntity(id);
@@ -55,7 +55,7 @@ public class BaseEntityTests
     }
 
     [Fact]
-    public void Implements_IAuditable()
+    public void Implements_IAuditable_When_defined()
     {
         var entity = new FakeEntity(Guid.NewGuid());
 
@@ -63,7 +63,7 @@ public class BaseEntityTests
     }
 
     [Fact]
-    public void Implements_ISoftDeletable()
+    public void Implements_ISoftDeletable_When_defined()
     {
         var entity = new FakeEntity(Guid.NewGuid());
 
@@ -71,7 +71,7 @@ public class BaseEntityTests
     }
 
     [Fact]
-    public void Audit_properties_have_default_values()
+    public void Has_default_audit_property_values_When_created()
     {
         var entity = new FakeEntity(Guid.NewGuid());
 
@@ -82,7 +82,7 @@ public class BaseEntityTests
     }
 
     [Fact]
-    public void SoftDelete_properties_have_default_null_values()
+    public void Has_null_soft_delete_properties_When_created()
     {
         var entity = new FakeEntity(Guid.NewGuid());
 

@@ -9,13 +9,13 @@ namespace HrastERP.Infrastructure.Tests.FileStorage;
 public class FileStorageSettingsTests
 {
     [Fact]
-    public void SectionName_IsFileStorage()
+    public void Has_correct_SectionName_When_class_is_defined()
     {
         FileStorageSettings.SectionName.Should().Be("FileStorage");
     }
 
     [Fact]
-    public void DefaultValues_AreCorrect()
+    public void Has_expected_default_values_When_instantiated()
     {
         var settings = new FileStorageSettings();
 
@@ -27,7 +27,7 @@ public class FileStorageSettingsTests
     }
 
     [Fact]
-    public void BindsFromConfiguration()
+    public void Binds_all_properties_When_configuration_section_is_present()
     {
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
@@ -55,7 +55,7 @@ public class FileStorageSettingsTests
     }
 
     [Fact]
-    public void MissingRootPath_FailsValidation()
+    public void Fails_validation_When_RootPath_is_empty()
     {
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
@@ -80,7 +80,7 @@ public class FileStorageSettingsTests
     [Theory]
     [InlineData(0)]
     [InlineData(-1)]
-    public void MaxFileSizeBytes_OutOfRange_FailsValidation(long size)
+    public void Fails_validation_When_MaxFileSizeBytes_is_out_of_range(long size)
     {
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>

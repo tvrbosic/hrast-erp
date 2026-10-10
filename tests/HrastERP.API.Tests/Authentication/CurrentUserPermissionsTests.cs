@@ -22,7 +22,7 @@ public class CurrentUserPermissionsTests
     }
 
     [Fact]
-    public void EffectivePermissions_WithValidClaim_ReturnsCorrectPermission()
+    public void Returns_correct_permissions_When_claim_is_valid()
     {
         var expected = Permission.FinanceView | Permission.InventoryCreate;
         var sut = CreateCurrentUser(("permissions", ((long)expected).ToString()));
@@ -31,7 +31,7 @@ public class CurrentUserPermissionsTests
     }
 
     [Fact]
-    public void EffectivePermissions_WithMissingClaim_ReturnsNone()
+    public void Returns_None_When_permissions_claim_is_missing()
     {
         var sut = CreateCurrentUser(); // no permissions claim
 
@@ -39,7 +39,7 @@ public class CurrentUserPermissionsTests
     }
 
     [Fact]
-    public void EffectivePermissions_WithMalformedClaim_ReturnsNone()
+    public void Returns_None_When_permissions_claim_is_malformed()
     {
         var sut = CreateCurrentUser(("permissions", "not-a-number"));
 
@@ -47,7 +47,7 @@ public class CurrentUserPermissionsTests
     }
 
     [Fact]
-    public void EffectivePermissions_WithZeroClaim_ReturnsNone()
+    public void Returns_None_When_permissions_claim_is_zero()
     {
         var sut = CreateCurrentUser(("permissions", "0"));
 
@@ -55,7 +55,7 @@ public class CurrentUserPermissionsTests
     }
 
     [Fact]
-    public void EffectivePermissions_WithNullHttpContext_ReturnsNone()
+    public void Returns_None_When_HttpContext_is_null()
     {
         var accessor = new HttpContextAccessor { HttpContext = null };
         var sut = new CurrentUser(accessor);

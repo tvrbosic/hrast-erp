@@ -13,7 +13,7 @@ public class AggregateRootTests
     }
 
     [Fact]
-    public void DomainEvents_is_empty_on_new_aggregate()
+    public void Has_empty_domain_events_When_first_created()
     {
         var aggregate = new FakeAggregate(Guid.NewGuid());
 
@@ -21,7 +21,7 @@ public class AggregateRootTests
     }
 
     [Fact]
-    public void AddDomainEvent_adds_event_to_collection()
+    public void Contains_event_When_domain_event_is_added()
     {
         var aggregate = new FakeAggregate(Guid.NewGuid());
         var @event = new TestEvent();
@@ -32,7 +32,7 @@ public class AggregateRootTests
     }
 
     [Fact]
-    public void ClearDomainEvents_removes_all_events()
+    public void Has_empty_domain_events_When_cleared()
     {
         var aggregate = new FakeAggregate(Guid.NewGuid());
         aggregate.RaiseEvent(new TestEvent());
@@ -44,7 +44,7 @@ public class AggregateRootTests
     }
 
     [Fact]
-    public void Multiple_events_can_be_added()
+    public void Has_correct_event_count_When_multiple_events_are_added()
     {
         var aggregate = new FakeAggregate(Guid.NewGuid());
         aggregate.RaiseEvent(new TestEvent());
@@ -54,7 +54,7 @@ public class AggregateRootTests
     }
 
     [Fact]
-    public void Implements_IAuditable()
+    public void Implements_IAuditable_When_defined()
     {
         var aggregate = new FakeAggregate(Guid.NewGuid());
 
@@ -62,7 +62,7 @@ public class AggregateRootTests
     }
 
     [Fact]
-    public void Implements_ISoftDeletable()
+    public void Implements_ISoftDeletable_When_defined()
     {
         var aggregate = new FakeAggregate(Guid.NewGuid());
 

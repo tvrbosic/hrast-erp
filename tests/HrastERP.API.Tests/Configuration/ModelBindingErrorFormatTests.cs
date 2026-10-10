@@ -32,7 +32,7 @@ public class ModelBindingErrorFormatTests
     }
 
     [Fact]
-    public void Returns_422_UnprocessableEntity()
+    public void Returns_422_When_model_state_is_invalid()
     {
         var modelState = new ModelStateDictionary();
         modelState.AddModelError("Email", "The Email field is required.");
@@ -44,7 +44,7 @@ public class ModelBindingErrorFormatTests
     }
 
     [Fact]
-    public void Response_body_uses_ErrorResponse_format()
+    public void Returns_ErrorResponse_format_When_model_state_is_invalid()
     {
         var modelState = new ModelStateDictionary();
         modelState.AddModelError("Email", "The Email field is required.");
@@ -58,7 +58,7 @@ public class ModelBindingErrorFormatTests
     }
 
     [Fact]
-    public void Field_names_are_camelCase()
+    public void Converts_field_names_to_camelCase_When_building_error_response()
     {
         var modelState = new ModelStateDictionary();
         modelState.AddModelError("FirstName", "The FirstName field is required.");
@@ -71,7 +71,7 @@ public class ModelBindingErrorFormatTests
     }
 
     [Fact]
-    public void Multiple_errors_on_same_field_are_grouped()
+    public void Groups_errors_under_same_field_When_multiple_errors_exist()
     {
         var modelState = new ModelStateDictionary();
         modelState.AddModelError("Password", "Password is required.");
@@ -86,7 +86,7 @@ public class ModelBindingErrorFormatTests
     }
 
     [Fact]
-    public void Multiple_fields_each_get_their_own_entry()
+    public void Creates_separate_entry_for_each_field_When_multiple_fields_have_errors()
     {
         var modelState = new ModelStateDictionary();
         modelState.AddModelError("Email", "The Email field is required.");

@@ -7,31 +7,28 @@ using HrastERP.SharedKernel.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using NSubstitute;
 
 namespace HrastERP.Infrastructure.Tests.Hangfire.Jobs;
 
 public class RefreshTokenCleanupJobTests
 {
-    private sealed class FakeCurrentTenant : ICurrentTenant
-    {
-        public Guid TenantId => Guid.Empty;
-    }
-
     private static RefreshTokenCleanupJob CreateJob(HangfireSettings? settings = null)
     {
         settings ??= new HangfireSettings();
         var options = Options.Create(settings);
 
+        var tenant = Substitute.For<ICurrentTenant>();
         var dbOptions = new DbContextOptionsBuilder<HrastDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
-        var dbContext = new HrastDbContext(dbOptions, [], new FakeCurrentTenant());
+        var dbContext = new HrastDbContext(dbOptions, [], tenant);
 
         return new RefreshTokenCleanupJob(dbContext, options, NullLogger<RefreshTokenCleanupJob>.Instance);
     }
 
     [Fact]
-    public void JobId_Returns_CorrectValue()
+    public void Returns_correct_JobId_When_job_is_instantiated()
     {
         var job = CreateJob();
 
@@ -39,7 +36,7 @@ public class RefreshTokenCleanupJobTests
     }
 
     [Fact]
-    public void CronExpression_Returns_ValueFromSettings()
+    public void Returns_cron_from_settings_When_custom_value_is_configured()
     {
         var settings = new HangfireSettings { RefreshTokenCleanupCron = "30 3 * * *" };
         var job = CreateJob(settings);
@@ -48,7 +45,7 @@ public class RefreshTokenCleanupJobTests
     }
 
     [Fact]
-    public void CronExpression_Returns_DefaultValue()
+    public void Returns_default_cron_When_settings_are_not_customized()
     {
         var job = CreateJob();
 

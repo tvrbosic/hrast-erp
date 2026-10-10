@@ -1,12 +1,15 @@
 using FluentAssertions;
+using HrastERP.Infrastructure.Database;
+using HrastERP.Infrastructure.Tests.Fixtures;
 using HrastERP.SharedKernel.Abstractions;
 using HrastERP.SharedKernel.Domain;
-using HrastERP.Infrastructure.Database;
 using Microsoft.EntityFrameworkCore;
+using NSubstitute;
 
 namespace HrastERP.Infrastructure.Tests.Database;
 
-public class TenantEntityInterceptorTests
+[Trait("Category", "Integration")]
+public class TenantEntityInterceptorTests : IClassFixture<PostgresContainerFixture>
 {
     private sealed class TestTenantEntity(Guid id) : BaseEntity<Guid>(id), ITenantEntity
     {
@@ -14,11 +17,6 @@ public class TenantEntityInterceptorTests
     }
 
     private sealed class TestNonTenantEntity(Guid id) : BaseEntity<Guid>(id);
-
-    private sealed class FakeCurrentTenant(Guid tenantId) : ICurrentTenant
-    {
-        public Guid TenantId => tenantId;
-    }
 
     private sealed class TestDbContext(DbContextOptions<TestDbContext> options) : DbContext(options)
     {
@@ -32,21 +30,31 @@ public class TenantEntityInterceptorTests
         }
     }
 
-    private static TestDbContext CreateContext(Guid tenantId)
+    private readonly PostgresContainerFixture _fixture;
+
+    public TenantEntityInterceptorTests(PostgresContainerFixture fixture)
     {
-        var currentTenant = new FakeCurrentTenant(tenantId);
+        _fixture = fixture;
+    }
+
+    private TestDbContext CreateContext(Guid tenantId)
+    {
+        var currentTenant = Substitute.For<ICurrentTenant>();
+        currentTenant.TenantId.Returns(tenantId);
         var interceptor = new TenantEntityInterceptor(currentTenant);
 
         var options = new DbContextOptionsBuilder<TestDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .UseNpgsql(_fixture.NewConnectionString())
             .AddInterceptors(interceptor)
             .Options;
 
-        return new TestDbContext(options);
+        var context = new TestDbContext(options);
+        context.Database.EnsureCreated();
+        return context;
     }
 
     [Fact]
-    public async Task Added_entity_gets_TenantId_set()
+    public async Task Sets_TenantId_When_entity_is_added()
     {
         var tenantId = Guid.NewGuid();
         await using var context = CreateContext(tenantId);
@@ -59,7 +67,7 @@ public class TenantEntityInterceptorTests
     }
 
     [Fact]
-    public async Task Throws_when_TenantId_is_empty_on_add()
+    public async Task Throws_InvalidOperationException_When_TenantId_is_empty_on_insert()
     {
         await using var context = CreateContext(Guid.Empty);
         var entity = new TestTenantEntity(Guid.NewGuid());
@@ -73,7 +81,7 @@ public class TenantEntityInterceptorTests
     }
 
     [Fact]
-    public async Task Modified_entity_TenantId_is_not_changed()
+    public async Task Does_not_change_TenantId_When_entity_is_modified()
     {
         var tenantId = Guid.NewGuid();
         await using var context = CreateContext(tenantId);
@@ -89,7 +97,7 @@ public class TenantEntityInterceptorTests
     }
 
     [Fact]
-    public async Task Non_tenant_entity_is_ignored()
+    public async Task Does_not_throw_When_entity_does_not_implement_ITenantEntity()
     {
         await using var context = CreateContext(Guid.Empty);
         var entity = new TestNonTenantEntity(Guid.NewGuid());
@@ -102,7 +110,7 @@ public class TenantEntityInterceptorTests
     }
 
     [Fact]
-    public async Task Added_entity_with_TenantId_already_set_is_not_overwritten()
+    public async Task Does_not_overwrite_TenantId_When_already_set()
     {
         var currentTenantId = Guid.NewGuid();
         var presetTenantId = Guid.NewGuid();
@@ -116,7 +124,7 @@ public class TenantEntityInterceptorTests
     }
 
     [Fact]
-    public async Task Added_entity_with_empty_TenantId_gets_current_tenant()
+    public async Task Sets_current_tenant_id_When_TenantId_is_empty()
     {
         var tenantId = Guid.NewGuid();
         await using var context = CreateContext(tenantId);

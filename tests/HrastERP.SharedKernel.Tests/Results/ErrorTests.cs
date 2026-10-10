@@ -6,14 +6,14 @@ namespace HrastERP.SharedKernel.Tests.Results;
 public class ErrorTests
 {
     [Fact]
-    public void Error_None_has_empty_code_and_message()
+    public void Has_empty_code_and_message_When_error_is_None()
     {
         Error.None.Code.Should().BeEmpty();
         Error.None.Message.Should().BeEmpty();
     }
 
     [Fact]
-    public void Errors_with_same_code_and_message_are_equal()
+    public void Is_equal_When_code_and_message_match()
     {
         var a = Error.Validation("ERR001", "Something failed");
         var b = Error.Validation("ERR001", "Something failed");
@@ -22,7 +22,7 @@ public class ErrorTests
     }
 
     [Fact]
-    public void Errors_with_different_codes_are_not_equal()
+    public void Is_not_equal_When_codes_differ()
     {
         var a = Error.Validation("ERR001", "Something failed");
         var b = Error.Validation("ERR002", "Something failed");
@@ -31,7 +31,7 @@ public class ErrorTests
     }
 
     [Fact]
-    public void NotFound_factory_sets_type_to_NotFound()
+    public void Sets_type_to_NotFound_When_created_via_NotFound_factory()
     {
         var error = Error.NotFound("User.NotFound", "User was not found");
 
@@ -41,7 +41,7 @@ public class ErrorTests
     }
 
     [Fact]
-    public void Validation_factory_sets_type_to_Validation()
+    public void Sets_type_to_Validation_When_created_via_Validation_factory()
     {
         var error = Error.Validation("User.InvalidEmail", "Email is invalid");
 
@@ -51,7 +51,7 @@ public class ErrorTests
     }
 
     [Fact]
-    public void Forbidden_factory_sets_type_to_Forbidden()
+    public void Sets_type_to_Forbidden_When_created_via_Forbidden_factory()
     {
         var error = Error.Forbidden("User.Forbidden", "Access denied");
 
@@ -61,7 +61,7 @@ public class ErrorTests
     }
 
     [Fact]
-    public void Conflict_factory_sets_type_to_Conflict()
+    public void Sets_type_to_Conflict_When_created_via_Conflict_factory()
     {
         var error = Error.Conflict("User.Duplicate", "User already exists");
 
@@ -71,7 +71,7 @@ public class ErrorTests
     }
 
     [Fact]
-    public void Unexpected_factory_sets_type_to_Unexpected()
+    public void Sets_type_to_Unexpected_When_created_via_Unexpected_factory()
     {
         var error = Error.Unexpected("Server.Error", "Something went wrong");
 

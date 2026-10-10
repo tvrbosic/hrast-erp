@@ -1,11 +1,13 @@
 using System.Linq.Expressions;
 using FluentAssertions;
+using HrastERP.Infrastructure.Tests.Fixtures;
 using HrastERP.SharedKernel.Domain;
 using Microsoft.EntityFrameworkCore;
 
 namespace HrastERP.Infrastructure.Tests.Database;
 
-public class TenantQueryFilterTests
+[Trait("Category", "Integration")]
+public class TenantQueryFilterTests : IClassFixture<PostgresContainerFixture>
 {
     private static readonly Guid SuperAdminTenantId = Guid.Parse("00000000-0000-0000-0000-100000000000");
 
@@ -48,17 +50,26 @@ public class TenantQueryFilterTests
         }
     }
 
-    private static TestDbContext CreateContext(Guid currentTenantId)
+    private readonly PostgresContainerFixture _fixture;
+
+    public TenantQueryFilterTests(PostgresContainerFixture fixture)
+    {
+        _fixture = fixture;
+    }
+
+    private TestDbContext CreateContext(Guid currentTenantId)
     {
         var options = new DbContextOptionsBuilder<TestDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .UseNpgsql(_fixture.NewConnectionString())
             .Options;
 
-        return new TestDbContext(options, currentTenantId);
+        var context = new TestDbContext(options, currentTenantId);
+        context.Database.EnsureCreated();
+        return context;
     }
 
     [Fact]
-    public async Task Entities_matching_current_tenant_are_returned()
+    public async Task Returns_matching_entities_When_tenant_id_matches()
     {
         var tenantId = Guid.NewGuid();
         await using var context = CreateContext(tenantId);
@@ -72,7 +83,7 @@ public class TenantQueryFilterTests
     }
 
     [Fact]
-    public async Task Entities_with_different_TenantId_are_hidden()
+    public async Task Hides_entity_When_tenant_id_does_not_match()
     {
         var tenantId = Guid.NewGuid();
         var otherTenantId = Guid.NewGuid();
@@ -87,7 +98,7 @@ public class TenantQueryFilterTests
     }
 
     [Fact]
-    public async Task Non_tenant_entities_are_not_filtered()
+    public async Task Returns_all_entities_When_entity_does_not_implement_ITenantEntity()
     {
         await using var context = CreateContext(Guid.NewGuid());
 
@@ -100,7 +111,7 @@ public class TenantQueryFilterTests
     }
 
     [Fact]
-    public async Task IgnoreQueryFilters_returns_all_tenants()
+    public async Task Returns_all_tenant_entities_When_IgnoreQueryFilters_is_used()
     {
         var tenantId = Guid.NewGuid();
         var otherTenantId = Guid.NewGuid();
@@ -116,7 +127,7 @@ public class TenantQueryFilterTests
     }
 
     [Fact]
-    public async Task Super_admin_tenant_sees_all_entities()
+    public async Task Returns_all_entities_When_current_tenant_is_super_admin()
     {
         var tenantA = Guid.NewGuid();
         var tenantB = Guid.NewGuid();
@@ -131,7 +142,7 @@ public class TenantQueryFilterTests
     }
 
     [Fact]
-    public async Task Regular_tenant_does_not_see_other_tenants()
+    public async Task Hides_other_tenants_entities_When_tenant_is_regular()
     {
         var tenantA = Guid.NewGuid();
         var tenantB = Guid.NewGuid();

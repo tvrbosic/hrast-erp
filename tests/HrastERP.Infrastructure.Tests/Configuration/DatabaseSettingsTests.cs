@@ -10,13 +10,13 @@ namespace HrastERP.Infrastructure.Tests.Configuration;
 public class DatabaseSettingsTests
 {
     [Fact]
-    public void DatabaseSettings_SectionName_IsDatabase()
+    public void Has_correct_SectionName_When_class_is_defined()
     {
         DatabaseSettings.SectionName.Should().Be("Database");
     }
 
     [Fact]
-    public void DatabaseSettings_BindsConnectionStringFromConfiguration()
+    public void Binds_all_properties_When_configuration_section_is_present()
     {
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
@@ -37,14 +37,14 @@ public class DatabaseSettingsTests
     }
 
     [Fact]
-    public void DatabaseSettings_DefaultConnectionString_IsEmptyString()
+    public void Has_expected_default_values_When_instantiated()
     {
         var settings = new DatabaseSettings();
         settings.ConnectionString.Should().Be(string.Empty);
     }
 
     [Fact]
-    public void DatabaseSettings_MissingConnectionString_FailsValidation()
+    public void Fails_validation_When_ConnectionString_is_missing()
     {
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>())
@@ -63,7 +63,7 @@ public class DatabaseSettingsTests
     }
 
     [Fact]
-    public void DatabaseSettings_EmptyConnectionString_FailsValidation()
+    public void Fails_validation_When_ConnectionString_is_empty()
     {
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>

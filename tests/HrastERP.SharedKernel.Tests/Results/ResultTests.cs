@@ -10,7 +10,7 @@ public class ResultTests
     // Non-generic Result
 
     [Fact]
-    public void Result_Success_is_success()
+    public void IsSuccess_is_true_When_Result_is_success()
     {
         var result = Result.Success();
 
@@ -19,7 +19,7 @@ public class ResultTests
     }
 
     [Fact]
-    public void Result_Failure_is_failure()
+    public void IsFailure_is_true_When_Result_is_failure()
     {
         var result = Result.Failure(SomeError);
 
@@ -28,7 +28,7 @@ public class ResultTests
     }
 
     [Fact]
-    public void Result_Failure_exposes_error()
+    public void Exposes_error_When_Result_is_failure()
     {
         var result = Result.Failure(SomeError);
 
@@ -36,7 +36,7 @@ public class ResultTests
     }
 
     [Fact]
-    public void Result_Success_has_None_error()
+    public void Has_None_error_When_Result_is_success()
     {
         var result = Result.Success();
 
@@ -46,7 +46,7 @@ public class ResultTests
     // Generic Result<T>
 
     [Fact]
-    public void ResultT_Success_is_success_with_value()
+    public void IsSuccess_is_true_and_value_is_set_When_ResultT_succeeds()
     {
         var result = Result<int>.Success(42);
 
@@ -55,7 +55,7 @@ public class ResultTests
     }
 
     [Fact]
-    public void ResultT_Failure_is_failure()
+    public void IsFailure_is_true_When_ResultT_is_failure()
     {
         var result = Result<int>.Failure(SomeError);
 
@@ -64,7 +64,7 @@ public class ResultTests
     }
 
     [Fact]
-    public void ResultT_Value_throws_when_failure()
+    public void Throws_InvalidOperationException_When_accessing_Value_on_failure()
     {
         var result = Result<int>.Failure(SomeError);
 
@@ -74,7 +74,7 @@ public class ResultTests
     }
 
     [Fact]
-    public void ResultT_implicit_conversion_from_value_creates_success()
+    public void Creates_success_When_implicitly_converted_from_value()
     {
         Result<string> result = "hello";
 
@@ -83,7 +83,7 @@ public class ResultTests
     }
 
     [Fact]
-    public void ResultT_implicit_conversion_from_error_creates_failure()
+    public void Creates_failure_When_implicitly_converted_from_error()
     {
         Result<string> result = SomeError;
 

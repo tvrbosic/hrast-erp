@@ -14,7 +14,7 @@ namespace HrastERP.Infrastructure.Tests.Extensions;
 public class InfrastructureServiceExtensionsTests
 {
     [Fact]
-    public void AddInfrastructure_RegistersHrastDbContext()
+    public void Registers_HrastDbContext_When_AddInfrastructure_is_called()
     {
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
@@ -35,7 +35,7 @@ public class InfrastructureServiceExtensionsTests
     }
 
     [Fact]
-    public void AddInfrastructure_MissingConnectionString_ThrowsOnOptionsResolution()
+    public void Throws_OptionsValidationException_When_connection_string_is_missing()
     {
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
@@ -57,7 +57,7 @@ public class InfrastructureServiceExtensionsTests
     }
 
     [Fact]
-    public void AddInfrastructure_RegistersIFileStorageService()
+    public void Registers_IFileStorageService_When_AddInfrastructure_is_called()
     {
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
@@ -78,7 +78,7 @@ public class InfrastructureServiceExtensionsTests
     }
 
     [Fact]
-    public void AddInfrastructure_RegistersReportBuilder()
+    public void Registers_ReportBuilder_When_AddInfrastructure_is_called()
     {
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
@@ -99,7 +99,7 @@ public class InfrastructureServiceExtensionsTests
     }
 
     [Fact]
-    public void AddInfrastructure_RegistersICacheService()
+    public void Registers_ICacheService_When_AddInfrastructure_is_called()
     {
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>

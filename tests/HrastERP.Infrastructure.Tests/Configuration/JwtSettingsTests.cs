@@ -9,13 +9,13 @@ namespace HrastERP.Infrastructure.Tests.Configuration;
 public class JwtSettingsTests
 {
     [Fact]
-    public void JwtSettings_SectionName_IsJwt()
+    public void Has_correct_SectionName_When_class_is_defined()
     {
         JwtSettings.SectionName.Should().Be("Jwt");
     }
 
     [Fact]
-    public void JwtSettings_BindsFromConfiguration()
+    public void Binds_all_properties_When_configuration_section_is_present()
     {
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
@@ -44,7 +44,7 @@ public class JwtSettingsTests
     }
 
     [Fact]
-    public void JwtSettings_Defaults_AreCorrect()
+    public void Has_expected_default_values_When_instantiated()
     {
         var settings = new JwtSettings();
 
@@ -56,7 +56,7 @@ public class JwtSettingsTests
     }
 
     [Fact]
-    public void JwtSettings_MissingSecretKey_FailsValidation()
+    public void Fails_validation_When_SecretKey_is_missing()
     {
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
@@ -79,7 +79,7 @@ public class JwtSettingsTests
     }
 
     [Fact]
-    public void JwtSettings_ShortSecretKey_FailsValidation()
+    public void Fails_validation_When_SecretKey_is_too_short()
     {
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>

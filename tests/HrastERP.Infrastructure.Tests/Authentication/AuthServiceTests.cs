@@ -1,22 +1,20 @@
 using FluentAssertions;
 using HrastERP.Infrastructure.Authentication;
 using HrastERP.Infrastructure.Database;
+using HrastERP.Infrastructure.Tests.Fixtures;
 using HrastERP.SharedKernel.Abstractions;
 using HrastERP.SharedKernel.Constants;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using NSubstitute;
 
 namespace HrastERP.Infrastructure.Tests.Authentication;
 
-public class AuthServiceTests : IAsyncDisposable
+[Trait("Category", "Integration")]
+public class AuthServiceTests : IClassFixture<PostgresContainerFixture>, IAsyncLifetime, IAsyncDisposable
 {
-    private sealed class FakeCurrentTenant : ICurrentTenant
-    {
-        public Guid TenantId => TenantConstants.SuperAdminTenantId;
-    }
-
     private readonly JwtSettings _settings = new()
     {
         SecretKey = "ThisIsATestSecretKeyWithAtLeast32Characters!",
@@ -32,17 +30,18 @@ public class AuthServiceTests : IAsyncDisposable
     private readonly IAuthService _sut;
     private readonly ServiceProvider _serviceProvider;
 
-    public AuthServiceTests()
+    public AuthServiceTests(PostgresContainerFixture fixture)
     {
         var services = new ServiceCollection();
 
-        var dbName = Guid.NewGuid().ToString();
+        var tenant = Substitute.For<ICurrentTenant>();
+        tenant.TenantId.Returns(TenantConstants.SuperAdminTenantId);
 
-        services.AddSingleton<ICurrentTenant>(new FakeCurrentTenant());
+        services.AddSingleton<ICurrentTenant>(tenant);
         services.AddSingleton<IEnumerable<EntityConfigurationAssembly>>([]);
 
         services.AddDbContext<HrastDbContext>(options =>
-            options.UseInMemoryDatabase(dbName));
+            options.UseNpgsql(fixture.NewConnectionString()));
 
         services.AddIdentityCore<ApplicationUser>(options =>
             {
@@ -68,6 +67,13 @@ public class AuthServiceTests : IAsyncDisposable
         _tokenService = _serviceProvider.GetRequiredService<ITokenService>();
         _sut = _serviceProvider.GetRequiredService<IAuthService>();
     }
+
+    public async Task InitializeAsync()
+    {
+        await _dbContext.Database.MigrateAsync();
+    }
+
+    Task IAsyncLifetime.DisposeAsync() => Task.CompletedTask;
 
     private async Task<ApplicationUser> SeedUserAsync(
         string email = "test@example.com",
@@ -113,7 +119,7 @@ public class AuthServiceTests : IAsyncDisposable
     // Login tests
 
     [Fact]
-    public async Task LoginAsync_ValidCredentials_ReturnsSuccess()
+    public async Task Returns_success_When_credentials_are_valid()
     {
         await SeedUserAsync();
 
@@ -125,7 +131,7 @@ public class AuthServiceTests : IAsyncDisposable
     }
 
     [Fact]
-    public async Task LoginAsync_InvalidEmail_ReturnsInvalidCredentials()
+    public async Task Returns_invalid_credentials_When_email_is_not_found()
     {
         await SeedUserAsync();
 
@@ -136,7 +142,7 @@ public class AuthServiceTests : IAsyncDisposable
     }
 
     [Fact]
-    public async Task LoginAsync_InvalidPassword_ReturnsInvalidCredentials()
+    public async Task Returns_invalid_credentials_When_password_is_wrong()
     {
         await SeedUserAsync();
 
@@ -147,7 +153,7 @@ public class AuthServiceTests : IAsyncDisposable
     }
 
     [Fact]
-    public async Task LoginAsync_InactiveUser_ReturnsInactiveUser()
+    public async Task Returns_inactive_user_error_When_user_is_inactive()
     {
         await SeedUserAsync(isActive: false);
 
@@ -158,7 +164,7 @@ public class AuthServiceTests : IAsyncDisposable
     }
 
     [Fact]
-    public async Task LoginAsync_PersistsRefreshTokenInDatabase()
+    public async Task Persists_refresh_token_to_database_When_login_succeeds()
     {
         await SeedUserAsync();
 
@@ -171,7 +177,7 @@ public class AuthServiceTests : IAsyncDisposable
     // Refresh tests
 
     [Fact]
-    public async Task RefreshAsync_ValidToken_ReturnsNewTokensAndRevokesOld()
+    public async Task Returns_new_tokens_and_revokes_old_token_When_refresh_token_is_valid()
     {
         var user = await SeedUserAsync();
         var (rawToken, hashedToken) = _tokenService.GenerateRefreshToken();
@@ -190,7 +196,7 @@ public class AuthServiceTests : IAsyncDisposable
     }
 
     [Fact]
-    public async Task RefreshAsync_ExpiredToken_ReturnsError()
+    public async Task Returns_error_When_refresh_token_is_expired()
     {
         var user = await SeedUserAsync();
         var (rawToken, hashedToken) = _tokenService.GenerateRefreshToken();
@@ -203,7 +209,7 @@ public class AuthServiceTests : IAsyncDisposable
     }
 
     [Fact]
-    public async Task RefreshAsync_RevokedToken_ReturnsError()
+    public async Task Returns_error_When_refresh_token_is_revoked()
     {
         var user = await SeedUserAsync();
         var (rawToken, hashedToken) = _tokenService.GenerateRefreshToken();
@@ -216,7 +222,7 @@ public class AuthServiceTests : IAsyncDisposable
     }
 
     [Fact]
-    public async Task RefreshAsync_NonexistentToken_ReturnsError()
+    public async Task Returns_error_When_refresh_token_does_not_exist()
     {
         var result = await _sut.RefreshAsync("nonexistent-token");
 
@@ -227,7 +233,7 @@ public class AuthServiceTests : IAsyncDisposable
     // Logout tests
 
     [Fact]
-    public async Task LogoutAsync_ValidToken_RevokesIt()
+    public async Task Revokes_token_When_logout_is_called_with_valid_token()
     {
         var user = await SeedUserAsync();
         var (rawToken, hashedToken) = _tokenService.GenerateRefreshToken();
@@ -242,7 +248,7 @@ public class AuthServiceTests : IAsyncDisposable
     }
 
     [Fact]
-    public async Task LogoutAsync_AlreadyRevokedToken_ReturnsSuccess()
+    public async Task Returns_success_When_token_was_already_revoked()
     {
         var user = await SeedUserAsync();
         var (rawToken, hashedToken) = _tokenService.GenerateRefreshToken();
@@ -254,14 +260,14 @@ public class AuthServiceTests : IAsyncDisposable
     }
 
     [Fact]
-    public async Task LogoutAsync_NonexistentToken_ReturnsSuccess()
+    public async Task Returns_success_When_token_does_not_exist()
     {
         var result = await _sut.LogoutAsync("nonexistent-token");
 
         result.IsSuccess.Should().BeTrue();
     }
 
-    public async ValueTask DisposeAsync()
+    async ValueTask IAsyncDisposable.DisposeAsync()
     {
         await _dbContext.DisposeAsync();
         await _serviceProvider.DisposeAsync();

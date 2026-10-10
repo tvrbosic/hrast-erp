@@ -1,24 +1,17 @@
 using FluentAssertions;
-using HrastERP.SharedKernel.Abstractions;
-using HrastERP.SharedKernel.Authorization;
-using HrastERP.SharedKernel.Domain;
 using HrastERP.Infrastructure.Database;
+using HrastERP.Infrastructure.Tests.Fixtures;
+using HrastERP.SharedKernel.Abstractions;
+using HrastERP.SharedKernel.Domain;
 using Microsoft.EntityFrameworkCore;
+using NSubstitute;
 
 namespace HrastERP.Infrastructure.Tests.Database;
 
-public class SoftDeleteInterceptorTests
+[Trait("Category", "Integration")]
+public class SoftDeleteInterceptorTests : IClassFixture<PostgresContainerFixture>
 {
     private sealed class TestEntity(Guid id) : BaseEntity<Guid>(id);
-
-    private sealed class FakeCurrentUser(Guid userId, bool isAuthenticated) : ICurrentUser
-    {
-        public Guid UserId => userId;
-        public Guid TenantId => Guid.NewGuid();
-        public string Username => "testuser";
-        public bool IsAuthenticated => isAuthenticated;
-        public Permission EffectivePermissions => Permission.None;
-    }
 
     private sealed class TestDbContext(DbContextOptions<TestDbContext> options) : DbContext(options)
     {
@@ -30,23 +23,33 @@ public class SoftDeleteInterceptorTests
         }
     }
 
+    private readonly PostgresContainerFixture _fixture;
     private readonly Guid _userId = Guid.NewGuid();
+
+    public SoftDeleteInterceptorTests(PostgresContainerFixture fixture)
+    {
+        _fixture = fixture;
+    }
 
     private TestDbContext CreateContext(bool isAuthenticated = true)
     {
-        var currentUser = new FakeCurrentUser(_userId, isAuthenticated);
+        var currentUser = Substitute.For<ICurrentUser>();
+        currentUser.IsAuthenticated.Returns(isAuthenticated);
+        currentUser.UserId.Returns(_userId);
         var interceptor = new SoftDeleteInterceptor(currentUser);
 
         var options = new DbContextOptionsBuilder<TestDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .UseNpgsql(_fixture.NewConnectionString())
             .AddInterceptors(interceptor)
             .Options;
 
-        return new TestDbContext(options);
+        var context = new TestDbContext(options);
+        context.Database.EnsureCreated();
+        return context;
     }
 
     [Fact]
-    public async Task Removed_entity_is_not_deleted_from_database()
+    public async Task Does_not_delete_entity_from_database_When_entity_is_removed()
     {
         await using var context = CreateContext();
         var entity = new TestEntity(Guid.NewGuid());
@@ -61,7 +64,7 @@ public class SoftDeleteInterceptorTests
     }
 
     [Fact]
-    public async Task Removed_entity_gets_DeletedAt_set()
+    public async Task Sets_DeletedAt_When_entity_is_removed()
     {
         await using var context = CreateContext();
         var entity = new TestEntity(Guid.NewGuid());
@@ -76,7 +79,7 @@ public class SoftDeleteInterceptorTests
     }
 
     [Fact]
-    public async Task Removed_entity_gets_DeletedBy_set_to_current_user()
+    public async Task Sets_DeletedBy_to_current_user_When_entity_is_removed()
     {
         await using var context = CreateContext();
         var entity = new TestEntity(Guid.NewGuid());
@@ -90,7 +93,7 @@ public class SoftDeleteInterceptorTests
     }
 
     [Fact]
-    public async Task Unauthenticated_user_sets_empty_guid_for_DeletedBy()
+    public async Task Sets_empty_guid_for_DeletedBy_When_user_is_unauthenticated()
     {
         await using var context = CreateContext(isAuthenticated: false);
         var entity = new TestEntity(Guid.NewGuid());
@@ -104,7 +107,7 @@ public class SoftDeleteInterceptorTests
     }
 
     [Fact]
-    public async Task DeletedAt_is_utc()
+    public async Task DeletedAt_has_UTC_kind_When_entity_is_removed()
     {
         await using var context = CreateContext();
         var entity = new TestEntity(Guid.NewGuid());

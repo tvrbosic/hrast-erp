@@ -9,13 +9,13 @@ namespace HrastERP.Infrastructure.Tests.PdfGeneration;
 public class PdfGenerationSettingsTests
 {
     [Fact]
-    public void SectionName_IsPdfGeneration()
+    public void Has_correct_SectionName_When_class_is_defined()
     {
         PdfGenerationSettings.SectionName.Should().Be("PdfGeneration");
     }
 
     [Fact]
-    public void DefaultValues_AreCorrect()
+    public void Has_expected_default_values_When_instantiated()
     {
         var settings = new PdfGenerationSettings();
 
@@ -28,7 +28,7 @@ public class PdfGenerationSettingsTests
     }
 
     [Fact]
-    public void BindsFromConfiguration()
+    public void Binds_all_properties_When_configuration_section_is_present()
     {
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
@@ -64,7 +64,7 @@ public class PdfGenerationSettingsTests
     [InlineData("PdfGeneration:AccentColor")]
     [InlineData("PdfGeneration:TextColor")]
     [InlineData("PdfGeneration:FontFamily")]
-    public void MissingRequiredField_FailsValidation(string fieldToOmit)
+    public void Fails_validation_When_required_field_is_missing(string fieldToOmit)
     {
         var allFields = new Dictionary<string, string?>
         {

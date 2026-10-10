@@ -6,7 +6,7 @@ namespace HrastERP.SharedKernel.Tests.Results;
 public class ErrorTypeTests
 {
     [Fact]
-    public void ErrorType_has_expected_members()
+    public void Contains_all_expected_members_When_enum_is_defined()
     {
         var values = Enum.GetValues<ErrorType>();
 

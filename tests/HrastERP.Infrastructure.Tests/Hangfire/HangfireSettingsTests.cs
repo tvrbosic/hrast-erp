@@ -9,13 +9,13 @@ namespace HrastERP.Infrastructure.Tests.Hangfire;
 public class HangfireSettingsTests
 {
     [Fact]
-    public void SectionName_IsHangfire()
+    public void Has_correct_SectionName_When_class_is_defined()
     {
         HangfireSettings.SectionName.Should().Be("Hangfire");
     }
 
     [Fact]
-    public void DefaultValues_AreAppliedCorrectly()
+    public void Has_expected_default_values_When_instantiated()
     {
         var settings = new HangfireSettings();
 
@@ -27,7 +27,7 @@ public class HangfireSettingsTests
     }
 
     [Fact]
-    public void BindsFromConfiguration()
+    public void Binds_all_properties_When_configuration_section_is_present()
     {
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
@@ -58,7 +58,7 @@ public class HangfireSettingsTests
     [Theory]
     [InlineData(0)]
     [InlineData(21)]
-    public void WorkerCount_OutOfRange_FailsValidation(int workerCount)
+    public void Fails_validation_When_WorkerCount_is_out_of_range(int workerCount)
     {
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
@@ -84,7 +84,7 @@ public class HangfireSettingsTests
     [Theory]
     [InlineData(0)]
     [InlineData(3651)]
-    public void SoftDeleteRetentionDays_OutOfRange_FailsValidation(int days)
+    public void Fails_validation_When_SoftDeleteRetentionDays_is_out_of_range(int days)
     {
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>

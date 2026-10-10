@@ -9,13 +9,13 @@ namespace HrastERP.Infrastructure.Tests.Email;
 public class SmtpSettingsTests
 {
     [Fact]
-    public void SectionName_IsSmtp()
+    public void Has_correct_SectionName_When_class_is_defined()
     {
         SmtpSettings.SectionName.Should().Be("Smtp");
     }
 
     [Fact]
-    public void DefaultValues_AreCorrect()
+    public void Has_expected_default_values_When_instantiated()
     {
         var settings = new SmtpSettings();
 
@@ -29,7 +29,7 @@ public class SmtpSettingsTests
     }
 
     [Fact]
-    public void BindsFromConfiguration()
+    public void Binds_all_properties_When_configuration_section_is_present()
     {
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
@@ -67,7 +67,7 @@ public class SmtpSettingsTests
     [InlineData("Smtp:Password")]
     [InlineData("Smtp:FromAddress")]
     [InlineData("Smtp:FromName")]
-    public void MissingRequiredField_FailsValidation(string fieldToOmit)
+    public void Fails_validation_When_required_field_is_missing(string fieldToOmit)
     {
         var allFields = new Dictionary<string, string?>
         {
@@ -98,7 +98,7 @@ public class SmtpSettingsTests
     [Theory]
     [InlineData(0)]
     [InlineData(65536)]
-    public void Port_OutOfRange_FailsValidation(int port)
+    public void Fails_validation_When_port_is_out_of_range(int port)
     {
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
@@ -125,7 +125,7 @@ public class SmtpSettingsTests
     }
 
     [Fact]
-    public void InvalidFromAddress_FailsValidation()
+    public void Fails_validation_When_FromAddress_is_not_a_valid_email()
     {
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>

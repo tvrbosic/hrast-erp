@@ -26,7 +26,7 @@ public class MailKitEmailServiceTests
     }
 
     [Fact]
-    public void LoadTemplate_ExistingTemplate_ReturnsContent()
+    public void Returns_template_content_When_template_exists()
     {
         var result = _sut.LoadTemplate("welcome");
 
@@ -36,7 +36,7 @@ public class MailKitEmailServiceTests
     }
 
     [Fact]
-    public void LoadTemplate_NonExistentTemplate_ReturnsNull()
+    public void Returns_null_When_template_does_not_exist()
     {
         var result = _sut.LoadTemplate("nonexistent");
 
@@ -44,7 +44,7 @@ public class MailKitEmailServiceTests
     }
 
     [Fact]
-    public void RenderTemplate_ReplacesAllPlaceholders()
+    public void Replaces_all_placeholders_When_all_keys_are_provided()
     {
         var template = "Hello {{Name}}, your email is {{Email}}.";
         var placeholders = new Dictionary<string, string>
@@ -59,7 +59,7 @@ public class MailKitEmailServiceTests
     }
 
     [Fact]
-    public void RenderTemplate_UnmatchedPlaceholders_RemainInOutput()
+    public void Leaves_unmatched_placeholders_intact_When_key_is_missing()
     {
         var template = "Hello {{Name}}, your role is {{Role}}.";
         var placeholders = new Dictionary<string, string>
@@ -73,7 +73,7 @@ public class MailKitEmailServiceTests
     }
 
     [Fact]
-    public void RenderTemplate_EmptyPlaceholders_ReturnsTemplateUnchanged()
+    public void Returns_template_unchanged_When_no_placeholders_provided()
     {
         var template = "Hello {{Name}}.";
         var placeholders = new Dictionary<string, string>();

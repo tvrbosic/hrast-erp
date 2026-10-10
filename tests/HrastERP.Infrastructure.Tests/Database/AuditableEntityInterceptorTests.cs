@@ -1,24 +1,17 @@
 using FluentAssertions;
-using HrastERP.SharedKernel.Abstractions;
-using HrastERP.SharedKernel.Authorization;
-using HrastERP.SharedKernel.Domain;
 using HrastERP.Infrastructure.Database;
+using HrastERP.Infrastructure.Tests.Fixtures;
+using HrastERP.SharedKernel.Abstractions;
+using HrastERP.SharedKernel.Domain;
 using Microsoft.EntityFrameworkCore;
+using NSubstitute;
 
 namespace HrastERP.Infrastructure.Tests.Database;
 
-public class AuditableEntityInterceptorTests : IDisposable
+[Trait("Category", "Integration")]
+public class AuditableEntityInterceptorTests : IClassFixture<PostgresContainerFixture>
 {
     private sealed class TestEntity(Guid id) : BaseEntity<Guid>(id);
-
-    private sealed class FakeCurrentUser(Guid userId, bool isAuthenticated) : ICurrentUser
-    {
-        public Guid UserId => userId;
-        public Guid TenantId => Guid.NewGuid();
-        public string Username => "testuser";
-        public bool IsAuthenticated => isAuthenticated;
-        public Permission EffectivePermissions => Permission.None;
-    }
 
     private sealed class TestDbContext(DbContextOptions<TestDbContext> options) : DbContext(options)
     {
@@ -33,23 +26,33 @@ public class AuditableEntityInterceptorTests : IDisposable
         }
     }
 
+    private readonly PostgresContainerFixture _fixture;
     private readonly Guid _userId = Guid.NewGuid();
+
+    public AuditableEntityInterceptorTests(PostgresContainerFixture fixture)
+    {
+        _fixture = fixture;
+    }
 
     private TestDbContext CreateContext(bool isAuthenticated = true)
     {
-        var currentUser = new FakeCurrentUser(_userId, isAuthenticated);
+        var currentUser = Substitute.For<ICurrentUser>();
+        currentUser.IsAuthenticated.Returns(isAuthenticated);
+        currentUser.UserId.Returns(_userId);
         var interceptor = new AuditableEntityInterceptor(currentUser);
 
         var options = new DbContextOptionsBuilder<TestDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .UseNpgsql(_fixture.NewConnectionString())
             .AddInterceptors(interceptor)
             .Options;
 
-        return new TestDbContext(options);
+        var context = new TestDbContext(options);
+        context.Database.EnsureCreated();
+        return context;
     }
 
     [Fact]
-    public async Task Added_entity_gets_CreatedAt_and_CreatedBy_set()
+    public async Task Sets_CreatedAt_and_CreatedBy_When_entity_is_added()
     {
         await using var context = CreateContext();
         var entity = new TestEntity(Guid.NewGuid());
@@ -64,7 +67,7 @@ public class AuditableEntityInterceptorTests : IDisposable
     }
 
     [Fact]
-    public async Task Modified_entity_gets_UpdatedAt_and_UpdatedBy_set()
+    public async Task Sets_UpdatedAt_and_UpdatedBy_When_entity_is_modified()
     {
         await using var context = CreateContext();
         var entity = new TestEntity(Guid.NewGuid());
@@ -85,7 +88,7 @@ public class AuditableEntityInterceptorTests : IDisposable
     }
 
     [Fact]
-    public async Task Unauthenticated_user_sets_empty_guid()
+    public async Task Sets_empty_guid_When_user_is_unauthenticated()
     {
         await using var context = CreateContext(isAuthenticated: false);
         var entity = new TestEntity(Guid.NewGuid());
@@ -97,7 +100,7 @@ public class AuditableEntityInterceptorTests : IDisposable
     }
 
     [Fact]
-    public async Task CreatedAt_is_utc()
+    public async Task CreatedAt_has_UTC_kind_When_entity_is_added()
     {
         await using var context = CreateContext();
         var entity = new TestEntity(Guid.NewGuid());
@@ -106,10 +109,5 @@ public class AuditableEntityInterceptorTests : IDisposable
         await context.SaveChangesAsync();
 
         entity.CreatedAt.Kind.Should().Be(DateTimeKind.Utc);
-    }
-
-    public void Dispose()
-    {
-        // InMemory databases are disposed with the context
     }
 }
