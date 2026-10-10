@@ -111,3 +111,66 @@ tests/
 ### Resetting the Database
 
 To start fresh: stop the app, drop the `hrastErp` database, recreate it, re-apply migrations, and restart the app. Seed scripts will re-apply automatically.
+
+## Commands
+
+### Docker
+
+```bash
+# Start all services (PostgreSQL, Redis)
+docker compose up -d
+
+# Stop all services
+docker compose down
+
+# Stop all services and remove data volumes (full reset)
+docker compose down -v
+
+# Follow logs for all services
+docker compose logs -f
+
+# Follow logs for a specific service
+docker compose logs -f postgres
+docker compose logs -f redis
+```
+
+### Build
+
+```bash
+dotnet build
+```
+
+### Run
+
+```bash
+dotnet run --project src/HrastERP.API/
+```
+
+### Database
+
+```bash
+# Apply pending migrations
+dotnet ef database update --project src/HrastERP.Infrastructure --startup-project src/HrastERP.API
+
+# Add a new migration
+dotnet ef migrations add <MigrationName> --project src/HrastERP.Infrastructure --startup-project src/HrastERP.API
+```
+
+### Test
+
+```bash
+# All tests (requires Docker for integration tests)
+dotnet test
+
+# Unit tests only — no Docker required
+dotnet test --filter "Category!=Integration"
+
+# Integration tests only
+dotnet test --filter "Category=Integration"
+
+# Single test project
+dotnet test tests/HrastERP.Infrastructure.Tests/
+
+# Single test by name
+dotnet test --filter "FullyQualifiedName~<TestMethodName>"
+```

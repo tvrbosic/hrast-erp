@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to AI coding agents (Claude Code, Cursor, Copilot, etc.) when working with code in this repository.
 
 ## Commands
 
@@ -59,7 +59,7 @@ Key types and their intended use:
 - **`IDomainEvent`** — marker interface for domain events; aggregates raise them, the application layer dispatches after commit
 - **`ValueObject`** — equality by `GetEqualityComponents()`; use for `Money`, `Address`, etc.
 - **`Result` / `Result<TValue>`** — all command and query handlers return these instead of throwing for expected failures; supports implicit conversion from `TValue` and `Error`
-- **`Error`** — `record(string Code, string Message, ErrorType Type)`; code is dot-separated e.g. `"Order.NotFound"`; `ErrorType` enum: `Validation`, `NotFound`, `Forbidden`, `Conflict`, `Unexpected`; factory methods: `Error.NotFound`, `Error.Validation`, `Error.Forbidden`, `Error.Conflict`, `Error.Unexpected`. `Error.Validation` accepts an optional `validationErrors` (`IReadOnlyDictionary<string, string[]>?`) for field-level error detail; populated automatically by `ValidationBehavior`. Each module defines errors as `static readonly` constants in a `<Module>Errors` class. See `docs/error-handling.md` and `docs/api-responses.md`.
+- **`Error`** — `record(string Code, string Message, ErrorType Type)`; code is dot-separated e.g. `"Order.NotFound"`; `ErrorType` enum: `Validation`, `NotFound`, `Forbidden`, `Conflict`, `Unexpected`; factory methods: `Error.NotFound`, `Error.Validation`, `Error.Forbidden`, `Error.Conflict`, `Error.Unexpected`. `Error.Validation` accepts an optional `validationErrors` (`IReadOnlyDictionary<string, string[]>?`) for field-level error detail; populated automatically by `ValidationBehavior`. Each module defines errors as `static readonly` constants in a `<Module>Errors` class. See `docs/api/error-handling.md` and `docs/api/api-responses.md`.
 - **`PagedResult<T>`** — returned by all list queries; created via `PagedResult<T>.Create(...)`
 - **`Permission`** — `[Flags] enum Permission : long` in `HrastERP.SharedKernel/Authorization/`; 20 CRUD permissions across 5 modules (bits 0–19). Use for authorization checks — always reference named enum members, never raw `long` values.
 - **`[SensitiveData]`** — marker attribute (`HrastERP.SharedKernel/Logging/`) for MediatR request properties containing sensitive data (passwords, tokens). `LoggingBehavior` masks these with `"***"` when logging request payloads. Apply with `[property: SensitiveData]` on record constructor parameters.
@@ -102,7 +102,7 @@ HrastERP.<Module>/
 
 **Controllers live in `HrastERP.API/Controllers/`**, not in modules. This avoids a circular dependency (API → Module → API for shared Web types like `ResultExtensions`, `RequirePermissionAttribute`, `ErrorResponse`). The API project references all modules and all API types, so controllers there can reference both without issues.
 
-See `docs/modules.md` for the full guide on module architecture and adding new modules.
+See `docs/architecture/modules.md` for the full guide on module architecture and adding new modules.
 
 ## Administration Module
 
@@ -159,7 +159,7 @@ public async Task<IActionResult> GetInvoices() { ... }
 - Does NOT inherit `BaseEntity<TId>` — roles have no auditing, soft-delete, or tenant isolation
 - `Permissions` stored as `bigint` via `HasConversion<long>()`
 - Single role per user via nullable `ApplicationUser.RoleId` FK; `OnDelete(SetNull)` clears the FK on all users when a role is deleted
-- See `docs/authorization.md` for the full reference
+- See `docs/security/authorization.md` for the full reference
 
 ## Database Seeding
 
@@ -182,7 +182,7 @@ Plain SQL scripts live in two folders inside `src/HrastERP.Infrastructure/Databa
 - WarehouseEmployee role: `00000000-0000-0000-0000-000000000004`
 - FinanceEmployee role: `00000000-0000-0000-0000-000000000005`
 
-See `docs/database-seeding.md` for the full guide on adding new seed scripts.
+See `docs/data/database-seeding.md` for the full guide on adding new seed scripts.
 
 ## Background Jobs
 
@@ -199,7 +199,7 @@ Hangfire with PostgreSQL storage provides background job infrastructure. Configu
 - **`RefreshTokenCleanupJob`** — deletes expired tokens and revoked tokens past retention period; batched raw SQL (no audit — `RefreshToken` doesn't inherit `BaseEntity<TId>`)
 - **`SoftDeleteCleanupJob`** — hard-deletes soft-deleted entities past retention period; uses raw SQL to bypass the interceptor chain (no HTTP context); writes `Purged` audit entries with full entity snapshot before deletion
 
-**Adding a new recurring job:** Create a class implementing `IRecurringJobDefinition` in the appropriate module or Infrastructure layer, register it as `IRecurringJobDefinition` in DI (and by concrete type for Hangfire's activator). It will be auto-discovered at startup. See `docs/background-jobs.md` for the full guide.
+**Adding a new recurring job:** Create a class implementing `IRecurringJobDefinition` in the appropriate module or Infrastructure layer, register it as `IRecurringJobDefinition` in DI (and by concrete type for Hangfire's activator). It will be auto-discovered at startup. See `docs/services/background-jobs.md` for the full guide.
 
 ## Email
 
@@ -213,7 +213,7 @@ MailKit-based SMTP email infrastructure. Configured in `appsettings.json` under 
 
 **HTML templates:** Embedded resources in `Email/Templates/`. Use `{{placeholder}}` syntax for variable substitution. Templates are loaded by name (e.g. `"welcome"` loads `Email/Templates/welcome.html`). Add new templates as `.html` files in that folder — they're automatically included via the `<EmbeddedResource>` glob in the `.csproj`.
 
-See `docs/email.md` for the developer guide on sending emails and adding templates.
+See `docs/services/email.md` for the developer guide on sending emails and adding templates.
 
 ## File Storage
 
@@ -228,7 +228,7 @@ Local file storage infrastructure with tenant-isolated directory structure. Conf
 
 **Storage layout:** Files are stored under `{RootPath}/{TenantId}/{Year}/{Month}/{FileId}{Extension}`. The `storage/` directory is git-ignored.
 
-See `docs/file-storage.md` for the developer guide on uploading, downloading, and managing files.
+See `docs/services/file-storage.md` for the developer guide on uploading, downloading, and managing files.
 
 ## PDF Generation
 
@@ -243,7 +243,7 @@ QuestPDF-based PDF report generation infrastructure. Configured in `appsettings.
 
 **Fonts and logo:** Open Sans fonts and a placeholder logo are embedded resources in `PdfGeneration/Assets/`. Custom logo can be set via `LogoPath` in settings.
 
-See `docs/pdf-generation.md` for the developer guide on writing report generators.
+See `docs/services/pdf-generation.md` for the developer guide on writing report generators.
 
 ## Caching
 
@@ -258,7 +258,7 @@ Redis-based distributed caching infrastructure. Configured in `appsettings.json`
 
 **Service lifetime:** Singleton. All dependencies (`IDistributedCache`, `IConnectionMultiplexer`, `CacheSettings`) are singletons.
 
-See `docs/caching.md` for the developer guide on caching patterns and key conventions.
+See `docs/services/caching.md` for the developer guide on caching patterns and key conventions.
 
 ## Logging
 
@@ -276,7 +276,7 @@ Serilog-based structured logging infrastructure. Replaces the default ASP.NET Co
 
 **Middleware order in Program.cs:** `GlobalExceptionMiddleware` → `UseSerilogRequestLogging()` → ... → `UseAuthentication()` → `LoggingEnrichmentMiddleware` → `BlockInactiveEntityMiddleware` → `UseAuthorization()` → `MapControllers()` → `MapHealthChecks("/health")` → `MapOpenApi()` + `MapScalarApiReference()` (Development only).
 
-See `docs/logging.md` for the developer guide on logging conventions and configuration.
+See `docs/services/logging.md` for the developer guide on logging conventions and configuration.
 
 ## API Documentation & Health Checks
 
@@ -296,4 +296,17 @@ See `docs/logging.md` for the developer guide on logging conventions and configu
 
 ## Test stack
 
-xUnit + FluentAssertions. Each module has a dedicated test project under `tests/`. `xunit` is a global using in test projects — no need to add `using Xunit;`.
+xUnit + FluentAssertions + NSubstitute. Each module has a dedicated test project under `tests/`. `xunit` is a global using in test projects — no need to add `using Xunit;`.
+
+**Mocking:** Use NSubstitute (`Substitute.For<IInterface>()`) for dependency doubles — fakes that implement interfaces (`ICurrentUser`, `ICurrentTenant`, `IRecurringJobManager`, etc.). Do NOT replace concrete test-infrastructure types (`TestDbContext`, `TestEntity`, test data records) — those stay as-is.
+
+**Test method naming:** `ExpectedBehavior_When_Condition` — e.g., `Returns_success_When_credentials_are_valid`, `Throws_InvalidOperationException_When_TenantId_is_empty_on_insert`. `When` is always capitalized. State the assertion first, then the condition that triggers it.
+
+**Integration tests (Testcontainers):** Tests that execute against a real database or Redis are tagged `[Trait("Category", "Integration")]` and implement `IClassFixture<PostgresContainerFixture>` or `IClassFixture<RedisContainerFixture>` (in `tests/HrastERP.Infrastructure.Tests/Fixtures/`). `PostgresContainerFixture.NewConnectionString()` returns a unique database name per call (`test_{Guid:N}`) for test isolation. Tests using a custom `TestDbContext` call `EnsureCreated()`; tests using the real `HrastDbContext` call `MigrateAsync()` in `IAsyncLifetime.InitializeAsync()`.
+
+**Running tests:**
+```bash
+dotnet test --filter "Category!=Integration"   # fast, no Docker required
+dotnet test                                    # all tests, requires Docker
+dotnet test --filter "Category=Integration"    # integration only
+```
