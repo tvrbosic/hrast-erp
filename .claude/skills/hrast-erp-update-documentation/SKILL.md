@@ -1,16 +1,16 @@
 ---
-name: sync-docs
-description: Use when you want to reflect recent code changes into project documentation — README.md, CLAUDE.md, or docs/ files. Call as /sync-docs (uncommitted changes) or /sync-docs N (last N commits).
+name: hrast-erp-update-documentation
+description: Scans code changes and updates README.md, AGENTS.md, or docs/ files — filters what is worth documenting, maps changes to the right target, drafts content, and applies after user approval. Use when reflecting recent code changes into project documentation.
 ---
 
-# sync-docs
+# update-documentation
 
 ## Overview
 
 Scan code changes, determine which are worth documenting, decide which documentation targets should be updated, show the proposed changes to the user for review, then apply them after approval.
 
-- **`/sync-docs`** (no argument) — scans **uncommitted changes** (staged + unstaged)
-- **`/sync-docs N`** — scans the **last N commits**
+- **`/update-documentation`** (no argument) — scans **uncommitted changes** (staged + unstaged)
+- **`/update-documentation N`** — scans the **last N commits**
 
 ---
 
@@ -31,7 +31,7 @@ High-level project overview for someone arriving at the repo for the first time.
 
 **Do NOT add:** Implementation details, pattern explanations, developer workflows, or Claude-specific conventions.
 
-### CLAUDE.md
+### AGENTS.md
 Developer guide specifically for Claude Code working in this repository. Contains:
 - Common commands (build, test, run)
 - Architecture rules and constraints (e.g. inward-only dependencies, naming conventions)
@@ -62,6 +62,11 @@ In-depth reference files for things that are not self-explanatory. Two categorie
 ## Flow
 
 ### Step 1 — Gather change data
+
+**Always run first (discover existing docs structure):**
+```bash
+find docs/ -type f -name "*.md" | sort       # enumerate all existing docs files
+```
 
 **If no argument (uncommitted changes):**
 Run in parallel:
@@ -113,14 +118,14 @@ For each change worth documenting, map it to one or more targets:
 
 | Change type | Target |
 |---|---|
-| New SharedKernel type or significant change | CLAUDE.md + docs/shared-kernel.md |
-| New architectural rule or constraint | CLAUDE.md |
-| New module added | README.md + CLAUDE.md |
+| New SharedKernel type or significant change | AGENTS.md + relevant file under `docs/architecture/` (consult discovered docs) |
+| New architectural rule or constraint | AGENTS.md |
+| New module added | README.md + AGENTS.md |
 | Project structure change | README.md |
 | New technology or dependency | README.md |
 | New development flow (multi-step, recurring) | docs/ (new or existing file) |
 | Non-obvious pattern needs explanation | docs/ |
-| Build/run command change | CLAUDE.md + README.md |
+| Build/run command change | AGENTS.md + README.md |
 
 ### Step 5 — Draft changes
 
@@ -139,10 +144,10 @@ Display a clear summary:
 ### README.md
 [what will change and why]
 
-### CLAUDE.md
+### AGENTS.md
 [what will change and why]
 
-### docs/shared-kernel.md (existing)
+### docs/architecture/shared-kernel.md (existing)
 [what will change and why]
 
 ### docs/implementing-commands.md (NEW)
@@ -168,8 +173,8 @@ Apply only the approved changes. After writing each file, confirm what was updat
 - Never apply changes without explicit user approval
 - Never add speculative or forward-looking content ("in the future we will...")
 - Never duplicate content across targets — each piece of information belongs in one place
-- Keep README.md high-level; keep details in CLAUDE.md or docs/
-- Keep CLAUDE.md actionable for Claude; keep tutorials in docs/
+- Keep README.md high-level; keep details in AGENTS.md or docs/
+- Keep AGENTS.md actionable for Claude; keep tutorials in docs/
 - Prefer updating existing docs/ files over creating new ones unless the topic is clearly distinct
 - New docs/ files should cover topics broad enough to be referenced repeatedly, not one-time notes
 - Do not touch documentation that is unrelated to the scanned changes

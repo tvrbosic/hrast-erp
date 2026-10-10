@@ -1,6 +1,6 @@
 ---
-name: commit
-description: Use when user wants to commit and push changes - analyzes uncommitted changes, generates a commit message, presents it for approval, then commits and pushes on approval.
+name: hrast-erp-commit
+description: Analyzes uncommitted changes, generates a Conventional Commits message, presents it for approval, then stages and pushes on approval. Use when the user wants to commit and push changes.
 ---
 
 # Smart Commit

@@ -13,7 +13,7 @@ using NSubstitute;
 namespace HrastERP.Infrastructure.Tests.Authentication;
 
 [Trait("Category", "Integration")]
-public class AuthServiceTests : IClassFixture<PostgresContainerFixture>, IAsyncLifetime, IAsyncDisposable
+public class AuthServiceTests : IClassFixture<PostgresContainerFixture>, IAsyncLifetime
 {
     private readonly JwtSettings _settings = new()
     {
@@ -73,7 +73,11 @@ public class AuthServiceTests : IClassFixture<PostgresContainerFixture>, IAsyncL
         await _dbContext.Database.MigrateAsync();
     }
 
-    Task IAsyncLifetime.DisposeAsync() => Task.CompletedTask;
+    public async Task DisposeAsync()
+    {
+        await _dbContext.DisposeAsync();
+        await _serviceProvider.DisposeAsync();
+    }
 
     private async Task<ApplicationUser> SeedUserAsync(
         string email = "test@example.com",
@@ -267,9 +271,4 @@ public class AuthServiceTests : IClassFixture<PostgresContainerFixture>, IAsyncL
         result.IsSuccess.Should().BeTrue();
     }
 
-    async ValueTask IAsyncDisposable.DisposeAsync()
-    {
-        await _dbContext.DisposeAsync();
-        await _serviceProvider.DisposeAsync();
-    }
 }

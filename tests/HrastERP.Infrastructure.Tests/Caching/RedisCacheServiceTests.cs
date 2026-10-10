@@ -95,7 +95,7 @@ public class RedisCacheServiceTests : IClassFixture<RedisContainerFixture>, IAsy
         var key = "short-ttl-" + Guid.NewGuid();
         await _sut.SetAsync(key, "value", TimeSpan.FromMilliseconds(100));
 
-        await Task.Delay(500);
+        await Task.Delay(500); // 5x safety margin over the 100ms TTL to avoid flakiness
 
         var result = await _sut.GetAsync<string>(key);
         result.Should().BeNull();

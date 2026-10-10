@@ -57,7 +57,7 @@ Shared container fixtures live in `tests/HrastERP.Infrastructure.Tests/Fixtures/
 
 **`PostgresContainerFixture`** — starts one PostgreSQL 16 container per test class (`IClassFixture<PostgresContainerFixture>`).
 
-- `NewConnectionString()` returns a unique connection string pointing to a fresh database named `test_{Guid:N}`. Call this once per test class (in the constructor), not once per test, so each test class gets its own isolated database.
+- `NewConnectionString()` returns a unique connection string pointing to a fresh database named `test_{Guid:N}`. Call this once per test (typically inside a `CreateContext()` helper or at the top of the test body) so each test gets its own fully isolated database with no shared state.
 - Tests using a custom `TestDbContext` call `context.Database.EnsureCreated()` to build the schema.
 - Tests using the real `HrastDbContext` call `await _dbContext.Database.MigrateAsync()` inside `IAsyncLifetime.InitializeAsync()`.
 

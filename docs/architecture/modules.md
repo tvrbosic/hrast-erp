@@ -157,7 +157,7 @@ The three `Add*` calls in `<Module>Module.cs` enable automatic discovery of hand
 
 ### EF Core entity configurations
 
-`services.AddSingleton(new EntityConfigurationAssembly(assembly))` registers the module's assembly reference in DI. `HrastDbContext` receives all registered `EntityConfigurationAssembly` instances via constructor injection and calls `ApplyConfigurationsFromAssembly` for each one during `OnModelCreating`. Any `IEntityTypeConfiguration<TEntity>` class placed in the module's `Infrastructure/Database/Configurations/` folder is applied automatically. See `docs/adding-entities.md` for details on adding entities.
+`services.AddSingleton(new EntityConfigurationAssembly(assembly))` registers the module's assembly reference in DI. `HrastDbContext` receives all registered `EntityConfigurationAssembly` instances via constructor injection and calls `ApplyConfigurationsFromAssembly` for each one during `OnModelCreating`. Any `IEntityTypeConfiguration<TEntity>` class placed in the module's `Infrastructure/Database/Configurations/` folder is applied automatically. See `docs/data/adding-entities.md` for details on adding entities.
 
 ### Controllers
 
