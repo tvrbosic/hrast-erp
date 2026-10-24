@@ -159,7 +159,7 @@ public async Task<IActionResult> GetInvoices() { ... }
 - Does NOT inherit `BaseEntity<TId>` — roles have no auditing, soft-delete, or tenant isolation
 - `Permissions` stored as `bigint` via `HasConversion<long>()`
 - Single role per user via nullable `ApplicationUser.RoleId` FK; `OnDelete(SetNull)` clears the FK on all users when a role is deleted
-- See `docs/security/authorization.md` for the full reference
+- See `docs/security/authorization.md` for the full reference and `docs/security/permission-checks-guide.md` for a step-by-step walkthrough (bit flags, request flow, AND vs OR semantics)
 
 ## Database Seeding
 

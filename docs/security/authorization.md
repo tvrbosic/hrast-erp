@@ -4,6 +4,8 @@
 
 Custom RBAC system built on ASP.NET Core policy-based authorization. At login, `TokenService` embeds the user's effective permissions as a single `long` claim in the JWT. `CurrentUser` reads that claim, and `PermissionAuthorizationHandler` performs a bitwise AND check when `[RequirePermission]` is applied to a controller action. No database query per request.
 
+New to this? Read the step-by-step walkthrough in [permission-checks-guide.md](permission-checks-guide.md) first — it covers bit flags, the attribute → policy → handler flow, and AND vs OR semantics.
+
 ## Protecting an Endpoint
 
 Apply `[RequirePermission]` to a controller action or controller class:

@@ -21,17 +21,20 @@ public sealed class PermissionPolicyProvider(IOptions<AuthorizationOptions> opti
             long.TryParse(policyName[PolicyPrefix.Length..], out var raw))
         {
             var policy = new AuthorizationPolicyBuilder()
-                .RequireAuthenticatedUser()
+                .RequireAuthenticatedUser() // no valid JWT → 401
+                // Wrapped in a requirement type so the framework routes it to PermissionAuthorizationHandler
                 .AddRequirements(new PermissionRequirement((Permission)raw))
                 .Build();
-            return Task.FromResult<AuthorizationPolicy?>(policy);
+            return Task.FromResult<AuthorizationPolicy?>(policy); // interface is async; result is already computed
         }
         return _fallback.GetPolicyAsync(policyName);
     }
 
+    // Required by IAuthorizationPolicyProvider; used by plain [Authorize] — delegated to keep built-in behavior.
     public Task<AuthorizationPolicy> GetDefaultPolicyAsync() =>
         _fallback.GetDefaultPolicyAsync();
 
+    // Required by IAuthorizationPolicyProvider; used for endpoints with no auth attribute — delegated (null = public).
     public Task<AuthorizationPolicy?> GetFallbackPolicyAsync() =>
         _fallback.GetFallbackPolicyAsync();
 }
