@@ -112,13 +112,15 @@ See `docs/api/api-responses.md` for the full HTTP response format and how `ToAct
 Validators are registered per-module in each module's `Add<Module>Module()` extension method using FluentValidation's assembly scanning:
 
 ```csharp
-services.AddValidatorsFromAssembly(assembly);
+services.AddValidatorsFromAssembly(assembly, includeInternalTypes: true);
 ```
+
+`includeInternalTypes: true` is required: validators are `internal sealed`, and FluentValidation skips internal types by default, so validation would silently never run.
 
 Write validators as standard FluentValidation `AbstractValidator<T>` subclasses:
 
 ```csharp
-public sealed class CreateOrderCommandValidator : AbstractValidator<CreateOrderCommand>
+internal sealed class CreateOrderCommandValidator : AbstractValidator<CreateOrderCommand>
 {
     public CreateOrderCommandValidator()
     {

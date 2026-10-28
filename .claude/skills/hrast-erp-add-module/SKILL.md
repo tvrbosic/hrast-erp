@@ -81,7 +81,7 @@ public static class <Module>Module
         var assembly = typeof(<Module>Module).Assembly;
 
         services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(assembly));
-        services.AddValidatorsFromAssembly(assembly);
+        services.AddValidatorsFromAssembly(assembly, includeInternalTypes: true);
         services.AddSingleton(new EntityConfigurationAssembly(assembly));
 
         return services;

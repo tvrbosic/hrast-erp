@@ -78,7 +78,7 @@ Use `AsNoTracking()` for read-only queries.
 
 ## FluentValidation Validator
 
-Place next to the command. Auto-discovered via `AddValidatorsFromAssembly` — no manual registration:
+Place next to the command. Auto-discovered via `AddValidatorsFromAssembly(assembly, includeInternalTypes: true)` — no manual registration. Validators are `internal sealed`, so the `includeInternalTypes: true` flag is required (FluentValidation skips internal types by default):
 
 ```csharp
 public sealed class CreateOrderCommandValidator : AbstractValidator<CreateOrderCommand>

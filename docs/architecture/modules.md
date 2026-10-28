@@ -105,7 +105,7 @@ public static class <Module>Module
         services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(assembly));
 
         // Registers all FluentValidation validators defined in this module's assembly
-        services.AddValidatorsFromAssembly(assembly);
+        services.AddValidatorsFromAssembly(assembly, includeInternalTypes: true);
 
         // Registers this module's assembly so HrastDbContext can discover and apply EF Core entity configurations
         services.AddSingleton(new EntityConfigurationAssembly(assembly));
@@ -153,7 +153,7 @@ The three `Add*` calls in `<Module>Module.cs` enable automatic discovery of hand
 
 ### FluentValidation validators
 
-`AddValidatorsFromAssembly(assembly)` scans the module assembly for all classes extending `AbstractValidator<T>` and registers them as `IValidator<T>` in DI. The `ValidationBehavior` pipeline behavior (registered globally in `HrastERP.Infrastructure`) resolves all `IValidator<TRequest>` for each MediatR request and runs them before the handler executes. A validator placed next to its command (e.g. `Application/Tenants/Commands/CreateTenant/CreateTenantCommandValidator.cs`) is discovered and wired automatically.
+`AddValidatorsFromAssembly(assembly, includeInternalTypes: true)` scans the module assembly for all classes extending `AbstractValidator<T>` and registers them as `IValidator<T>` in DI. `includeInternalTypes: true` is required because validators are `internal sealed` — FluentValidation skips internal types by default, which would silently disable validation. The `ValidationBehavior` pipeline behavior (registered globally in `HrastERP.Infrastructure`) resolves all `IValidator<TRequest>` for each MediatR request and runs them before the handler executes. A validator placed next to its command (e.g. `Application/Tenants/Commands/CreateTenant/CreateTenantCommandValidator.cs`) is discovered and wired automatically.
 
 ### EF Core entity configurations
 
