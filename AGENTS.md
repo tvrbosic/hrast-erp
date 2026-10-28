@@ -43,7 +43,7 @@ dotnet run --project src/HrastERP.API/
 
 **Inter-module communication:** Domain events only (MediatR notifications). Modules never reference each other. Cross-module event contracts live in SharedKernel under `IntegrationEvents/`.
 
-**Dependency rules:** Since layers are folders not projects, inward-only dependencies (Domain ← Application ← Infrastructure) are enforced by convention. Domain code must not import from Application, Infrastructure, or Web folders.
+**Dependency rules:** Since layers are folders not projects, inward-only dependencies (Domain ← Application ← Infrastructure) are enforced by convention. Domain code must not import from Application or Infrastructure folders.
 
 ## SharedKernel
 

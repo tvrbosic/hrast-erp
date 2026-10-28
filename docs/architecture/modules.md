@@ -168,6 +168,6 @@ Controllers live in `HrastERP.API/Controllers/`, not in module projects. They ar
 ## Module Isolation Rules
 
 - **No cross-module references.** Modules must not reference each other's projects. If module A needs to react to something in module B, use domain events via MediatR notifications.
-- **Inward-only dependencies.** Since layers are folders (not projects), the rule is enforced by convention: `Domain` must not import from `Application`, `Infrastructure`, or `Web`. `Application` must not import from `Infrastructure` or `Web`.
+- **Inward-only dependencies.** Since layers are folders (not projects), the rule is enforced by convention: `Domain` must not import from `Application` or `Infrastructure`. `Application` must not import from `Infrastructure`.
 - **Shared code goes in SharedKernel.** Base classes, interfaces, value objects, and integration event contracts live in `HrastERP.SharedKernel`, which is referenced by all modules.
 - **One DbContext.** All modules share `HrastDbContext`. Entity isolation is achieved through EF Core schema namespacing (e.g. `builder.ToTable("products", "inventory")`), not separate contexts.

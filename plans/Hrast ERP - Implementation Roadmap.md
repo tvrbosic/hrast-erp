@@ -134,7 +134,7 @@ HrastERP.<Module>/
 
 #### 0.6 Authorization Infrastructure
 - Custom RBAC permission system: `Permission` enum flags per module operation
-- `Role` entity with many-to-many `RolePermissions`
+- `Role` entity with `Permission` bitmask (single role per user)
 - `ICurrentUser` exposes current user's effective permissions
 - `[RequirePermission]` attribute + `IAuthorizationHandler` for policy-based checks
 - Predefined role seeds: Administrator, ProcurementOperator, ProductionWorker, WarehouseEmployee, FinanceEmployee
@@ -210,12 +210,15 @@ HrastERP.<Module>/
 - `GET /admin/users`, `GET /admin/users/{id}`
 
 #### 1.2 Role Management
-- `Role` entity with `RolePermission` join table
-- Predefined role seeds with default permissions
-- Commands: `CreateRole`, `UpdateRole`, `DeleteRole`, `AssignPermissionsToRole`
+- Existing `Role` entity with `[Flags] Permission` bitmask (no join table); API exposes permissions as enum names
+- Roles are global (not tenant-scoped); writes restricted to super admin tenant, reads available to tenant admins
+- Predefined role seeds with default permissions (already in `Reference/0001_roles.sql`)
+- Administrator role protected: cannot be deleted, permissions fixed to all
+- Role deletion blocked while assigned to non-deleted users (`Role.InUse`); FK changed from `SetNull` to `Restrict`
+- Commands: `CreateRole`, `UpdateRole` (name, description, permissions in one request), `DeleteRole`
 - Queries: `GetRoles`, `GetRoleById`, `GetPermissions`
 - `POST /admin/roles`, `PUT /admin/roles/{id}`, `DELETE /admin/roles/{id}`
-- `GET /admin/roles`, `GET /admin/permissions`
+- `GET /admin/roles`, `GET /admin/roles/{id}`, `GET /admin/permissions`
 
 #### 1.3 User-Role Assignment
 - `AssignRolesToUser` command, `RemoveRoleFromUser` command
