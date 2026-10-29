@@ -35,6 +35,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\HrastERP.Infrastructure\HrastERP.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Administration\HrastERP.Administration\HrastERP.Administration.csproj" />
   </ItemGroup>
 
 </Project>

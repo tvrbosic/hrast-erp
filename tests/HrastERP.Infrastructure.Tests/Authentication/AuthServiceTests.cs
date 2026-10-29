@@ -1,4 +1,6 @@
 using FluentAssertions;
+using HrastERP.Administration;
+using HrastERP.Administration.Domain.Entities;
 using HrastERP.Infrastructure.Authentication;
 using HrastERP.Infrastructure.Database;
 using HrastERP.Infrastructure.Tests.Fixtures;
@@ -24,6 +26,7 @@ public class AuthServiceTests : IClassFixture<PostgresContainerFixture>, IAsyncL
         RefreshTokenExpirationDays = 7
     };
 
+    private readonly Guid _tenantId = Guid.NewGuid();
     private readonly HrastDbContext _dbContext;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ITokenService _tokenService;
@@ -38,7 +41,10 @@ public class AuthServiceTests : IClassFixture<PostgresContainerFixture>, IAsyncL
         tenant.TenantId.Returns(TenantConstants.SuperAdminTenantId);
 
         services.AddSingleton<ICurrentTenant>(tenant);
-        services.AddSingleton<IEnumerable<EntityConfigurationAssembly>>([]);
+        // Module configurations must be applied so the model matches the migration snapshot
+        // (e.g. ApplicationUser → Tenant FK from the Administration module)
+        services.AddSingleton<IEnumerable<EntityConfigurationAssembly>>(
+            [new EntityConfigurationAssembly(typeof(AdministrationModule).Assembly)]);
 
         services.AddDbContext<HrastDbContext>(options =>
             options.UseNpgsql(fixture.NewConnectionString()));
@@ -71,6 +77,10 @@ public class AuthServiceTests : IClassFixture<PostgresContainerFixture>, IAsyncL
     public async Task InitializeAsync()
     {
         await _dbContext.Database.MigrateAsync();
+
+        // Seeded users reference this tenant via the ApplicationUser → Tenant FK
+        _dbContext.Set<Tenant>().Add(new Tenant(_tenantId, "Test Tenant"));
+        await _dbContext.SaveChangesAsync();
     }
 
     public async Task DisposeAsync()
@@ -89,7 +99,7 @@ public class AuthServiceTests : IClassFixture<PostgresContainerFixture>, IAsyncL
             Id = Guid.NewGuid(),
             Email = email,
             UserName = email,
-            TenantId = Guid.NewGuid(),
+            TenantId = _tenantId,
             FirstName = "Test",
             LastName = "User",
             IsActive = isActive
