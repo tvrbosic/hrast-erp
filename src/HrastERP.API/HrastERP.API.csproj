@@ -14,6 +14,7 @@
     <PackageReference Include="Scalar.AspNetCore" Version="2.17.10" />
   </ItemGroup>
 
+  <!-- Allows the project listed below to access internal types of this project (use its assembly name, not folder) -->
   <ItemGroup>
     <InternalsVisibleTo Include="HrastERP.API.Tests" />
   </ItemGroup>

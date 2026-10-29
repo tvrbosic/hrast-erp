@@ -45,7 +45,28 @@ A request missing the `Authorization` header returns `401 Unauthorized`. A valid
 
 `Role` (`HrastERP.Infrastructure/Authorization/Entities/Role.cs`) is a plain entity with a `Permission Permissions` property. It does **not** inherit `BaseEntity<TId>` — roles are security configuration, not business entities, so they have no auditing, soft-delete, or tenant isolation.
 
-`ApplicationUser` has a single nullable `Role` via `RoleId` FK. A user without a role gets `Permission.None` in the JWT. Deleting a role sets `RoleId = null` on all associated users (`OnDelete: SetNull`) rather than cascading deletes.
+`ApplicationUser` has a single nullable `Role` via `RoleId` FK. A user without a role gets `Permission.None` in the JWT. The FK uses `OnDelete: Restrict` — a role that is still assigned to any user (in any tenant, active or not) cannot be deleted. The `DeleteRole` handler checks this first and returns `409 Role.InUse`; the FK is defense in depth, and a user assigned concurrently (FK violation on save) is also mapped to `409 Role.InUse`.
+
+## Role Management API
+
+Roles are global (shared by all tenants). Any user with `AdministrationView` can read them — tenant admins need this to assign roles to users — but only super admin tenant users can change them.
+
+| Endpoint | Authorization | Success |
+|---|---|---|
+| `GET /api/admin/roles?page=&pageSize=` | `AdministrationView` | 200 paged `RoleResponse` list |
+| `GET /api/admin/roles/{id}` | `AdministrationView` | 200 `RoleResponse` |
+| `POST /api/admin/roles` | `[RequireSuperAdminTenant]` + `AdministrationCreate` | 200 `{ data: Guid }` |
+| `PUT /api/admin/roles/{id}` | `[RequireSuperAdminTenant]` + `AdministrationEdit` | 200 |
+| `DELETE /api/admin/roles/{id}` | `[RequireSuperAdminTenant]` + `AdministrationDelete` | 200 |
+| `GET /api/admin/permissions` | `AdministrationView` | 200 permissions grouped by module |
+
+- `[RequireSuperAdminTenant]` is applied **per write action**, not on the controller, so reads stay open to tenant admins.
+- Permissions travel over the API as enum **names** (`["FinanceView", "InventoryEdit"]`), not as the numeric bitmask. `PermissionMapper` converts between the two. Unknown or wrongly-cased names fail validation with `422` and an indexed field error (`permissions[1]`).
+- `page` must be ≥ 1 and `pageSize` between 1 and 100 (`422` otherwise).
+- Role names are trimmed and unique, case-insensitively (`409 Role.NameTaken`). Uniqueness is enforced by a unique index on `Role.NormalizedName` (trimmed, `ToUpperInvariant()`, like Identity's `NormalizedUserName`); a concurrent duplicate that slips past the handler's check is mapped to the same `409`.
+- **Assignment ceiling:** outside the super admin tenant, `CreateUser`/`UpdateUser` only accept a `RoleId` whose permissions the caller holds (`403 Role.ExceedsOwnPermissions`), and a caller can't change the role of a user who holds permissions they lack (`403 User.RoleExceedsOwnPermissions`). This stops a tenant admin from granting themselves or others more than they have. Super admin tenant users are exempt.
+- **Administrator protection:** the seeded Administrator role (`RoleConstants.AdministratorRoleId`) cannot be deleted and must always hold every permission (`409 Role.AdministratorImmutable`). It can still be renamed or have its description changed.
+- **Propagation:** permissions are embedded in the JWT, so a change to a role reaches its users on their next token refresh — at most `AccessTokenExpirationMinutes` (15 by default).
 
 ## How Permissions Reach the JWT
 
@@ -76,6 +97,4 @@ builder.Services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler
 
 ## Out of Scope (Follow-up Sessions)
 
-- **Role seeding** — startup idempotent seeder for predefined roles (Administrator, ProcurementOperator, ProductionWorker, WarehouseEmployee, FinanceEmployee)
-- **Role management API** — CRUD commands/queries in `HrastERP.Administration`
 - **Per-user permission overrides** — additional permissions on top of a user's role

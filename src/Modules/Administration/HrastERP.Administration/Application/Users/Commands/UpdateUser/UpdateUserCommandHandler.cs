@@ -1,6 +1,8 @@
 using HrastERP.Infrastructure.Authentication;
 using HrastERP.Infrastructure.Authorization;
 using HrastERP.Infrastructure.Database;
+using HrastERP.SharedKernel.Abstractions;
+using HrastERP.SharedKernel.Constants;
 using HrastERP.SharedKernel.Results;
 using MediatR;
 using Microsoft.AspNetCore.Identity;
@@ -10,7 +12,9 @@ namespace HrastERP.Administration.Application.Users.Commands.UpdateUser;
 
 internal sealed class UpdateUserCommandHandler(
     UserManager<ApplicationUser> userManager,
-    HrastDbContext dbContext)
+    HrastDbContext dbContext,
+    ICurrentTenant currentTenant,
+    ICurrentUser currentUser)
     : IRequestHandler<UpdateUserCommand, Result>
 {
     public async Task<Result> Handle(UpdateUserCommand request, CancellationToken cancellationToken)
@@ -21,13 +25,31 @@ internal sealed class UpdateUserCommandHandler(
         if (user is null)
             return Result.Failure(AdministrationErrors.UserNotFound);
 
+        var isSuperAdmin = currentTenant.TenantId == TenantConstants.SuperAdminTenantId;
+        var roleChanges = request.RoleId != user.RoleId;
+
+        if (roleChanges && !isSuperAdmin && user.RoleId.HasValue)
+        {
+            // Can't demote (or strip) a user who holds permissions the caller lacks.
+            var currentRolePermissions = await RoleAssignment.GetPermissionsAsync(
+                dbContext, user.RoleId.Value, cancellationToken);
+
+            if (currentRolePermissions is not null
+                && RoleAssignment.Exceeds(currentRolePermissions.Value, currentUser.EffectivePermissions))
+                return Result.Failure(AdministrationErrors.UserRoleExceedsOwnPermissions);
+        }
+
         if (request.RoleId.HasValue)
         {
-            var roleExists = await dbContext.Set<Role>()
-                .AnyAsync(r => r.Id == request.RoleId.Value, cancellationToken);
+            var rolePermissions = await RoleAssignment.GetPermissionsAsync(
+                dbContext, request.RoleId.Value, cancellationToken);
 
-            if (!roleExists)
+            if (rolePermissions is null)
                 return Result.Failure(AdministrationErrors.RoleNotFound);
+
+            if (roleChanges && !isSuperAdmin
+                && RoleAssignment.Exceeds(rolePermissions.Value, currentUser.EffectivePermissions))
+                return Result.Failure(AdministrationErrors.RoleExceedsOwnPermissions);
         }
 
         user.FirstName = request.FirstName;

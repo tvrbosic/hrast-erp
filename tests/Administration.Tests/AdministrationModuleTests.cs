@@ -1,6 +1,8 @@
 using FluentAssertions;
 using FluentValidation;
 using HrastERP.Administration;
+using HrastERP.Administration.Application.Roles.Commands.CreateRole;
+using HrastERP.Administration.Application.Roles.Commands.UpdateRole;
 using HrastERP.Administration.Application.Tenants.Commands.CreateTenant;
 using HrastERP.Administration.Application.Tenants.Commands.UpdateTenant;
 using HrastERP.Administration.Application.Users.Commands.ChangePassword;
@@ -20,6 +22,8 @@ public class AdministrationModuleTests
         typeof(CreateUserCommand),
         typeof(UpdateUserCommand),
         typeof(ChangePasswordCommand),
+        typeof(CreateRoleCommand),
+        typeof(UpdateRoleCommand),
     ];
 
     [Theory]

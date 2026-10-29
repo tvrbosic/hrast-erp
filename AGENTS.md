@@ -34,7 +34,7 @@ dotnet run --project src/HrastERP.API/
 
 **CQRS:** MediatR with commands and queries organized by feature inside `Application/`. Structure: `Application/<Feature>/Commands/` and `Application/<Feature>/Queries/`. Handlers return `Result<T>`.
 
-**Data access:** Handlers inject `HrastDbContext` directly — no repository pattern. With CQRS, each handler has a single focused query or command; repositories would be pass-through wrappers.
+**Data access:** Handlers inject `HrastDbContext` directly — no repository pattern. With CQRS, each handler has a single focused query or command; repositories would be pass-through wrappers. When a pre-check is backed by a DB constraint (unique index, Restrict FK), catch `DbUpdateException` with `IsUniqueViolation()` / `IsForeignKeyViolation()` (`HrastERP.Infrastructure/Database/DbUpdateExceptionExtensions`) and return the same `Result` error, so races don't become 500s. See `docs/api/error-handling.md`.
 
 **Pipeline behaviors** (registered in `HrastERP.Infrastructure`), in execution order:
 - `LoggingBehavior` — structured request/response logging with timing and sanitized request payload; properties marked with `[SensitiveData]` are masked as `"***"`; outermost wrapper
@@ -114,6 +114,8 @@ First business module — manages tenants and users.
 
 **Super Admin Tenant Pattern:** Users belonging to `TenantConstants.SuperAdminTenantId` bypass the tenant query filter on all `ITenantEntity` queries. Their role permissions are still enforced. The admin tenant is seeded in `Reference/0002_super_admin_tenant.sql`.
 
+**Role Management:** CQRS slice in `Administration/Application/Roles/` operating on the global `Role` entity (Infrastructure) via `HrastDbContext.Set<Role>()`. Endpoints at `api/admin/roles` (CRUD) and `api/admin/permissions` (all permissions grouped by module). Reads need `AdministrationView`; writes additionally need `[RequireSuperAdminTenant]`, applied per write action (not on the controller) so tenant admins can still read roles. Permissions travel over the API as enum names and are converted to/from the bitmask by `PermissionMapper`. Role names are trimmed and unique case-insensitively, enforced by a unique index on `Role.NormalizedName` (`Name.Trim().ToUpperInvariant()`). Outside the super admin tenant, users can only be given roles within the caller's own permissions (`RoleAssignment` in `Application/Users/`). The Administrator role (`RoleConstants.AdministratorRoleId`) cannot be deleted and must keep every permission. Role changes reach users on their next token refresh.
+
 **Block Inactive Entity Middleware:** `BlockInactiveEntityMiddleware` runs after authentication, before authorization. Blocks requests from users with inactive accounts or belonging to inactive tenants. Uses `ICacheService` for cached status lookups (5-min TTL). Super admin tenant users are never blocked.
 
 **No Repository Pattern:** All handlers inject `HrastDbContext` directly. Rationale: with CQRS, each handler has a single focused query — repositories would be thin pass-through wrappers with no added value.
@@ -158,7 +160,7 @@ public async Task<IActionResult> GetInvoices() { ... }
 **`Role` entity** (`HrastERP.Infrastructure/Authorization/`):
 - Does NOT inherit `BaseEntity<TId>` — roles have no auditing, soft-delete, or tenant isolation
 - `Permissions` stored as `bigint` via `HasConversion<long>()`
-- Single role per user via nullable `ApplicationUser.RoleId` FK; `OnDelete(SetNull)` clears the FK on all users when a role is deleted
+- Single role per user via nullable `ApplicationUser.RoleId` FK; `OnDelete(Restrict)` — deleting a role that is assigned to any user is refused with `409 Role.InUse`
 - See `docs/security/authorization.md` for the full reference and `docs/security/permission-checks-guide.md` for a step-by-step walkthrough (bit flags, request flow, AND vs OR semantics)
 
 ## Database Seeding

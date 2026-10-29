@@ -20,4 +20,9 @@
     <ProjectReference Include="..\..\..\HrastERP.Infrastructure\HrastERP.Infrastructure.csproj" />
   </ItemGroup>
 
+  <!-- Allows the project listed below to access internal types of this project (use its assembly name, not folder) -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="Administration.Tests" />
+  </ItemGroup>
+
 </Project>

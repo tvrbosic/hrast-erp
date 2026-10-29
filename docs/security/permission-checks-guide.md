@@ -111,6 +111,8 @@ A user without a role, or with a missing/malformed claim, gets `Permission.None`
 
 > Because permissions are baked into the token, changing a user's role takes effect only after their access token is refreshed.
 
+Role permissions themselves are editable through `PUT /api/admin/roles/{id}` (super admin tenant only). The same rule applies: the new permissions reach a user on their next token refresh, at most 15 minutes later with the default access token lifetime. See [authorization.md](authorization.md#role-management-api) for the full role management API.
+
 ## 4. The moving parts
 
 All four types live in `HrastERP.API/Authorization/` and plug into ASP.NET Core's policy-based authorization.

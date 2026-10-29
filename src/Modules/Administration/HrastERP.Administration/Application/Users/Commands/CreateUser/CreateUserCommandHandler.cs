@@ -14,7 +14,8 @@ namespace HrastERP.Administration.Application.Users.Commands.CreateUser;
 internal sealed class CreateUserCommandHandler(
     UserManager<ApplicationUser> userManager,
     HrastDbContext dbContext,
-    ICurrentTenant currentTenant)
+    ICurrentTenant currentTenant,
+    ICurrentUser currentUser)
     : IRequestHandler<CreateUserCommand, Result<Guid>>
 {
     public async Task<Result<Guid>> Handle(CreateUserCommand request, CancellationToken cancellationToken)
@@ -36,11 +37,14 @@ internal sealed class CreateUserCommandHandler(
 
         if (request.RoleId.HasValue)
         {
-            var roleExists = await dbContext.Set<Role>()
-                .AnyAsync(r => r.Id == request.RoleId.Value, cancellationToken);
+            var rolePermissions = await RoleAssignment.GetPermissionsAsync(
+                dbContext, request.RoleId.Value, cancellationToken);
 
-            if (!roleExists)
+            if (rolePermissions is null)
                 return AdministrationErrors.RoleNotFound;
+
+            if (!isSuperAdmin && RoleAssignment.Exceeds(rolePermissions.Value, currentUser.EffectivePermissions))
+                return AdministrationErrors.RoleExceedsOwnPermissions;
         }
 
         var user = new ApplicationUser

@@ -61,6 +61,24 @@ Shared container fixtures live in `tests/HrastERP.Infrastructure.Tests/Fixtures/
 - Tests using a custom `TestDbContext` call `context.Database.EnsureCreated()` to build the schema.
 - Tests using the real `HrastDbContext` call `await _dbContext.Database.MigrateAsync()` inside `IAsyncLifetime.InitializeAsync()`.
 
+**Module integration tests** (e.g. `tests/Administration.Tests/Fixtures/`) have their own `PostgresContainerFixture`
+plus an `IntegrationTestBase` that migrates the real `HrastDbContext` once per test class and provides:
+
+- `NewDbContext(tenantId?, params IInterceptor[])`: a context in the given tenant's context (super admin by default).
+  Interceptors are not registered, so seed helpers set audit and tenant fields explicitly.
+- `SeedRoleAsync` / `SeedTenantAsync` / `SeedUserAsync`: persist fixtures through a separate context.
+
+**Testing check-then-act races:** attach a `BeforeSaveInterceptor` to the handler's context. It runs an action once,
+right before `SaveChanges`, after the handler's own pre-checks have passed, so you can insert the conflicting row
+and reproduce the race every run:
+
+```csharp
+var race = new BeforeSaveInterceptor(() => SeedRoleAsync("auditor"));
+await using var db = NewDbContext(interceptors: race);
+var result = await new CreateRoleCommandHandler(db).Handle(new CreateRoleCommand("Auditor", null, []), ct);
+result.Error.Should().Be(AdministrationErrors.RoleNameTaken);
+```
+
 **`RedisContainerFixture`** — starts one Redis 7 container per test class.
 
 - `ConnectionString` exposes the container's connection string.
