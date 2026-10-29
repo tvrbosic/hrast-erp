@@ -41,6 +41,7 @@
     <EmbeddedResource Include="PdfGeneration\Assets\**\*" />
   </ItemGroup>
 
+  <!-- Allows the projects listed below to access internal types of this project (use their assembly names, not folders) -->
   <ItemGroup>
     <InternalsVisibleTo Include="HrastERP.Infrastructure.Tests" />
     <InternalsVisibleTo Include="HrastERP.API" />
