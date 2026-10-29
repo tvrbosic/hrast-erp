@@ -5,8 +5,7 @@ namespace HrastERP.Infrastructure.Tests.Fixtures;
 
 public sealed class PostgresContainerFixture : IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _container = new PostgreSqlBuilder()
-        .WithImage("postgres:16-alpine")
+    private readonly PostgreSqlContainer _container = new PostgreSqlBuilder("postgres:16-alpine")
         .Build();
 
     // Returns a connection string pointing to a fresh unique database on the shared Postgres instance.

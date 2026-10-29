@@ -41,7 +41,7 @@ internal sealed class ReportBuilder(
                 var logo = LoadLogo();
                 if (logo is not null)
                 {
-                    row.ConstantItem(40).Image(logo, ImageScaling.FitArea);
+                    row.ConstantItem(40).Image(logo).FitArea();
                     row.ConstantItem(10);
                 }
 
