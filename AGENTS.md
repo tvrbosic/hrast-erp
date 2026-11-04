@@ -34,7 +34,7 @@ dotnet run --project src/HrastERP.API/
 
 **CQRS:** MediatR with commands and queries organized by feature inside `Application/`. Structure: `Application/<Feature>/Commands/` and `Application/<Feature>/Queries/`. Handlers return `Result<T>`.
 
-**Data access:** Handlers inject `HrastDbContext` directly — no repository pattern. With CQRS, each handler has a single focused query or command; repositories would be pass-through wrappers. When a pre-check is backed by a DB constraint (unique index, Restrict FK), catch `DbUpdateException` with `IsUniqueViolation()` / `IsForeignKeyViolation()` (`HrastERP.Infrastructure/Database/DbUpdateExceptionExtensions`) and return the same `Result` error, so races don't become 500s. See `docs/api/error-handling.md`.
+**Data access:** Handlers inject `HrastDbContext` directly — no repository pattern. With CQRS, each handler has a single focused query or command; repositories would be pass-through wrappers. Business rules like "name must be unique" are checked with a query in the handler before saving; the matching DB constraint (unique index, Restrict FK) is only a safety net, and handlers don't catch `DbUpdateException` — a rare race past the pre-check surfaces as a 500. See `docs/api/error-handling.md`.
 
 **Pipeline behaviors** (registered in `HrastERP.Infrastructure`), in execution order:
 - `LoggingBehavior` — structured request/response logging with timing and sanitized request payload; properties marked with `[SensitiveData]` are masked as `"***"`; outermost wrapper

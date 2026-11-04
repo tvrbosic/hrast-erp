@@ -75,8 +75,8 @@ and reproduce the race every run:
 ```csharp
 var race = new BeforeSaveInterceptor(() => SeedRoleAsync("auditor"));
 await using var db = NewDbContext(interceptors: race);
-var result = await new CreateRoleCommandHandler(db).Handle(new CreateRoleCommand("Auditor", null, []), ct);
-result.Error.Should().Be(AdministrationErrors.RoleNameTaken);
+var act = () => new CreateRoleCommandHandler(db).Handle(new CreateRoleCommand("Auditor", null, []), ct);
+await act.Should().ThrowAsync<DbUpdateException>();
 ```
 
 **`RedisContainerFixture`** — starts one Redis 7 container per test class.

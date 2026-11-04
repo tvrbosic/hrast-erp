@@ -76,17 +76,17 @@ public class DeleteRoleCommandHandlerTests(PostgresContainerFixture fixture)
     }
 
     [Fact]
-    public async Task Returns_InUse_When_role_is_assigned_concurrently_after_check()
+    public async Task Throws_DbUpdateException_When_role_is_assigned_concurrently_after_check()
     {
         var role = await SeedRoleAsync("Clerk");
         var tenant = await SeedTenantAsync();
         var race = new BeforeSaveInterceptor(() => SeedUserAsync(tenant.Id, role.Id));
         await using var db = NewDbContext(interceptors: race);
 
-        var result = await new DeleteRoleCommandHandler(db)
+        var act = () => new DeleteRoleCommandHandler(db)
             .Handle(new DeleteRoleCommand(role.Id), CancellationToken.None);
 
-        result.Error.Should().Be(AdministrationErrors.RoleInUse(1));
+        await act.Should().ThrowAsync<DbUpdateException>();
         await using var verify = NewDbContext();
         (await verify.Set<Role>().AnyAsync(r => r.Id == role.Id)).Should().BeTrue();
     }

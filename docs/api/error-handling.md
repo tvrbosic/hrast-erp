@@ -89,34 +89,15 @@ The compiler applies them automatically whenever it sees a type mismatch between
 
 ---
 
-## Mapping Database Constraint Violations
+## Pre-checks and Database Constraints
 
-A handler's pre-check (e.g. "is this name taken?") and its `SaveChangesAsync` are separate steps, so a
-concurrent request can slip in between. Back the check with a database constraint, then map the resulting
-`DbUpdateException` to the same `Result` error the pre-check returns. Otherwise the race surfaces as a 500
-from `GlobalExceptionMiddleware`.
+Check business rules such as "is this name taken?" with a query in the handler and return the matching
+`Result` error (e.g. `Role.NameTaken`). Back the rule with a database constraint (unique index, Restrict FK)
+as a safety net for data integrity.
 
-`DbUpdateExceptionExtensions` (`HrastERP.Infrastructure/Database/`) identifies Postgres constraint
-violations without leaking Npgsql types into module code:
-
-| Method | Postgres code | Typical mapping |
-|---|---|---|
-| `IsUniqueViolation()` | `23505` | `Conflict`, e.g. `Role.NameTaken` |
-| `IsForeignKeyViolation()` | `23503` | `Conflict`, e.g. `Role.InUse` |
-
-```csharp
-try
-{
-    await dbContext.SaveChangesAsync(cancellationToken);
-}
-catch (DbUpdateException ex) when (ex.IsUniqueViolation())
-{
-    // Another request created the same name between the check above and this save.
-    return AdministrationErrors.RoleNameTaken;
-}
-```
-
-Keep the pre-check: it handles the common case with a clean query, and the catch only covers the race.
+Handlers do not catch `DbUpdateException`. If a concurrent request slips in between the pre-check and
+`SaveChangesAsync`, the constraint rejects the write and `GlobalExceptionMiddleware` returns a 500. This is
+an accepted trade-off: the race is rare, and the data stays consistent.
 
 ---
 

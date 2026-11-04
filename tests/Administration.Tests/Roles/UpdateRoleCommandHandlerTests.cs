@@ -137,15 +137,17 @@ public class UpdateRoleCommandHandlerTests(PostgresContainerFixture fixture)
     }
 
     [Fact]
-    public async Task Returns_NameTaken_When_same_name_is_inserted_concurrently_after_check()
+    public async Task Throws_DbUpdateException_When_same_name_is_inserted_concurrently_after_check()
     {
         var role = await SeedRoleAsync("Clerk");
         var race = new BeforeSaveInterceptor(() => SeedRoleAsync("auditor"));
         await using var db = NewDbContext(interceptors: race);
 
-        var result = await new UpdateRoleCommandHandler(db)
+        var act = () => new UpdateRoleCommandHandler(db)
             .Handle(new UpdateRoleCommand(role.Id, "Auditor", null, []), CancellationToken.None);
 
-        result.Error.Should().Be(AdministrationErrors.RoleNameTaken);
+        await act.Should().ThrowAsync<DbUpdateException>();
+        await using var verify = NewDbContext();
+        (await verify.Set<Role>().SingleAsync(r => r.Id == role.Id)).Name.Should().Be("Clerk");
     }
 }

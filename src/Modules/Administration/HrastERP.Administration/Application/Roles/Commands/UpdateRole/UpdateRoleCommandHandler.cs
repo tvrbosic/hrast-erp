@@ -40,15 +40,7 @@ internal sealed class UpdateRoleCommandHandler(HrastDbContext dbContext)
         role.Description = request.Description ?? string.Empty;
         role.Permissions = permissions;
 
-        try
-        {
-            await dbContext.SaveChangesAsync(cancellationToken);
-        }
-        catch (DbUpdateException ex) when (ex.IsUniqueViolation())
-        {
-            // Another request took the name between the check above and this save.
-            return Result.Failure(AdministrationErrors.RoleNameTaken);
-        }
+        await dbContext.SaveChangesAsync(cancellationToken);
 
         return Result.Success();
     }

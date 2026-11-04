@@ -32,15 +32,7 @@ internal sealed class CreateRoleCommandHandler(HrastDbContext dbContext)
 
         dbContext.Set<Role>().Add(role);
 
-        try
-        {
-            await dbContext.SaveChangesAsync(cancellationToken);
-        }
-        catch (DbUpdateException ex) when (ex.IsUniqueViolation())
-        {
-            // Another request created the same name between the check above and this save.
-            return AdministrationErrors.RoleNameTaken;
-        }
+        await dbContext.SaveChangesAsync(cancellationToken);
 
         return role.Id;
     }

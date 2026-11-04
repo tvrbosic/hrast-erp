@@ -30,18 +30,7 @@ internal sealed class DeleteRoleCommandHandler(HrastDbContext dbContext)
         // Role isn't ISoftDeletable, so this is a real DELETE.
         dbContext.Set<Role>().Remove(role);
 
-        try
-        {
-            await dbContext.SaveChangesAsync(cancellationToken);
-        }
-        catch (DbUpdateException ex) when (ex.IsForeignKeyViolation())
-        {
-            // A user was assigned the role between the count above and this save; the Restrict FK
-            // blocked the delete. Drop the failed Remove and report the current count.
-            dbContext.ChangeTracker.Clear();
-            var count = await CountAssignedUsersAsync(request.Id, cancellationToken);
-            return Result.Failure(AdministrationErrors.RoleInUse(count));
-        }
+        await dbContext.SaveChangesAsync(cancellationToken);
 
         return Result.Success();
     }
