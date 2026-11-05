@@ -212,7 +212,7 @@ Hangfire with PostgreSQL storage provides background job infrastructure. Configu
 
 **Built-in cleanup jobs** (`HrastERP.Infrastructure/Hangfire/Jobs/`):
 - **`RefreshTokenCleanupJob`** — deletes expired tokens and revoked tokens past retention period; batched raw SQL (no audit — `RefreshToken` doesn't inherit `BaseEntity<TId>`)
-- **`SoftDeleteCleanupJob`** — hard-deletes soft-deleted entities past retention period; uses raw SQL to bypass the interceptor chain (no HTTP context); writes `Purged` audit entries with full entity snapshot before deletion
+- **`SoftDeleteCleanupJob`** — hard-deletes soft-deleted entities past retention period; uses raw SQL to bypass the interceptor chain (no HTTP context); deletes each batch and writes its `Purged` audit entries (full entity snapshot) in a single statement
 
 **Adding a new recurring job:** Create a class implementing `IRecurringJobDefinition` in the appropriate module or Infrastructure layer, register it as `IRecurringJobDefinition` in DI (and by concrete type for Hangfire's activator). It will be auto-discovered at startup. See `docs/services/background-jobs.md` for the full guide.
 

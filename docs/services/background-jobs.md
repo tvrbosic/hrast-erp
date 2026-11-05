@@ -77,9 +77,9 @@ _backgroundJobService.Schedule<MyService>(x => x.DoWorkAsync(), TimeSpan.FromMin
 - **JobId:** `infrastructure.soft-delete-cleanup`
 - **Purpose:** Hard-deletes soft-deleted entities past their retention period
 - **Approach:** Raw SQL to bypass the interceptor chain (no HTTP context in background jobs means no `ICurrentUser`/`ICurrentTenant`). Processes each `ISoftDeletable` entity type discovered from the EF model; table, schema and column names (including the `audit_logs` insert) are resolved from EF metadata.
-- **Audit:** Writes `Purged` audit entries with full entity snapshot in `OldValues` before deletion
+- **Audit:** Writes `Purged` audit entries with full entity snapshot in `OldValues`, in the same statement as the delete and only for rows it actually removed
 - **Retention:** Entities with `DeletedAt` older than `SoftDeleteRetentionDays` are purged
-- **Batching:** 100 entities per batch, each batch in its own transaction
+- **Batching:** 100 entities per batch; each batch is a single `DELETE ... RETURNING` statement that feeds the audit insert, so it is atomic without an explicit transaction and overlapping runs don't write duplicate `Purged` entries
 
 ## Adding a New Recurring Job
 
