@@ -69,14 +69,14 @@ _backgroundJobService.Schedule<MyService>(x => x.DoWorkAsync(), TimeSpan.FromMin
 
 - **JobId:** `infrastructure.refresh-token-cleanup`
 - **Purpose:** Removes expired and revoked refresh tokens
-- **Approach:** Batched raw SQL DELETE (100 per batch) — `RefreshToken` doesn't inherit `BaseEntity<TId>`, so no audit entries are written
+- **Approach:** Batched raw SQL DELETE (100 per batch, snake_case identifiers such as `refresh_tokens`) — `RefreshToken` doesn't inherit `BaseEntity<TId>`, so no audit entries are written
 - **Retention:** Expired tokens deleted immediately; revoked tokens kept for `RevokedTokenRetentionDays`
 
 ### SoftDeleteCleanupJob
 
 - **JobId:** `infrastructure.soft-delete-cleanup`
 - **Purpose:** Hard-deletes soft-deleted entities past their retention period
-- **Approach:** Raw SQL to bypass the interceptor chain (no HTTP context in background jobs means no `ICurrentUser`/`ICurrentTenant`). Processes each `ISoftDeletable` entity type discovered from the EF model.
+- **Approach:** Raw SQL to bypass the interceptor chain (no HTTP context in background jobs means no `ICurrentUser`/`ICurrentTenant`). Processes each `ISoftDeletable` entity type discovered from the EF model; table, schema and column names (including the `audit_logs` insert) are resolved from EF metadata.
 - **Audit:** Writes `Purged` audit entries with full entity snapshot in `OldValues` before deletion
 - **Retention:** Entities with `DeletedAt` older than `SoftDeleteRetentionDays` are purged
 - **Batching:** 100 entities per batch, each batch in its own transaction

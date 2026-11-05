@@ -7,10 +7,17 @@ public sealed class ApplicationUserConfiguration : IEntityTypeConfiguration<Appl
 {
     public void Configure(EntityTypeBuilder<ApplicationUser> builder)
     {
+        builder.ToTable("asp_net_users");
+
         builder.Property(u => u.TenantId)
             .IsRequired();
 
         builder.HasIndex(u => u.TenantId);
+
+        // Identity names these indexes explicitly ("EmailIndex", "UserNameIndex") and the naming
+        // convention doesn't rewrite explicit names, so set them in the convention's format.
+        builder.HasIndex(u => u.NormalizedEmail).HasDatabaseName("ix_asp_net_users_normalized_email");
+        builder.HasIndex(u => u.NormalizedUserName).HasDatabaseName("ix_asp_net_users_normalized_user_name");
 
         builder.Property(u => u.FirstName)
             .IsRequired()

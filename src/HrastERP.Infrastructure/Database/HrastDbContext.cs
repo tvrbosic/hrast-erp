@@ -3,6 +3,7 @@ using HrastERP.Infrastructure.Authentication;
 using HrastERP.SharedKernel.Abstractions;
 using HrastERP.SharedKernel.Constants;
 using HrastERP.SharedKernel.Domain;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
@@ -24,8 +25,14 @@ public sealed class HrastDbContext(
     // a new instance with the correct TenantId already resolved from the request context.
     private Guid CurrentTenantId { get; } = currentTenant.TenantId;
 
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        => optionsBuilder.UseSnakeCaseNamingConvention();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        // Identity's mappings must be applied first so our configurations (e.g. ToTable) win.
+        base.OnModelCreating(modelBuilder);
+
         // Apply configurations defined in this assembly, reserved for cross-cutting
         // infrastructure concerns (e.g. outbox table) that do not belong to any specific module
         // (most entities are registered by each module's Infrastructure assembly).
@@ -37,9 +44,12 @@ public sealed class HrastDbContext(
             modelBuilder.ApplyConfigurationsFromAssembly(moduleAssembly.Assembly);
         }
 
-        ApplyGlobalFilters(modelBuilder);
+        // Identity sets these table names explicitly, so the naming convention does not rewrite them.
+        modelBuilder.Entity<IdentityUserClaim<Guid>>().ToTable("asp_net_user_claims");
+        modelBuilder.Entity<IdentityUserLogin<Guid>>().ToTable("asp_net_user_logins");
+        modelBuilder.Entity<IdentityUserToken<Guid>>().ToTable("asp_net_user_tokens");
 
-        base.OnModelCreating(modelBuilder);
+        ApplyGlobalFilters(modelBuilder);
     }
 
     // Registers soft-delete and tenant isolation query filters for all applicable entity types.

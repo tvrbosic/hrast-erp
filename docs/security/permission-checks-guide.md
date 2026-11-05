@@ -78,7 +78,7 @@ var perms = Permission.FinanceView | Permission.FinanceEdit;   // 80
 
 ### Seeded roles decoded
 
-Role permissions are stored as a single `bigint` in the `Roles` table (`Reference/0001_roles.sql`). Decoded:
+Role permissions are stored as a single `bigint` in the `roles` table (`Reference/0001_roles.sql`). Decoded:
 
 | Role | Stored value | Hex | Permissions |
 |---|---|---|---|
@@ -225,7 +225,7 @@ public sealed class TenantsController(ISender sender) : ControllerBase
    QualityDelete = 1L << 23,
    ```
 2. **Never renumber existing members.** Role values in the database and in issued JWTs are raw numbers — shifting a bit silently changes what every existing role grants.
-3. Update role values in a **new** Reference seed script using `UPDATE "Roles" SET "Permissions" = ...` (e.g. `Administrator` becomes `0xFFFFFF` = 16777215). Don't edit `0001_roles.sql` — it has already run on existing databases (tracked in `seed_history`), and its `ON CONFLICT DO NOTHING` wouldn't overwrite existing rows anyway. See [database-seeding.md](../data/database-seeding.md).
+3. Update role values in a **new** Reference seed script using `UPDATE roles SET permissions = ...` (e.g. `Administrator` becomes `0xFFFFFF` = 16777215). Don't edit `0001_roles.sql` — it has already run on existing databases (tracked in `seed_history`), and its `ON CONFLICT DO NOTHING` wouldn't overwrite existing rows anyway. See [database-seeding.md](../data/database-seeding.md).
 4. Protect the new controller's actions with `[RequirePermission(...)]`.
 
 ## 8. Checking permissions outside attributes

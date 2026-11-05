@@ -6,7 +6,7 @@ This document explains how row-level tenant isolation works in HrastERP and how 
 
 ## Overview
 
-HrastERP uses **row-level tenant isolation**: each tenant's data lives in the same database tables, distinguished by a `TenantId` column. Entities opt in to tenant scoping by implementing `ITenantEntity`. Entities that do not implement it are shared across all tenants (e.g. the `Tenant` entity itself, system-wide lookup tables).
+HrastERP uses **row-level tenant isolation**: each tenant's data lives in the same database tables, distinguished by a `TenantId` property (the `tenant_id` column). Entities opt in to tenant scoping by implementing `ITenantEntity`. Entities that do not implement it are shared across all tenants (e.g. the `Tenant` entity itself in `administration.tenants`, system-wide lookup tables).
 
 The current tenant is resolved from the JWT claim on every request via `ICurrentTenant`, implemented by `CurrentTenant` in the API layer. The resolved `TenantId` flows through two enforcement layers:
 

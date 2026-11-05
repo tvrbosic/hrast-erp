@@ -1,4 +1,5 @@
 using HrastERP.Infrastructure.Database;
+using HrastERP.Infrastructure.Database.Audit;
 using HrastERP.Infrastructure.Hangfire.Services;
 using HrastERP.SharedKernel.Domain;
 using Microsoft.EntityFrameworkCore;
@@ -26,6 +27,16 @@ internal sealed class SoftDeleteCleanupJob(
             .Where(et => et.ClrType.IsAssignableTo(typeof(ISoftDeletable)))
             .ToList();
 
+        // Table/column names come from EF model metadata, not user input
+        var audit = dbContext.Model.FindEntityType(typeof(AuditLogEntry))!;
+        var auditTable = $"\"{audit.GetSchema() ?? "public"}\".\"{audit.GetTableName()}\"";
+        var auditColumns = string.Join(", ", new[]
+        {
+            nameof(AuditLogEntry.Id), nameof(AuditLogEntry.EntityName), nameof(AuditLogEntry.EntityId),
+            nameof(AuditLogEntry.Action), nameof(AuditLogEntry.OldValues), nameof(AuditLogEntry.NewValues),
+            nameof(AuditLogEntry.UserId), nameof(AuditLogEntry.TenantId), nameof(AuditLogEntry.Timestamp)
+        }.Select(n => $"\"{audit.FindProperty(n)!.GetColumnName()}\""));
+
         foreach (var entityType in entityTypes)
         {
             var tableName = entityType.GetTableName();
@@ -43,6 +54,9 @@ internal sealed class SoftDeleteCleanupJob(
             var deletedAtColumn = deletedAtProperty.GetColumnName();
             var isTenantEntity = entityType.ClrType.IsAssignableTo(typeof(ITenantEntity));
             var entityName = entityType.ClrType.Name;
+            var tenantColumn = isTenantEntity
+                ? entityType.FindProperty(nameof(ITenantEntity.TenantId))!.GetColumnName()
+                : null;
 
             var totalPurged = 0;
 
@@ -54,7 +68,7 @@ internal sealed class SoftDeleteCleanupJob(
                 {
                     // Select candidates with full row JSON for audit
                     var tenantSelect = isTenantEntity
-                        ? """t."TenantId"::text"""
+                        ? $"""t."{tenantColumn}"::text"""
                         : $"'{Guid.Empty}'";
 
                     var selectSql =
@@ -86,16 +100,18 @@ internal sealed class SoftDeleteCleanupJob(
                         var auditId = Guid.NewGuid();
                         var tenantId = Guid.TryParse(candidate.tenant_id, out var tid) ? tid : Guid.Empty;
 
+#pragma warning disable EF1002
                         await dbContext.Database.ExecuteSqlRawAsync(
-                            """
-                            INSERT INTO "audit_log" ("Id", "EntityName", "EntityId", "Action", "OldValues", "NewValues", "UserId", "TenantId", "Timestamp")
+                            $$"""
+                            INSERT INTO {{auditTable}} ({{auditColumns}})
                             VALUES ({0}, {1}, {2}, 'Purged', {3}, NULL, {4}, {5}, {6})
                             """,
                             [auditId, entityName, candidate.entity_id, candidate.old_values, Guid.Empty, tenantId, utcNow],
                             cancellationToken);
+#pragma warning restore EF1002
                     }
 
-                    // Delete the batch — table/column names come from EF model metadata, not user input
+                    // Delete the batch
 #pragma warning disable EF1002
                     await dbContext.Database.ExecuteSqlRawAsync(
                         $$"""

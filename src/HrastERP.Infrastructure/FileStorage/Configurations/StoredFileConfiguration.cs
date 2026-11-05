@@ -30,11 +30,9 @@ internal sealed class StoredFileConfiguration : IEntityTypeConfiguration<StoredF
         builder.Property(e => e.TenantId)
             .IsRequired();
 
-        builder.HasIndex(e => e.TenantId)
-            .HasDatabaseName("IX_stored_files_tenant");
+        builder.HasIndex(e => e.TenantId);
 
         builder.HasIndex(e => e.StoragePath)
-            .IsUnique()
-            .HasDatabaseName("IX_stored_files_storage_path");
+            .IsUnique();
     }
 }

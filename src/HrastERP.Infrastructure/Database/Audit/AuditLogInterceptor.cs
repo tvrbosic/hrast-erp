@@ -113,14 +113,14 @@ public sealed class AuditLogInterceptor(ICurrentUser currentUser, ICurrentTenant
         {
             // Full snapshot of all properties before deletion
             values = properties
-                .ToDictionary(p => p.Metadata.Name, p => p.OriginalValue);
+                .ToDictionary(p => p.Metadata.GetColumnName(), p => p.OriginalValue);
         }
         else
         {
             // Updated: changed properties only
             values = properties
                 .Where(p => p.IsModified)
-                .ToDictionary(p => p.Metadata.Name, p => p.OriginalValue);
+                .ToDictionary(p => p.Metadata.GetColumnName(), p => p.OriginalValue);
         }
 
         return values.Count == 0 ? null : JsonSerializer.Serialize(values);
@@ -138,14 +138,14 @@ public sealed class AuditLogInterceptor(ICurrentUser currentUser, ICurrentTenant
         {
             // Full snapshot of all properties for the new entity
             values = properties
-                .ToDictionary(p => p.Metadata.Name, p => p.CurrentValue);
+                .ToDictionary(p => p.Metadata.GetColumnName(), p => p.CurrentValue);
         }
         else
         {
             // Updated: changed properties only
             values = properties
                 .Where(p => p.IsModified)
-                .ToDictionary(p => p.Metadata.Name, p => p.CurrentValue);
+                .ToDictionary(p => p.Metadata.GetColumnName(), p => p.CurrentValue);
         }
 
         return values.Count == 0 ? null : JsonSerializer.Serialize(values);

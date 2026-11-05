@@ -60,6 +60,7 @@ public class AuditLogInterceptorTests : IClassFixture<PostgresContainerFixture>
 
         var options = new DbContextOptionsBuilder<TestDbContext>()
             .UseNpgsql(_fixture.NewConnectionString())
+            .UseSnakeCaseNamingConvention()
             .AddInterceptors(
                 new AuditableEntityInterceptor(currentUser),
                 new SoftDeleteInterceptor(currentUser),
@@ -117,8 +118,22 @@ public class AuditLogInterceptorTests : IClassFixture<PostgresContainerFixture>
         log.NewValues.Should().NotBeNullOrEmpty();
 
         var newValues = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(log.NewValues!);
-        newValues.Should().ContainKey("Name");
-        newValues!["Name"].GetString().Should().Be("Widget");
+        newValues.Should().ContainKey("name");
+        newValues!["name"].GetString().Should().Be("Widget");
+    }
+
+    [Fact]
+    public async Task Records_snake_case_keys_When_property_name_is_multi_word()
+    {
+        await using var context = CreateContext();
+        var entity = new TestEntity(Guid.NewGuid()) { Name = "Widget" };
+
+        context.TestEntities.Add(entity);
+        await context.SaveChangesAsync();
+
+        var log = await context.AuditLogEntries.IgnoreQueryFilters().SingleAsync();
+        var newValues = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(log.NewValues!);
+        newValues!.Keys.Should().Contain("created_at").And.Contain("created_by").And.NotContain("CreatedAt");
     }
 
     [Fact]
@@ -199,9 +214,9 @@ public class AuditLogInterceptorTests : IClassFixture<PostgresContainerFixture>
         var oldValues = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(log.OldValues!);
         var newValues = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(log.NewValues!);
 
-        oldValues.Should().ContainKey("Name");
-        newValues.Should().ContainKey("Name");
-        newValues!["Name"].GetString().Should().Be("Updated Widget");
+        oldValues.Should().ContainKey("name");
+        newValues.Should().ContainKey("name");
+        newValues!["name"].GetString().Should().Be("Updated Widget");
     }
 
     // --- Soft-deleted entity tests ---
@@ -238,7 +253,7 @@ public class AuditLogInterceptorTests : IClassFixture<PostgresContainerFixture>
         log.NewValues.Should().BeNull();
 
         var oldValues = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(log.OldValues!);
-        oldValues.Should().ContainKey("Name");
+        oldValues.Should().ContainKey("name");
     }
 
     // --- Edge case tests ---

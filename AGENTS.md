@@ -36,6 +36,8 @@ dotnet run --project src/HrastERP.API/
 
 **Data access:** Handlers inject `HrastDbContext` directly — no repository pattern. With CQRS, each handler has a single focused query or command; repositories would be pass-through wrappers. Business rules like "name must be unique" are checked with a query in the handler before saving; the matching DB constraint (unique index, Restrict FK) is only a safety net, and handlers don't catch `DbUpdateException` — a rare race past the pre-check surfaces as a 500. See `docs/api/error-handling.md`.
 
+**Database naming:** all tables and columns are snake_case, applied by `EFCore.NamingConventions` (`UseSnakeCaseNamingConvention()`) in `HrastDbContext.OnConfiguring`, so every context construction path (API, tests, `dotnet ef`) gets it. The convention only handles casing, so every entity configuration must call `ToTable("<plural_snake>"[, "<module>"])`. Module tables go in a schema named after the module (e.g. `administration.tenants`); shared infrastructure tables stay in `public`. Never use `HasColumnName` / `HasDatabaseName` just to fix casing. The one exception is Identity: it sets its helper table names and its `EmailIndex` / `UserNameIndex` index names explicitly, which the convention doesn't rewrite, so they are overridden with snake_case names in `HrastDbContext.OnModelCreating` and `ApplicationUserConfiguration`. Raw SQL uses unquoted snake_case identifiers and schema-qualifies module tables. Audit log JSON keys are database column names. `seed_history` and Hangfire tables are not EF-managed and are unchanged.
+
 **Pipeline behaviors** (registered in `HrastERP.Infrastructure`), in execution order:
 - `LoggingBehavior` — structured request/response logging with timing and sanitized request payload; properties marked with `[SensitiveData]` are masked as `"***"`; outermost wrapper
 - `TenantValidationBehavior` — short-circuits with `Result.Failure(Error.Forbidden("General.MissingTenant", ...))` when `ICurrentTenant.TenantId` is `Guid.Empty`; runs before input validation
@@ -75,7 +77,7 @@ Key types and their intended use:
 
 **Tenant isolation:** Entities opt in to row-level tenant scoping by implementing `ITenantEntity`. `ApplicationUser` implements `ITenantEntity`. `TenantEntityInterceptor` auto-populates `TenantId` from `ICurrentTenant` on insert only when `TenantId` is `Guid.Empty` — if already set, it skips (allows super admin to create entities for other tenants). Throws `InvalidOperationException` if `TenantId` is still `Guid.Empty` after population — a programming error caught before reaching the database. A global query filter restricts all `ITenantEntity` queries to the current tenant; when `CurrentTenantId == TenantConstants.SuperAdminTenantId`, the tenant query filter is bypassed (all `ITenantEntity` records visible). `TenantValidationBehavior` provides an early defense at the pipeline level, returning `Result.Failure(Error.Forbidden("General.MissingTenant", ...))` before any handler executes when tenant context is missing.
 
-**Audit log:** All entity state changes (create, update, soft-delete) on `IAuditable` entities are automatically captured by `AuditLogInterceptor` into the `audit_log` table. Each `AuditLogEntry` records `EntityName`, `EntityId`, `Action` (Created/Updated/Deleted/Purged), `OldValues`/`NewValues` (JSON), `UserId`, `TenantId`, and `Timestamp`. The entry is a plain class implementing `ITenantEntity` — it does NOT inherit `BaseEntity<TId>`. The interceptor runs last in the chain (after `AuditableEntityInterceptor`, `SoftDeleteInterceptor`, `TenantEntityInterceptor`) so it sees final entity state. Soft-deletes are detected by checking if `DeletedAt` was modified. Value capture: Created → full snapshot in `NewValues`; Updated → changed properties only; Deleted → full snapshot in `OldValues`. The table is append-only. Located at `HrastERP.Infrastructure/Database/Audit/`.
+**Audit log:** All entity state changes (create, update, soft-delete) on `IAuditable` entities are automatically captured by `AuditLogInterceptor` into the `audit_logs` table. Each `AuditLogEntry` records `EntityName`, `EntityId`, `Action` (Created/Updated/Deleted/Purged), `OldValues`/`NewValues` (JSON, keyed by database column name, e.g. `created_at`), `UserId`, `TenantId`, and `Timestamp`. The entry is a plain class implementing `ITenantEntity` — it does NOT inherit `BaseEntity<TId>`. The interceptor runs last in the chain (after `AuditableEntityInterceptor`, `SoftDeleteInterceptor`, `TenantEntityInterceptor`) so it sees final entity state. Soft-deletes are detected by checking if `DeletedAt` was modified. Value capture: Created → full snapshot in `NewValues`; Updated → changed properties only; Deleted → full snapshot in `OldValues`. The table is append-only. Located at `HrastERP.Infrastructure/Database/Audit/`.
 
 Nothing in SharedKernel should import from any module.
 
@@ -108,7 +110,7 @@ See `docs/architecture/modules.md` for the full guide on module architecture and
 
 First business module — manages tenants and users.
 
-**Tenant Management:** `Tenant` entity in `Administration/Domain/Entities/` with `Name` and `IsActive`. Full CRUD at `api/admin/tenants`, protected by `[RequireSuperAdminTenant]` + `[RequirePermission]`. Tenant inherits `BaseEntity<Guid>` but does NOT implement `ITenantEntity` — tenants don't belong to other tenants.
+**Tenant Management:** `Tenant` entity in `Administration/Domain/Entities/` with `Name` and `IsActive`, stored in `administration.tenants`. Full CRUD at `api/admin/tenants`, protected by `[RequireSuperAdminTenant]` + `[RequirePermission]`. Tenant inherits `BaseEntity<Guid>` but does NOT implement `ITenantEntity` — tenants don't belong to other tenants.
 
 **User Management:** Operates directly on `ApplicationUser` (no separate User entity). Uses `UserManager` for identity operations (create, password), `HrastDbContext` for reads and field updates. Endpoints at `api/admin/users`, protected by `[RequirePermission]`. Super admin tenant users manage all tenants' users; regular tenant admins manage only their own tenant's users (via automatic tenant query filter on `ApplicationUser`).
 
@@ -174,7 +176,7 @@ Plain SQL scripts live in two folders inside `src/HrastERP.Infrastructure/Databa
 
 **Script naming:** `NNNN_description.sql` (4-digit zero-padded prefix). Scripts execute in ascending numeric order within each folder; Reference scripts always run before Fixtures.
 
-**Idempotency:** Applied scripts are recorded in `seed_history` (a plain table created by the seeder, not managed by EF Core migrations). Scripts themselves use `INSERT ... ON CONFLICT ("Id") DO NOTHING`. A script runs exactly once per database.
+**Idempotency:** Applied scripts are recorded in `seed_history` (a plain table created by the seeder, not managed by EF Core migrations). Scripts themselves use `INSERT ... ON CONFLICT (id) DO NOTHING`. A script runs exactly once per database.
 
 **Predefined UUIDs** (stable across environments — used as FK targets and constants):
 - Super Admin Tenant: `00000000-0000-0000-0000-100000000000` (seeded in `Reference/0002_super_admin_tenant.sql`)

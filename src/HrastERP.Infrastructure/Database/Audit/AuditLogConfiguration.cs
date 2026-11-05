@@ -7,7 +7,7 @@ internal sealed class AuditLogConfiguration : IEntityTypeConfiguration<AuditLogE
 {
     public void Configure(EntityTypeBuilder<AuditLogEntry> builder)
     {
-        builder.ToTable("audit_log");
+        builder.ToTable("audit_logs");
 
         builder.HasKey(e => e.Id);
         builder.Property(e => e.Id).ValueGeneratedNever();
@@ -35,13 +35,10 @@ internal sealed class AuditLogConfiguration : IEntityTypeConfiguration<AuditLogE
         builder.Property(e => e.TenantId).IsRequired();
         builder.Property(e => e.Timestamp).IsRequired();
 
-        builder.HasIndex(e => new { e.EntityName, e.EntityId })
-            .HasDatabaseName("IX_audit_log_entity");
+        builder.HasIndex(e => new { e.EntityName, e.EntityId });
 
-        builder.HasIndex(e => e.UserId)
-            .HasDatabaseName("IX_audit_log_user");
+        builder.HasIndex(e => e.UserId);
 
-        builder.HasIndex(e => e.Timestamp)
-            .HasDatabaseName("IX_audit_log_timestamp");
+        builder.HasIndex(e => e.Timestamp);
     }
 }

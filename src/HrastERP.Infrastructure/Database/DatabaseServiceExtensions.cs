@@ -26,7 +26,7 @@ internal static class DatabaseServiceExtensions
         // 1. AuditableEntityInterceptor — auto-populates CreatedAt/CreatedBy/UpdatedAt/UpdatedBy
         // 2. SoftDeleteInterceptor — converts deletes into soft-delete flag updates
         // 3. TenantEntityInterceptor — auto-populates TenantId on new tenant-scoped entities
-        // 4. AuditLogInterceptor — captures entity state changes into audit_log table (MUST be last)
+        // 4. AuditLogInterceptor — captures entity state changes into audit_logs table (MUST be last)
         services.AddScoped<AuditableEntityInterceptor>();
         services.AddScoped<SoftDeleteInterceptor>();
         services.AddScoped<TenantEntityInterceptor>();

@@ -17,9 +17,9 @@ Plain class at `HrastERP.Infrastructure/Database/Audit/AuditLogEntry.cs`. Implem
 | `Id` | `Guid` | PK, set by interceptor |
 | `EntityName` | `string` | CLR type name of tracked entity |
 | `EntityId` | `string` | Primary key of tracked entity |
-| `Action` | `AuditAction` | `Created`, `Updated`, or `Deleted` |
-| `OldValues` | `string?` | JSON snapshot of previous state |
-| `NewValues` | `string?` | JSON snapshot of new state |
+| `Action` | `AuditAction` | `Created`, `Updated`, `Deleted`, or `Purged` |
+| `OldValues` | `string?` | JSON snapshot of previous state (keys are column names) |
+| `NewValues` | `string?` | JSON snapshot of new state (keys are column names) |
 | `UserId` | `Guid` | From `ICurrentUser`; `Guid.Empty` if unauthenticated |
 | `TenantId` | `Guid` | From `ICurrentTenant`; set explicitly by interceptor |
 | `Timestamp` | `DateTime` | UTC timestamp |
@@ -31,6 +31,7 @@ Plain class at `HrastERP.Infrastructure/Database/Audit/AuditLogEntry.cs`. Implem
 | Created | `null` | All properties (full snapshot) |
 | Updated | Changed properties only | Changed properties only |
 | Deleted | All properties (full snapshot) | `null` |
+| Purged | Full row snapshot from `row_to_json` (written by `SoftDeleteCleanupJob`) | `null` |
 
 ## Interceptor Ordering
 
@@ -61,8 +62,9 @@ entry.State == EntityState.Modified
 
 ## Database
 
-- Table: `audit_log`
-- Indexes: `IX_audit_log_entity` (EntityName, EntityId), `IX_audit_log_user` (UserId), `IX_audit_log_timestamp` (Timestamp)
+- Table: `audit_logs` (schema `public`)
+- Indexes: `ix_audit_logs_entity_name_entity_id` (EntityName, EntityId), `ix_audit_logs_user_id` (UserId), `ix_audit_logs_timestamp` (Timestamp)
+- JSON keys in `OldValues`/`NewValues` are database column names (e.g. `created_at`, `tenant_id`), the same as `Purged` entries written by `SoftDeleteCleanupJob` via `row_to_json`. `EntityName` stays the C# class name.
 
 ## TODO — Phase 6.1: Audit Log API
 

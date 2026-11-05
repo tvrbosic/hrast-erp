@@ -30,10 +30,10 @@ internal sealed class RefreshTokenCleanupJob(
         {
             deleted = await dbContext.Database.ExecuteSqlRawAsync(
                 """
-                DELETE FROM "RefreshToken"
-                WHERE "Id" IN (
-                    SELECT "Id" FROM "RefreshToken"
-                    WHERE "ExpiresAt" < {0}
+                DELETE FROM refresh_tokens
+                WHERE id IN (
+                    SELECT id FROM refresh_tokens
+                    WHERE expires_at < {0}
                     LIMIT {1}
                 )
                 """,
@@ -48,10 +48,10 @@ internal sealed class RefreshTokenCleanupJob(
         {
             deleted = await dbContext.Database.ExecuteSqlRawAsync(
                 """
-                DELETE FROM "RefreshToken"
-                WHERE "Id" IN (
-                    SELECT "Id" FROM "RefreshToken"
-                    WHERE "RevokedAt" IS NOT NULL AND "RevokedAt" < {0}
+                DELETE FROM refresh_tokens
+                WHERE id IN (
+                    SELECT id FROM refresh_tokens
+                    WHERE revoked_at IS NOT NULL AND revoked_at < {0}
                     LIMIT {1}
                 )
                 """,

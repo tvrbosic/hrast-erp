@@ -66,7 +66,7 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
 {
     public void Configure(EntityTypeBuilder<Product> builder)
     {
-        builder.ToTable("products", "inventory");  // schema = module name, lowercase
+        builder.ToTable("products", "inventory");  // plural snake_case table, schema = module name, lowercase
         builder.HasKey(p => p.Id);
         builder.Property(p => p.Name).IsRequired().HasMaxLength(200);
 
@@ -104,4 +104,6 @@ dotnet ef database update \
 | Setting `TenantId` in factory method | Let `TenantEntityInterceptor` set it; or set it explicitly in handler for super admin cross-tenant creation |
 | Forgetting `private Entity() {}` | EF Core requires a parameterless constructor |
 | Using a flat table name without schema | Use `builder.ToTable("products", "inventory")` for module isolation |
+| Omitting `ToTable` | Always call it; the snake_case convention does not pluralize or pick a schema, so the table would get the singular class name in `public` |
+| Hand-naming columns with `HasColumnName` / `HasDatabaseName` | Don't; `EFCore.NamingConventions` already produces snake_case columns, keys and indexes |
 | Registering `IEntityTypeConfiguration<T>` manually | Not needed — assembly scanning handles it |

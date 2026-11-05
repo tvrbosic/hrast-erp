@@ -53,6 +53,8 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
 }
 ```
 
+Always call `ToTable("<plural_snake>", "<module>")` — the table name must be plural snake_case and the schema is the module name (shared infrastructure tables use `public`). The snake_case naming convention converts column, key and index names automatically, so never use `HasColumnName` or `HasDatabaseName` just to fix casing.
+
 **No further registration is needed.** When the module's `Add<Module>Module()` is called at startup, it registers the module assembly as an `EntityConfigurationAssembly` singleton in DI. On first use, `HrastDbContext.OnModelCreating` calls `ApplyConfigurationsFromAssembly` for every registered module assembly, which picks up all `IEntityTypeConfiguration<T>` implementations automatically.
 
 ---

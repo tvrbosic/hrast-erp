@@ -1,28 +1,28 @@
 -- Fixture seed: development admin user (password: "admin")
--- Idempotent: ON CONFLICT ("Id") DO NOTHING
+-- Idempotent: ON CONFLICT (id) DO NOTHING
 -- WARNING: for development use only — do NOT run in production
 
-INSERT INTO "AspNetUsers" (
-    "Id",
-    "UserName",
-    "NormalizedUserName",
-    "Email",
-    "NormalizedEmail",
-    "EmailConfirmed",
-    "PasswordHash",
-    "SecurityStamp",
-    "ConcurrencyStamp",
-    "PhoneNumber",
-    "PhoneNumberConfirmed",
-    "TwoFactorEnabled",
-    "LockoutEnd",
-    "LockoutEnabled",
-    "AccessFailedCount",
-    "TenantId",
-    "FirstName",
-    "LastName",
-    "IsActive",
-    "RoleId"
+INSERT INTO asp_net_users (
+    id,
+    user_name,
+    normalized_user_name,
+    email,
+    normalized_email,
+    email_confirmed,
+    password_hash,
+    security_stamp,
+    concurrency_stamp,
+    phone_number,
+    phone_number_confirmed,
+    two_factor_enabled,
+    lockout_end,
+    lockout_enabled,
+    access_failed_count,
+    tenant_id,
+    first_name,
+    last_name,
+    is_active,
+    role_id
 )
 VALUES (
     '00000000-0000-0000-0000-000000000010',
@@ -46,4 +46,4 @@ VALUES (
     true,
     '00000000-0000-0000-0000-000000000001'
 )
-ON CONFLICT ("Id") DO NOTHING;
+ON CONFLICT (id) DO NOTHING;
