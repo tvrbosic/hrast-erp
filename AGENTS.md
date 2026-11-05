@@ -2,6 +2,17 @@
 
 This file provides guidance to AI coding agents (Claude Code, Cursor, Copilot, etc.) when working with code in this repository.
 
+## Executing an implementation plan
+
+When working from an agreed implementation plan, work through it autonomously, but **stop and ask before deviating from it**. Do not decide on your own and report afterwards. Ask first when something comes up that:
+
+- needs an architectural decision, or does not match the plan (a step that turns out wrong, incomplete, or in conflict with the existing code)
+- moves, renames, or restructures files or folders in ways the plan does not explicitly list
+- changes core architectural files not named in the current plan step: `Program.cs`, `HrastDbContext`, entity configurations, migrations, seed scripts, `AddInfrastructure()` / `*ServiceExtensions`, `<Module>Module.cs`, pipeline behaviors, middleware, authorization/authentication setup, SharedKernel types, `*.csproj` / `Directory.*.props`
+- introduces a new architectural pattern, framework, or third-party package (or a major version bump) not agreed on earlier in the conversation
+
+When asking, describe what you found, give the options with trade-offs, and recommend one. Keep working on parts of the plan that don't depend on the answer. Small local choices inside a planned step (naming a private helper, picking a test case) don't need approval.
+
 ## Commands
 
 ```bash
