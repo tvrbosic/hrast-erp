@@ -14,6 +14,9 @@ public static class AdministrationErrors
     public static readonly Error TenantNameTaken =
         Error.Conflict("Tenant.NameTaken", "A tenant with this name already exists.");
 
+    public static Error TenantHasUsers(int userCount) =>
+        Error.Conflict("Tenant.HasUsers", $"Tenant has {userCount} users. Remove them before deleting.");
+
     public static readonly Error TenantInactive =
         Error.Validation("Tenant.Inactive", "Cannot create a user for an inactive tenant.");
     #endregion
