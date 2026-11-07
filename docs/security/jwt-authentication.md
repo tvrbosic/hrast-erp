@@ -25,6 +25,7 @@ Settings are validated at startup with `ValidateDataAnnotations()` + `ValidateOn
 
 ## Services
 
+- **Identity registration** — `AddIdentityServices()` (`Infrastructure/Authentication/AuthenticationServiceExtensions.cs`) sets up `AddIdentityCore<ApplicationUser>` with the password and user rules, `AddEntityFrameworkStores<HrastDbContext>()`, and `AddDefaultTokenProviders()` plus `AddDataProtection()`. The token providers create the password reset tokens that the admin ChangePassword command uses, and Data Protection encrypts those tokens. Without them, `GeneratePasswordResetTokenAsync` throws and the endpoint returns a 500.
 - **`ITokenService` / `TokenService`** — generates JWT access tokens, generates refresh token pairs (raw + hash), and hashes raw tokens for DB lookup.
 - **`IAuthService` / `AuthService`** — orchestrates login, refresh, and logout flows using Identity's `UserManager` and `ITokenService`.
 

@@ -98,7 +98,9 @@ public class DeleteTenantCommandHandlerTests(PostgresContainerFixture fixture)
 
     private async Task SeedStoredFileAsync(Guid tenantId, bool softDeleted = false)
     {
-        var file = new StoredFile(Guid.NewGuid(), "invoice.pdf", "application/pdf", 1024, $"{tenantId}/invoice.pdf");
+        // Production paths end in the file's own id, so they never collide on the unique storage_path index.
+        var id = Guid.NewGuid();
+        var file = new StoredFile(id, "invoice.pdf", "application/pdf", 1024, $"{tenantId}/{id}.pdf");
 
         await using var db = NewDbContext();
         db.Set<StoredFile>().Add(file);

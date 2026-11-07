@@ -43,6 +43,7 @@ Test behavior against real infrastructure — a live PostgreSQL instance or a li
 - **EF Core interceptor tests** — `AuditableEntityInterceptorTests`, `SoftDeleteInterceptorTests`, `TenantEntityInterceptorTests`, `AuditLogInterceptorTests`. Interceptors depend on EF Core's change tracking pipeline, which InMemory does not fully replicate.
 - **EF Core query filter tests** — `SoftDeleteQueryFilterTests`, `TenantQueryFilterTests`. Global query filters must be verified against a real SQL engine.
 - **`AuthServiceTests`** — the full login/refresh/logout flow writes refresh tokens to the database and requires real migrations.
+- **`IdentityServicesTests`** — creates and redeems a password reset token through the production Identity registration, so a missing Identity service fails in tests instead of as a 500 in the API.
 - **`RedisCacheServiceTests`** — prefix-based key removal (`RemoveByPrefixAsync`) requires Redis SCAN commands unavailable in InMemory.
 
 ### Use InMemory for
@@ -78,6 +79,11 @@ await using var db = NewDbContext(interceptors: race);
 var act = () => new CreateRoleCommandHandler(db).Handle(new CreateRoleCommand("Auditor", null, []), ct);
 await act.Should().ThrowAsync<DbUpdateException>();
 ```
+
+**Identity in tests:** tests that need `UserManager`, `IAuthService` or `ITokenService` call the production
+`services.AddIdentityServices()` instead of writing their own `AddIdentityCore(...)` setup, so the test wiring always
+matches the app. To override settings such as `JwtSettings`, register `Options.Create(...)` *after*
+`AddIdentityServices()` so it replaces the appsettings binding.
 
 **`RedisContainerFixture`** — starts one Redis 7 container per test class.
 

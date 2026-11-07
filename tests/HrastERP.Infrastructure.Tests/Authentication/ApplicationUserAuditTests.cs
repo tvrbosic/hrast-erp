@@ -54,12 +54,7 @@ public class ApplicationUserAuditTests : IClassFixture<PostgresContainerFixture>
                 new TenantEntityInterceptor(currentTenant),
                 new AuditLogInterceptor(currentUser, currentTenant)));
 
-        services.AddIdentityCore<ApplicationUser>()
-            .AddEntityFrameworkStores<HrastDbContext>()
-            .AddDefaultTokenProviders();
-
-        // Password reset tokens need a data protection provider; the app itself registers no token providers.
-        services.AddDataProtection();
+        services.AddIdentityServices();
         services.AddLogging();
 
         _serviceProvider = services.BuildServiceProvider();

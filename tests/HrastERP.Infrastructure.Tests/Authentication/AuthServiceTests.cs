@@ -49,20 +49,10 @@ public class AuthServiceTests : IClassFixture<PostgresContainerFixture>, IAsyncL
         services.AddDbContext<HrastDbContext>(options =>
             options.UseNpgsql(fixture.NewConnectionString()));
 
-        services.AddIdentityCore<ApplicationUser>(options =>
-            {
-                options.Password.RequiredLength = 8;
-                options.Password.RequireDigit = true;
-                options.Password.RequireLowercase = true;
-                options.Password.RequireUppercase = true;
-                options.Password.RequireNonAlphanumeric = false;
-                options.User.RequireUniqueEmail = true;
-            })
-            .AddEntityFrameworkStores<HrastDbContext>();
+        services.AddIdentityServices();
 
+        // Registered after AddIdentityServices() so it replaces the appsettings binding.
         services.AddSingleton(Options.Create(_settings));
-        services.AddScoped<ITokenService, TokenService>();
-        services.AddScoped<IAuthService, AuthService>();
 
         services.AddLogging();
 

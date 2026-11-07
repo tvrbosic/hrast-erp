@@ -23,6 +23,8 @@ internal static class AuthenticationServiceExtensions
         // Configure ASP.NET Core Identity with password and user rules.
         // AddIdentityCore registers UserManager<ApplicationUser> and related services.
         // AddEntityFrameworkStores wires Identity to use HrastDbContext for storing users.
+        // AddDefaultTokenProviders registers the providers behind password reset tokens,
+        // which the admin ChangePassword command uses; they encrypt tokens with Data Protection.
         services.AddIdentityCore<ApplicationUser>(options =>
             {
                 options.Password.RequiredLength = 8;
@@ -32,7 +34,9 @@ internal static class AuthenticationServiceExtensions
                 options.Password.RequireNonAlphanumeric = false;
                 options.User.RequireUniqueEmail = true;
             })
-            .AddEntityFrameworkStores<HrastDbContext>();
+            .AddEntityFrameworkStores<HrastDbContext>()
+            .AddDefaultTokenProviders();
+        services.AddDataProtection();
 
         // Register authentication services:
         // - ITokenService generates and validates JWT + refresh tokens
