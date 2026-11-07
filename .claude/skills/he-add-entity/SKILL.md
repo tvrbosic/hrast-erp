@@ -1,5 +1,5 @@
 ---
-name: hrast-erp-add-entity
+name: he-add-entity
 description: Guides adding a domain entity to a HrastERP module — choosing BaseEntity vs AggregateRoot, EF Core configuration with schema namespacing, optional ITenantEntity opt-in, and generating a migration. Use when adding a new entity to any module.
 ---
 

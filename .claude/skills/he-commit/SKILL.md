@@ -1,5 +1,5 @@
 ---
-name: hrast-erp-commit
+name: he-commit
 description: Analyzes uncommitted changes, generates a Conventional Commits message, presents it for approval, then stages and pushes on approval. Use when the user wants to commit and push changes.
 ---
 

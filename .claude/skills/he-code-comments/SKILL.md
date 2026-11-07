@@ -1,5 +1,5 @@
 ---
-name: hrast-erp-code-comments
+name: he-code-comments
 description: Use when writing, adding, rewriting, or reviewing code comments or XML doc comments (/// summary, remarks) in HrastERP C# files, including when asked to make a file easier to read or understand.
 ---
 

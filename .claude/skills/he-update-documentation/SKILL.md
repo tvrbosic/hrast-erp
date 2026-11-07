@@ -1,5 +1,5 @@
 ---
-name: hrast-erp-update-documentation
+name: he-update-documentation
 description: Scans code changes and updates README.md, AGENTS.md, or docs/ files — filters what is worth documenting, maps changes to the right target, drafts content, and applies after user approval. Use when reflecting recent code changes into project documentation.
 ---
 

@@ -1,5 +1,5 @@
 ---
-name: hrast-erp-cqrs-handler
+name: he-cqrs-handler
 description: Guides writing MediatR command and query handlers in HrastERP — handler structure, FluentValidation validator placement, controller wiring with ISender, ToActionResult() mapping, and custom status codes (201/204). Use when implementing a new command or query.
 ---
 

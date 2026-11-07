@@ -1,5 +1,5 @@
 ---
-name: hrast-erp-error-handling
+name: he-error-handling
 description: Covers the Result pattern, Error factory methods, ErrorType selection (Validation/NotFound/Forbidden/Conflict/Unexpected), module error catalog pattern, and implicit conversion in handlers. Use when defining errors or returning failures from HrastERP handlers.
 ---
 

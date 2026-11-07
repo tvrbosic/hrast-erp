@@ -1,5 +1,5 @@
 ---
-name: hrast-erp-testing
+name: he-testing
 description: Covers xUnit/FluentAssertions/NSubstitute conventions, naming pattern (ExpectedBehavior_When_Condition), Testcontainers vs InMemory decision, fixture setup, and integration test tagging for HrastERP. Use when writing or reviewing tests in this project.
 ---
 

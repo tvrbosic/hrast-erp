@@ -1,5 +1,5 @@
 ---
-name: hrast-erp-add-module
+name: he-add-module
 description: Scaffolds a new HrastERP business module — project structure, csproj references, Add<Module>Module() DI entry point, assembly scanning, Program.cs wiring, and API controller placement. Use when adding a new module to the application.
 ---
 
