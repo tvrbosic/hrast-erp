@@ -1,6 +1,6 @@
 # AGENTS.md
 
-This file provides guidance to AI coding agents (Claude Code, Cursor, Copilot, etc.) when working with code in this repository.
+This file provides guidance to AI coding agents (Claude Code, Cursor, Copilot, etc.) when working with code in this repository. Detailed guides live in `docs/`; each section below points to the one to read before working in that area.
 
 ## Executing an implementation plan
 
@@ -16,43 +16,36 @@ When asking, describe what you found, give the options with trade-offs, and reco
 ## Commands
 
 ```bash
-# Build
 dotnet build
-
-# Run all tests
-dotnet test
-
-# Run tests for a specific project
-dotnet test tests/HrastERP.SharedKernel.Tests/
-
-# Run a single test by name
+dotnet test                                        # all tests, requires Docker
+dotnet test --filter "Category!=Integration"       # fast, no Docker required
+dotnet test --filter "Category=Integration"        # integration only
 dotnet test --filter "FullyQualifiedName~TestMethodName"
 
 # Apply EF Core migrations (before first run and after adding new migrations)
 dotnet ef database update --project src/HrastERP.Infrastructure --startup-project src/HrastERP.API
 
-# Run the API
 dotnet run --project src/HrastERP.API/
 ```
 
 ## Architecture
 
-**Modular monolith with vertical slice architecture** — single deployable unit, five independent business modules (Administration, Finance, Inventory, Procurement, Production). Each module is a **single project** with Clean Architecture layers as folders (Domain, Application, Infrastructure). The API project is the composition root and owns all controllers.
+**Modular monolith with vertical slice architecture** — single deployable unit, five independent business modules (Administration, Finance, Inventory, Procurement, Production). Each module is a **single project** (`HrastERP.<Module>`) with Clean Architecture layers as folders (`Domain/`, `Application/`, `Infrastructure/`) and a `<Module>Module.cs` exposing `Add<Module>Module()`, which registers MediatR handlers, FluentValidation validators, and EF Core configurations. See `docs/architecture/modules.md`.
 
-**Project naming convention:** `HrastERP.<Module>` (e.g. `HrastERP.Inventory`). Each module contains `Domain/`, `Application/`, and `Infrastructure/` folders.
+**Controllers live in `HrastERP.API/Controllers/`**, not in modules. This avoids a circular dependency (API → Module → API for shared Web types like `ResultExtensions`, `RequirePermissionAttribute`, `ErrorResponse`).
 
-**Dependency wiring:** `HrastERP.API` references all module projects. Each module exposes a `Add<Module>Module()` extension method that registers MediatR handlers, FluentValidation validators, and EF Core configurations. Controllers live in the API project and are discovered automatically. Shared infrastructure is registered via a single `AddInfrastructure()` call, which delegates to focused extension classes colocated with each concern: `DatabaseServiceExtensions`, `BehaviorServiceExtensions`, `AuthenticationServiceExtensions`, `BackgroundJobServiceExtensions`, `EmailServiceExtensions`, `FileStorageServiceExtensions`, `PdfGenerationServiceExtensions`, and `CacheServiceExtensions`. Exception: `LoggingServiceExtensions` is called directly on `WebApplicationBuilder` in `Program.cs` (not through `AddInfrastructure()`) because Serilog's `UseSerilog()` requires access to `builder.Host`.
+**Infrastructure wiring:** shared infrastructure is registered via a single `AddInfrastructure()` call that delegates to `*ServiceExtensions` classes colocated with each concern. Exception: `LoggingServiceExtensions` is called directly on `WebApplicationBuilder` in `Program.cs` because Serilog's `UseSerilog()` needs `builder.Host`.
 
-**CQRS:** MediatR with commands and queries organized by feature inside `Application/`. Structure: `Application/<Feature>/Commands/` and `Application/<Feature>/Queries/`. Handlers return `Result<T>`.
+**CQRS:** MediatR, organized as `Application/<Feature>/Commands/` and `Application/<Feature>/Queries/`. Handlers return `Result<T>`. See `docs/architecture/mediatr-pipeline-behaviors.md`.
 
 **Data access:** Handlers inject `HrastDbContext` directly — no repository pattern. With CQRS, each handler has a single focused query or command; repositories would be pass-through wrappers. Business rules like "name must be unique" are checked with a query in the handler before saving; the matching DB constraint (unique index, Restrict FK) is only a safety net, and handlers don't catch `DbUpdateException` — a rare race past the pre-check surfaces as a 500. See `docs/api/error-handling.md`.
 
-**Database naming:** all tables and columns are snake_case, applied by `EFCore.NamingConventions` (`UseSnakeCaseNamingConvention()`) in `HrastDbContext.OnConfiguring`, so every context construction path (API, tests, `dotnet ef`) gets it. The convention only handles casing, so every entity configuration must call `ToTable("<plural_snake>"[, "<module>"])`. Module tables go in a schema named after the module (e.g. `administration.tenants`); shared infrastructure tables stay in `public`. Never use `HasColumnName` / `HasDatabaseName` just to fix casing. The one exception is Identity: it sets its helper table names and its `EmailIndex` / `UserNameIndex` index names explicitly, which the convention doesn't rewrite, so they are overridden with snake_case names in `HrastDbContext.OnModelCreating` and `ApplicationUserConfiguration`. Raw SQL uses unquoted snake_case identifiers and schema-qualifies module tables. Audit log JSON keys are database column names. `seed_history` and Hangfire tables are not EF-managed and are unchanged.
+**Database naming:** all tables and columns are snake_case, applied by `EFCore.NamingConventions` (`UseSnakeCaseNamingConvention()`) in `HrastDbContext.OnConfiguring`, so every context construction path (API, tests, `dotnet ef`) gets it. The convention only handles casing, so every entity configuration must call `ToTable("<plural_snake>"[, "<module>"])`. Module tables go in a schema named after the module (e.g. `administration.tenants`); shared infrastructure tables stay in `public`. Never use `HasColumnName` / `HasDatabaseName` just to fix casing. The one exception is Identity: it sets its helper table names and its `EmailIndex` / `UserNameIndex` index names explicitly, which the convention doesn't rewrite, so they are overridden with snake_case names in `HrastDbContext.OnModelCreating` and `ApplicationUserConfiguration`. Raw SQL uses unquoted snake_case identifiers and schema-qualifies module tables. Audit log JSON keys are database column names. `seed_history` and Hangfire tables are not EF-managed and are unchanged. See `docs/data/adding-entities.md`.
 
 **Pipeline behaviors** (registered in `HrastERP.Infrastructure`), in execution order:
-- `LoggingBehavior` — structured request/response logging with timing and sanitized request payload; properties marked with `[SensitiveData]` are masked as `"***"`; outermost wrapper
-- `TenantValidationBehavior` — short-circuits with `Result.Failure(Error.Forbidden("General.MissingTenant", ...))` when `ICurrentTenant.TenantId` is `Guid.Empty`; runs before input validation
-- `ValidationBehavior` — runs FluentValidation validators; on failure groups violations by camelCase property name into a field-level error dictionary and returns `Result.Failure` with `Error.Validation("General.Validation", ..., fieldErrors)`. Validators are `internal sealed` classes placed next to their command and are picked up by `AddValidatorsFromAssembly(assembly, includeInternalTypes: true)` in `Add<Module>Module()`; without that flag FluentValidation silently skips internal validators.
+- `LoggingBehavior` — outermost; logs requests with timing; properties marked `[SensitiveData]` are masked as `"***"`
+- `TenantValidationBehavior` — short-circuits with `Error.Forbidden("General.MissingTenant", ...)` when `ICurrentTenant.TenantId` is `Guid.Empty`; runs before input validation
+- `ValidationBehavior` — runs FluentValidation validators and returns `Error.Validation("General.Validation", ..., fieldErrors)` keyed by camelCase property name. Validators are `internal sealed` classes placed next to their command and are picked up by `AddValidatorsFromAssembly(assembly, includeInternalTypes: true)` in `Add<Module>Module()`; without that flag FluentValidation silently skips internal validators.
 
 **Inter-module communication:** Domain events only (MediatR notifications). Modules never reference each other. Cross-module event contracts live in SharedKernel under `IntegrationEvents/`.
 
@@ -60,103 +53,43 @@ dotnet run --project src/HrastERP.API/
 
 ## SharedKernel
 
-`HrastERP.SharedKernel` is referenced by all modules. It is pure C# with no framework dependencies (no EF Core, no MediatR).
+`HrastERP.SharedKernel` is pure C# with no framework dependencies (no EF Core, no MediatR) and must not import from any module. See `docs/architecture/shared-kernel.md`. Rules to follow:
 
-Key types and their intended use:
+- All entities inherit `BaseEntity<TId>` (or `AggregateRoot<TId>` to raise domain events), which makes them auditable and soft-deletable. Tenant scoping is opt-in: implement `ITenantEntity` — `BaseEntity` does NOT implement it.
+- Handlers return `Result` / `Result<T>` for expected failures instead of throwing. Each module defines its errors as `static readonly` constants in a `<Module>Errors` class, using the `Error.*` factory methods. See `docs/api/error-handling.md`.
+- List queries return `PagedResult<T>` created via `PagedResult<T>.Create(...)`.
+- Authorization uses the `[Flags] enum Permission : long` — always reference named enum members, never raw `long` values.
+- Mark sensitive MediatR request properties (passwords, tokens) with `[property: SensitiveData]` on record constructor parameters so `LoggingBehavior` masks them.
+- `ICurrentUser` / `ICurrentTenant` (ambient request context) belong in SharedKernel; infrastructure service interfaces (email, file storage, jobs) belong in `HrastERP.Infrastructure`.
+- `TenantConstants.SuperAdminTenantId` (`00000000-0000-0000-0000-100000000000`): users of this tenant bypass tenant query filters; their role permissions are still enforced.
 
-- **`BaseEntity<TId>`** — base for all entities; implements `IAuditable` + `ISoftDeletable`; equality is by `Id`. All entities are automatically auditable and soft-deletable.
-- **`AggregateRoot<TId>`** — extends `BaseEntity`, adds `AddDomainEvent` / `ClearDomainEvents`
-- **`IAuditable`** — interface with audit trail properties (`CreatedAt`, `CreatedBy`, `UpdatedAt?`, `UpdatedBy?`); `CreatedBy`/`UpdatedBy` are `Guid` (UserId). Implemented by `BaseEntity`.
-- **`ISoftDeletable`** — interface with soft-delete properties (`DeletedAt?`, `DeletedBy?`). Implemented by `BaseEntity`.
-- **`ITenantEntity`** — domain marker interface for entities requiring row-level tenant isolation; exposes `Guid TenantId { get; }`. Entities opt in explicitly — `BaseEntity` does NOT implement it. `TenantId` is auto-populated by `TenantEntityInterceptor` on insert when `Guid.Empty`; if already set, the interceptor skips it (allows super admin to create entities for other tenants).
-- **`IDomainEvent`** — marker interface for domain events; aggregates raise them, the application layer dispatches after commit
-- **`ValueObject`** — equality by `GetEqualityComponents()`; use for `Money`, `Address`, etc.
-- **`Result` / `Result<TValue>`** — all command and query handlers return these instead of throwing for expected failures; supports implicit conversion from `TValue` and `Error`
-- **`Error`** — `record(string Code, string Message, ErrorType Type)`; code is dot-separated e.g. `"Order.NotFound"`; `ErrorType` enum: `Validation`, `NotFound`, `Forbidden`, `Conflict`, `Unexpected`; factory methods: `Error.NotFound`, `Error.Validation`, `Error.Forbidden`, `Error.Conflict`, `Error.Unexpected`. `Error.Validation` accepts an optional `validationErrors` (`IReadOnlyDictionary<string, string[]>?`) for field-level error detail; populated automatically by `ValidationBehavior`. Each module defines errors as `static readonly` constants in a `<Module>Errors` class. See `docs/api/error-handling.md` and `docs/api/api-responses.md`.
-- **`PagedResult<T>`** — returned by all list queries; created via `PagedResult<T>.Create(...)`
-- **`Permission`** — `[Flags] enum Permission : long` in `HrastERP.SharedKernel/Authorization/`; 20 CRUD permissions across 5 modules (bits 0–19). Use for authorization checks — always reference named enum members, never raw `long` values.
-- **`[SensitiveData]`** — marker attribute (`HrastERP.SharedKernel/Logging/`) for MediatR request properties containing sensitive data (passwords, tokens). `LoggingBehavior` masks these with `"***"` when logging request payloads. Apply with `[property: SensitiveData]` on record constructor parameters.
-- **`ICurrentUser`** / **`ICurrentTenant`** — injected into application handlers; implemented in API layer from JWT claims. `ICurrentUser.EffectivePermissions` returns the current user's combined permissions (parsed from the `"permissions"` JWT claim). These represent ambient request context and belong in SharedKernel. Infrastructure service interfaces (email, file storage, jobs) belong in `HrastERP.Infrastructure` instead.
-- **`TenantConstants`** — `SuperAdminTenantId` (`00000000-0000-0000-0000-100000000000`), defined in `HrastERP.SharedKernel/Constants/`. Users belonging to this tenant bypass tenant query filters and can operate across all tenants. Their role permissions are still enforced.
-- **Global exception middleware** (`GlobalExceptionMiddleware`, in `HrastERP.API/Middleware/`) — registered as the first middleware in `Program.cs`; catches any unhandled infrastructure/framework exception and returns 500 with `{ code: "General.Unexpected", message: "An unexpected error occurred." }`. Application-layer failures always use `Result.Failure` — the middleware is a safety net only, not the primary error path.
-- **Model binding error factory** (`ModelBindingExtensions.ConfigureModelBindingErrorFormat()`, in `HrastERP.API/Extensions/`) — replaces ASP.NET Core's default `InvalidModelStateResponseFactory` so that model binding failures (malformed JSON, missing `[Required]` fields, type mismatches) return the same `ErrorResponse` shape as application validation: HTTP 422 with `{ code: "General.Validation", message: "...", errors: { ... } }` and camelCase field names.
-- **API response envelope** (`ApiResponse<T>`, in `HrastERP.API/Responses/`) — all successful responses from `ToActionResult()` (in `HrastERP.API/Extensions/ResultExtensions`) are wrapped as `{ "data": T }`. For `PagedResult<T>`, the envelope includes a `"meta"` field with pagination info (`page`, `pageSize`, `totalCount`, `totalPages`, `hasPreviousPage`, `hasNextPage`). Error responses use `ErrorResponse` (same `Responses/` folder) and are **not** enveloped — they remain flat `{ "code", "message", "errors?" }`. Both types are the only response shapes the API produces; all endpoints must use them consistently.
+**API responses:** successful responses from `ToActionResult()` are wrapped as `{ "data": T }` (`ApiResponse<T>`), plus a `"meta"` pagination field for `PagedResult<T>`. Errors use `ErrorResponse` and are **not** enveloped — flat `{ "code", "message", "errors?" }`. These are the only response shapes the API produces; all endpoints must use them. Model binding failures return the same shape (422 `General.Validation`), and `GlobalExceptionMiddleware` turns unhandled exceptions into 500 `General.Unexpected` — a safety net only, never the primary error path. See `docs/api/api-responses.md`.
 
-**Audit fields:** All entities get `CreatedAt`/`CreatedBy`/`UpdatedAt`/`UpdatedBy` auto-populated by `AuditableEntityInterceptor` in the Infrastructure layer. Uses `DateTime` (UTC) and `ICurrentUser.UserId` (`Guid`). Falls back to `Guid.Empty` when unauthenticated.
-
-**Soft delete:** All entities get `DeletedAt`/`DeletedBy` auto-populated by `SoftDeleteInterceptor` when deleted. A global query filter hides soft-deleted entities by default.
-
-**Tenant isolation:** Entities opt in to row-level tenant scoping by implementing `ITenantEntity`. `ApplicationUser` implements `ITenantEntity`. `TenantEntityInterceptor` auto-populates `TenantId` from `ICurrentTenant` on insert only when `TenantId` is `Guid.Empty` — if already set, it skips (allows super admin to create entities for other tenants). Throws `InvalidOperationException` if `TenantId` is still `Guid.Empty` after population — a programming error caught before reaching the database. A global query filter restricts all `ITenantEntity` queries to the current tenant; when `CurrentTenantId == TenantConstants.SuperAdminTenantId`, the tenant query filter is bypassed (all `ITenantEntity` records visible). `TenantValidationBehavior` provides an early defense at the pipeline level, returning `Result.Failure(Error.Forbidden("General.MissingTenant", ...))` before any handler executes when tenant context is missing.
-
-**Audit log:** All entity state changes (create, update, soft-delete) on `IAuditable` entities are automatically captured by `AuditLogInterceptor` into the `audit_logs` table. Each `AuditLogEntry` records `EntityName`, `EntityId`, `Action` (Created/Updated/Deleted/Purged), `OldValues`/`NewValues` (JSON, keyed by database column name, e.g. `created_at`), `UserId`, `TenantId`, and `Timestamp`. The entry is a plain class implementing `ITenantEntity` — it does NOT inherit `BaseEntity<TId>`. The interceptor runs last in the chain (after `AuditableEntityInterceptor`, `SoftDeleteInterceptor`, `TenantEntityInterceptor`) so it sees final entity state. Soft-deletes are detected by checking if `DeletedAt` was modified. Value capture: Created → full snapshot in `NewValues`; Updated → changed properties only; Deleted → full snapshot in `OldValues`. The table is append-only. Located at `HrastERP.Infrastructure/Database/Audit/`.
-
-Nothing in SharedKernel should import from any module.
-
-## Module structure
-
-Each module follows this folder layout:
-
-```
-HrastERP.<Module>/
-├── Domain/
-│   ├── Entities/
-│   ├── ValueObjects/
-│   ├── Events/
-│   └── Enumerations/
-├── Application/
-│   └── <Feature>/
-│       ├── Commands/
-│       └── Queries/
-├── Infrastructure/
-│   └── Database/
-│       └── Configurations/
-└── <Module>Module.cs          # DI registration entry point
-```
-
-**Controllers live in `HrastERP.API/Controllers/`**, not in modules. This avoids a circular dependency (API → Module → API for shared Web types like `ResultExtensions`, `RequirePermissionAttribute`, `ErrorResponse`). The API project references all modules and all API types, so controllers there can reference both without issues.
-
-See `docs/architecture/modules.md` for the full guide on module architecture and adding new modules.
+**Automatic entity behavior** (EF Core interceptors in Infrastructure):
+- Audit fields (`CreatedAt`/`CreatedBy`/`UpdatedAt`/`UpdatedBy`, UTC + `ICurrentUser.UserId`) and soft delete (`DeletedAt`/`DeletedBy`, hidden by a global query filter) are populated automatically.
+- `TenantEntityInterceptor` sets `TenantId` on insert only when it is `Guid.Empty` (an explicitly set value is kept, so super admin can create entities for other tenants), and throws `InvalidOperationException` if it is still empty. A global query filter limits `ITenantEntity` queries to the current tenant, bypassed for the super admin tenant. See `docs/architecture/multi-tenancy.md`.
+- `AuditLogInterceptor` runs last and writes every create/update/soft-delete to the append-only `audit_logs` table. See `docs/data/audit-log.md`.
 
 ## Administration Module
 
 First business module — manages tenants and users.
 
-**Tenant Management:** `Tenant` entity in `Administration/Domain/Entities/` with `Name` and `IsActive`, stored in `administration.tenants`. Full CRUD at `api/admin/tenants`, protected by `[RequireSuperAdminTenant]` + `[RequirePermission]`. Tenant inherits `BaseEntity<Guid>` but does NOT implement `ITenantEntity` — tenants don't belong to other tenants.
+**Tenant Management:** `Tenant` entity stored in `administration.tenants`. Full CRUD at `api/admin/tenants`, protected by `[RequireSuperAdminTenant]` + `[RequirePermission]`. Tenant inherits `BaseEntity<Guid>` but does NOT implement `ITenantEntity` — tenants don't belong to other tenants.
 
 **User Management:** Operates directly on `ApplicationUser` (no separate User entity). Uses `UserManager` for identity operations (create, password), `HrastDbContext` for reads and field updates. Endpoints at `api/admin/users`, protected by `[RequirePermission]`. Super admin tenant users manage all tenants' users; regular tenant admins manage only their own tenant's users (via automatic tenant query filter on `ApplicationUser`).
-
-**Super Admin Tenant Pattern:** Users belonging to `TenantConstants.SuperAdminTenantId` bypass the tenant query filter on all `ITenantEntity` queries. Their role permissions are still enforced. The admin tenant is seeded in `Reference/0002_super_admin_tenant.sql`.
 
 **Role Management:** CQRS slice in `Administration/Application/Roles/` operating on the global `Role` entity (Infrastructure) via `HrastDbContext.Set<Role>()`. Endpoints at `api/admin/roles` (CRUD) and `api/admin/permissions` (all permissions grouped by module). Reads need `AdministrationView`; writes additionally need `[RequireSuperAdminTenant]`, applied per write action (not on the controller) so tenant admins can still read roles. Permissions travel over the API as enum names and are converted to/from the bitmask by `PermissionMapper`. Role names are trimmed and unique case-insensitively, enforced by a unique index on `Role.NormalizedName` (`Name.Trim().ToUpperInvariant()`). Outside the super admin tenant, users can only be given roles within the caller's own permissions (`RoleAssignment` in `Application/Users/`). The Administrator role (`RoleConstants.AdministratorRoleId`) cannot be deleted and must keep every permission. Role changes reach users on their next token refresh.
 
 **Block Inactive Entity Middleware:** `BlockInactiveEntityMiddleware` runs after authentication, before authorization. Blocks requests from users with inactive accounts or belonging to inactive tenants. Uses `ICacheService` for cached status lookups (5-min TTL). Super admin tenant users are never blocked.
 
-**No Repository Pattern:** All handlers inject `HrastDbContext` directly. Rationale: with CQRS, each handler has a single focused query — repositories would be thin pass-through wrappers with no added value.
+## Authentication & Authorization
 
-## Authentication
+JWT Bearer authentication with ASP.NET Core Identity; `HrastDbContext` inherits `IdentityUserContext<ApplicationUser, Guid>`. `ApplicationUser` implements `ITenantEntity` and has a single nullable `RoleId`. See `docs/security/jwt-authentication.md`.
 
-JWT Bearer authentication with ASP.NET Core Identity. Key components:
+- `AuthService` queries all use `IgnoreQueryFilters()` because auth flows run without a JWT (no tenant context), so tenant and soft-delete filters would otherwise hide all records. `IsActive` is checked explicitly after lookup.
+- `RefreshToken.TenantId` is set explicitly from `user.TenantId` in `AuthService`, not by the interceptor, since login has no JWT context.
 
-**Infrastructure layer** (`HrastERP.Infrastructure/Authentication/`):
-- **`ApplicationUser`** — extends `IdentityUser<Guid>`, implements `ITenantEntity`; has `TenantId` (FK to `Tenant`), `FirstName`/`LastName`, `IsActive`, and a nullable `RoleId` FK + `Role` navigation (single role per user)
-- **`RefreshToken`** — entity for refresh token rotation, linked to `ApplicationUser`; implements `ITenantEntity` with `TenantId` set explicitly from `user.TenantId` in `AuthService` (not auto-populated by interceptor, since login has no JWT context)
-- **`IAuthService` / `AuthService`** — login, refresh, and logout flows using Identity + token service. All queries use `IgnoreQueryFilters()` because auth flows run without a JWT (no tenant context), so tenant and soft-delete filters would otherwise hide all records. `IsActive` is checked explicitly after lookup.
-- **`ITokenService` / `TokenService`** — generates JWT access tokens and refresh tokens
-- **`AuthErrors`** — predefined `Error` constants for auth failures (e.g. `Auth.InvalidCredentials`)
-
-**API layer** (`HrastERP.API/`):
-- **`AuthController`** — endpoints: `POST /api/auth/login`, `POST /api/auth/refresh`, `POST /api/auth/logout`
-- **`CurrentUser`** / **`CurrentTenant`** — implement `ICurrentUser` / `ICurrentTenant` by reading JWT claims from `HttpContext`
-
-**Configuration:** JWT settings are in `appsettings.json` under `"Jwt"` section (`SecretKey`, `Issuer`, `Audience`), bound to `JwtSettings` with validation on startup.
-
-**DbContext:** `HrastDbContext` inherits from `IdentityUserContext<ApplicationUser, Guid>` (not plain `DbContext`), which adds Identity tables to the EF Core model.
-
-## Authorization
-
-Custom RBAC system built on ASP.NET Core policy-based authorization. Permissions are embedded in the JWT at login — no per-request DB query.
-
-**How to protect an endpoint:**
+Custom RBAC: permissions are embedded in the JWT at login — no per-request DB query. Protect endpoints like this:
 
 ```csharp
 [RequirePermission(Permission.FinanceView)]
@@ -164,30 +97,11 @@ Custom RBAC system built on ASP.NET Core policy-based authorization. Permissions
 public async Task<IActionResult> GetInvoices() { ... }
 ```
 
-**Key types** (`HrastERP.API/Authorization/`):
-- **`[RequirePermission]`** — `AuthorizeAttribute` subclass; encodes the permission as policy name `"Permission:<long>"`. Supports `AllowMultiple = true` for stacking multiple required permissions.
-- **`[RequireSuperAdminTenant]`** — `IAuthorizationFilter` attribute; restricts access to users belonging to `TenantConstants.SuperAdminTenantId`. Returns 403 with `ErrorResponse` if tenant doesn't match.
-- **`PermissionPolicyProvider`** — `IAuthorizationPolicyProvider` that intercepts `"Permission:*"` policy names and builds them dynamically; delegates all other policies to the default provider. Registered as singleton.
-- **`PermissionAuthorizationHandler`** — evaluates `(ICurrentUser.EffectivePermissions & requirement.Permission) != 0`. Registered as scoped (depends on scoped `ICurrentUser`).
-
-**`Role` entity** (`HrastERP.Infrastructure/Authorization/`):
-- Does NOT inherit `BaseEntity<TId>` — roles have no auditing, soft-delete, or tenant isolation
-- `Permissions` stored as `bigint` via `HasConversion<long>()`
-- Single role per user via nullable `ApplicationUser.RoleId` FK; `OnDelete(Restrict)` — deleting a role that is assigned to any user is refused with `409 Role.InUse`
-- See `docs/security/authorization.md` for the full reference and `docs/security/permission-checks-guide.md` for a step-by-step walkthrough (bit flags, request flow, AND vs OR semantics)
+`[RequirePermission]` supports stacking; `[RequireSuperAdminTenant]` restricts to the super admin tenant. `Role` does NOT inherit `BaseEntity<TId>` (no auditing, soft delete, or tenant isolation); deleting a role still assigned to a user is refused with `409 Role.InUse`. See `docs/security/authorization.md` and `docs/security/permission-checks-guide.md`.
 
 ## Database Seeding
 
-`DatabaseSeeder` (`src/HrastERP.Infrastructure/Database/DatabaseSeeder.cs`) runs at application startup via `Program.cs` before the middleware pipeline. It requires migrations to be applied first.
-
-Plain SQL scripts live in two folders inside `src/HrastERP.Infrastructure/Database/Seeds/`:
-
-- `Reference/` — always applied in every environment
-- `Fixtures/` — applied only in `Development` environment
-
-**Script naming:** `NNNN_description.sql` (4-digit zero-padded prefix). Scripts execute in ascending numeric order within each folder; Reference scripts always run before Fixtures.
-
-**Idempotency:** Applied scripts are recorded in `seed_history` (a plain table created by the seeder, not managed by EF Core migrations). Scripts themselves use `INSERT ... ON CONFLICT (id) DO NOTHING`. A script runs exactly once per database.
+`DatabaseSeeder` runs plain SQL scripts at startup (after migrations) from `src/HrastERP.Infrastructure/Database/Seeds/`: `Reference/` always, `Fixtures/` in `Development` only. Scripts are named `NNNN_description.sql`, run once per database (tracked in `seed_history`), and use `INSERT ... ON CONFLICT (id) DO NOTHING`. See `docs/data/database-seeding.md`.
 
 **Predefined UUIDs** (stable across environments — used as FK targets and constants):
 - Super Admin Tenant: `00000000-0000-0000-0000-100000000000` (seeded in `Reference/0002_super_admin_tenant.sql`)
@@ -197,131 +111,24 @@ Plain SQL scripts live in two folders inside `src/HrastERP.Infrastructure/Databa
 - WarehouseEmployee role: `00000000-0000-0000-0000-000000000004`
 - FinanceEmployee role: `00000000-0000-0000-0000-000000000005`
 
-See `docs/data/database-seeding.md` for the full guide on adding new seed scripts.
+## Infrastructure services
 
-## Background Jobs
+Each lives in `HrastERP.Infrastructure/<Service>/`, is configured by an `appsettings.json` section bound to a settings class validated on startup, and returns `Result` for expected failures. Read the guide before working on one:
 
-Hangfire with PostgreSQL storage provides background job infrastructure. Configured in `appsettings.json` under `"Hangfire"` section, bound to `HangfireSettings` with validation on startup.
-
-**Key types** (`HrastERP.Infrastructure/Hangfire/`):
-- **`HangfireSettings`** — configuration: `WorkerCount` (default 1), `SoftDeleteRetentionDays` (default 90), `RevokedTokenRetentionDays` (default 7), cron expressions for each cleanup job
-- **`IRecurringJobDefinition`** — (`Services/`) pure C# interface for self-registering recurring background jobs; exposes `JobId`, `CronExpression`, and `ExecuteAsync(CancellationToken)`. Implementations are auto-discovered at startup by `RecurringJobRegistrar`.
-- **`IBackgroundJobService` / `HangfireBackgroundJobService`** — (`Services/`) thin wrapper over Hangfire's static APIs for `Enqueue`, `Schedule`, and `AddOrUpdateRecurring`
-- **`RecurringJobRegistrar`** — (`Services/`) static class called at startup; resolves all `IRecurringJobDefinition` implementations and `IRecurringJobManager` from DI, validates `JobId` uniqueness, and registers them with Hangfire. Uses `Job.FromExpression<T>()` via reflection (concrete job type only known at runtime) and `IRecurringJobManager` (not the static `RecurringJob` class, which requires `JobStorage` to be initialized first).
-- **`LocalhostDashboardAuthorizationFilter`** — (`Filters/`) restricts Hangfire dashboard (`/hangfire`) to localhost connections only
-
-**Built-in cleanup jobs** (`HrastERP.Infrastructure/Hangfire/Jobs/`):
-- **`RefreshTokenCleanupJob`** — deletes expired tokens and revoked tokens past retention period; batched raw SQL (no audit — `RefreshToken` doesn't inherit `BaseEntity<TId>`)
-- **`SoftDeleteCleanupJob`** — hard-deletes soft-deleted entities past retention period; uses raw SQL to bypass the interceptor chain (no HTTP context); deletes each batch and writes its `Purged` audit entries (full entity snapshot) in a single statement
-
-**Adding a new recurring job:** Create a class implementing `IRecurringJobDefinition` in the appropriate module or Infrastructure layer, register it as `IRecurringJobDefinition` in DI (and by concrete type for Hangfire's activator). It will be auto-discovered at startup. See `docs/services/background-jobs.md` for the full guide.
-
-## Email
-
-MailKit-based SMTP email infrastructure. Configured in `appsettings.json` under `"Smtp"` section, bound to `SmtpSettings` with validation on startup. Development uses localhost:1025 (local SMTP server like MailHog).
-
-**Key types** (`HrastERP.Infrastructure/Email/`):
-- **`SmtpSettings`** — configuration: `Host`, `Port` (default 587), `Username`, `Password`, `FromAddress`, `FromName`, `UseSsl` (default true)
-- **`IEmailService` / `MailKitEmailService`** — `SendAsync(EmailMessage)` for plain sends, `SendTemplatedAsync(templateName, placeholders, EmailMessage)` for templated sends; both return `Result`
-- **`EmailMessage`** — model with `To`, `Cc`, `Bcc`, `Subject`, `Body`, `IsHtml` (default true)
-- **`EmailErrors`** — predefined `Error` constants: `Email.SendFailed`, `Email.TemplateNotFound`
-
-**HTML templates:** Embedded resources in `Email/Templates/`. Use `{{placeholder}}` syntax for variable substitution. Templates are loaded by name (e.g. `"welcome"` loads `Email/Templates/welcome.html`). Add new templates as `.html` files in that folder — they're automatically included via the `<EmbeddedResource>` glob in the `.csproj`.
-
-See `docs/services/email.md` for the developer guide on sending emails and adding templates.
-
-## File Storage
-
-Local file storage infrastructure with tenant-isolated directory structure. Configured in `appsettings.json` under `"FileStorage"` section, bound to `FileStorageSettings` with validation on startup.
-
-**Key types** (`HrastERP.Infrastructure/FileStorage/`):
-- **`FileStorageSettings`** — configuration: `RootPath` (default `./storage/files`), `MaxFileSizeBytes` (default 10 MB), `AllowedContentTypes` (PDF, images, CSV, XLSX, DOCX)
-- **`IFileStorageService` / `LocalFileStorageService`** — `UploadAsync(stream, fileName, contentType)`, `DownloadAsync(fileId)`, `DeleteAsync(fileId)`, `GetUrlAsync(fileId)`; all return `Result<T>` or `Result`
-- **`StoredFile`** — entity extending `BaseEntity<Guid>` + `ITenantEntity`; tracks `FileName`, `ContentType`, `SizeInBytes`, `StoragePath` in the `stored_files` table
-- **`FileUploadResult` / `FileDownloadResult`** — models returned by upload and download operations
-- **`FileStorageErrors`** — predefined `Error` constants: `FileStorage.FileNotFound`, `FileStorage.FileTooLarge`, `FileStorage.ContentTypeNotAllowed`, `FileStorage.StorageFailed`
-
-**Storage layout:** Files are stored under `{RootPath}/{TenantId}/{Year}/{Month}/{FileId}{Extension}`. The `storage/` directory is git-ignored.
-
-See `docs/services/file-storage.md` for the developer guide on uploading, downloading, and managing files.
-
-## PDF Generation
-
-QuestPDF-based PDF report generation infrastructure. Configured in `appsettings.json` under `"PdfGeneration"` section, bound to `PdfGenerationSettings` with validation on startup.
-
-**Key types** (`HrastERP.Infrastructure/PdfGeneration/`):
-- **`PdfGenerationSettings`** — configuration: `CompanyName` (default `"Hrast ERP"`), `LogoPath` (nullable, falls back to embedded default), `PrimaryColor`, `AccentColor`, `TextColor` (hex), `FontFamily` (default `"Open Sans"`)
-- **`IReportGenerator<TData>`** — generic interface for PDF report generators; each module implements this in its `Infrastructure/Reports/` folder. Synchronous `Generate(TData data)` returns `Result<ReportResult>`
-- **`ReportBuilder`** — singleton service providing shared report layout: `ApplyDefaultPageSettings` (A4, 2cm margins, font), `ApplyHeader` (logo, company name, report title, date), `ApplyFooter` (timestamp, page numbering), and formatting helpers (`FormatCurrency`, `FormatDate`, color accessors)
-- **`ReportResult`** — output model with `Content` (byte[]), `FileName`, `ContentType`
-- **`PdfGenerationErrors`** — predefined `Error` constants: `PdfGeneration.GenerationFailed`, `PdfGeneration.LogoNotFound`
-
-**Fonts and logo:** Open Sans fonts and a placeholder logo are embedded resources in `PdfGeneration/Assets/`. Custom logo can be set via `LogoPath` in settings.
-
-See `docs/services/pdf-generation.md` for the developer guide on writing report generators.
-
-## Caching
-
-Redis-based distributed caching infrastructure. Configured in `appsettings.json` under `"Cache"` section, bound to `CacheSettings` with validation on startup. Development uses localhost:6379 (Docker Compose Redis container).
-
-**Key types** (`HrastERP.Infrastructure/Caching/`):
-- **`CacheSettings`** — configuration: `ConnectionString` (required), `DefaultTtlMinutes` (default 60, range 1-1440)
-- **`ICacheService` / `RedisCacheService`** — `GetAsync<T>(key)`, `SetAsync<T>(key, value, expiration?)`, `RemoveAsync(key)`, `RemoveByPrefixAsync(prefix)`; non-throwing — failures are logged and return null/silently complete
-- **`CacheErrors`** — predefined `Error` constants: `Cache.SerializationFailed`, `Cache.OperationFailed`
-
-**Cache key conventions:** `Module:Entity:Identifier` (e.g. `Roles:all`, `Roles:{id}`). Prefix-based invalidation: `RemoveByPrefixAsync("Roles")` clears all role-related entries using Redis SCAN.
-
-**Service lifetime:** Singleton. All dependencies (`IDistributedCache`, `IConnectionMultiplexer`, `CacheSettings`) are singletons.
-
-See `docs/services/caching.md` for the developer guide on caching patterns and key conventions.
-
-## Logging
-
-Serilog-based structured logging infrastructure. Replaces the default ASP.NET Core logging provider — all existing `ILogger<T>` usage routes through Serilog automatically. Configured in `appsettings.json` under `"Serilog"` section. Log files are written to `logs/` (git-ignored).
-
-**Sinks:** Console (human-readable, colored), Debug (debugger output), Rolling File (JSON, one file per day, 30-day retention under `./logs/`).
-
-**Enrichment:** Every log entry is automatically enriched with `UserId`, `TenantId` (via `LoggingEnrichmentMiddleware` after authentication), `RequestId` (from `HttpContext.TraceIdentifier`), `MachineName`, and `EnvironmentName`. For unauthenticated requests, `UserId`/`TenantId` are `Guid.Empty`.
-
-**Key types** (`HrastERP.Infrastructure/Logging/`):
-- **`LoggingServiceExtensions`** — `AddLoggingInfrastructure(WebApplicationBuilder)` configures Serilog provider with enrichers and sinks; `UseLoggingInfrastructure(WebApplication)` adds HTTP request logging; `UseLoggingEnrichment(WebApplication)` adds enrichment middleware
-- **`LoggingEnrichmentMiddleware`** — pushes `UserId` and `TenantId` into Serilog's `LogContext` per request; runs after `UseAuthentication()`, before `UseAuthorization()`
-
-**Configuration (hybrid):** Structural setup (enrichers, sinks) in C# via `LoggingServiceExtensions`. Tunable values (log levels, file path, retention) in `appsettings.json` under `"Serilog"`. Per-namespace log level overrides suppress framework noise (`Microsoft.AspNetCore`, `Microsoft.EntityFrameworkCore`, `Hangfire`, `System.Net.Http`) to `Warning` in production, relaxed to `Information` in Development.
-
-**Middleware order in Program.cs:** `GlobalExceptionMiddleware` → `UseSerilogRequestLogging()` → ... → `UseAuthentication()` → `LoggingEnrichmentMiddleware` → `BlockInactiveEntityMiddleware` → `UseAuthorization()` → `MapControllers()` → `MapHealthChecks("/health")` → `MapOpenApi()` + `MapScalarApiReference()` (Development only).
-
-See `docs/services/logging.md` for the developer guide on logging conventions and configuration.
-
-## API Documentation & Health Checks
-
-**OpenAPI + Scalar UI** — Development-only interactive API documentation. Configured in `HrastERP.API/Extensions/OpenApiServiceExtensions.cs`.
-
-- `AddOpenApiServices()` registers OpenAPI document generation with a JWT `BearerAuth` security scheme applied globally
-- `UseOpenApiInfrastructure()` maps the OpenAPI JSON endpoint and Scalar UI; guarded by `IsDevelopment()`
-- **URLs:** OpenAPI document at `/openapi/v1.json`, Scalar UI at `/scalar/v1`
-
-**Health checks** — `GET /health` returns JSON with per-dependency status for PostgreSQL, Redis, and SMTP. Unauthenticated (`.AllowAnonymous()`), available in all environments. Configured in `HrastERP.API/Extensions/HealthCheckServiceExtensions.cs`.
-
-- **Response:** `{ status, checks: { database, redis, smtp }, totalDuration }` — 200 for Healthy/Degraded, 503 for Unhealthy
-- **Custom SMTP check** (`HrastERP.API/HealthChecks/SmtpHealthCheck.cs`) — TCP connectivity only, 3-second timeout
-- **JSON response writer** (`HrastERP.API/HealthChecks/HealthCheckResponseWriter.cs`) — formats the health report as camelCase JSON
-
-**Adding a new health check:** Register it in `HealthCheckServiceExtensions.AddHealthCheckServices()` via `.AddCheck<T>(name)`. It will appear automatically in the `/health` response.
+- **Background jobs** (Hangfire) — `docs/services/background-jobs.md`. A new recurring job implements `IRecurringJobDefinition` and must be registered in DI both as `IRecurringJobDefinition` and by its concrete type (Hangfire's activator needs the latter).
+- **Email** (MailKit) — `docs/services/email.md`. HTML templates are `.html` files in `Email/Templates/` with `{{placeholder}}` syntax, picked up automatically by the `<EmbeddedResource>` glob in the `.csproj`.
+- **File storage** (local, tenant-isolated) — `docs/services/file-storage.md`
+- **PDF generation** (QuestPDF, `IReportGenerator<TData>` per module) — `docs/services/pdf-generation.md`
+- **Caching** (Redis, keys `Module:Entity:Identifier`) — `docs/services/caching.md`
+- **Logging** (Serilog) — `docs/services/logging.md`
+- **OpenAPI/Scalar UI and `/health` checks** — `docs/api/api-setup.md`
 
 ## Test stack
 
-xUnit + FluentAssertions + NSubstitute. Each module has a dedicated test project under `tests/`. `xunit` is a global using in test projects — no need to add `using Xunit;`.
+xUnit + FluentAssertions + NSubstitute. Each module has a dedicated test project under `tests/`. `xunit` is a global using in test projects — no need to add `using Xunit;`. See `docs/architecture/testing.md`.
 
 **Mocking:** Use NSubstitute (`Substitute.For<IInterface>()`) for dependency doubles — fakes that implement interfaces (`ICurrentUser`, `ICurrentTenant`, `IRecurringJobManager`, etc.). Do NOT replace concrete test-infrastructure types (`TestDbContext`, `TestEntity`, test data records) — those stay as-is.
 
 **Test method naming:** `ExpectedBehavior_When_Condition` — e.g., `Returns_success_When_credentials_are_valid`, `Throws_InvalidOperationException_When_TenantId_is_empty_on_insert`. `When` is always capitalized. State the assertion first, then the condition that triggers it.
 
 **Integration tests (Testcontainers):** Tests that execute against a real database or Redis are tagged `[Trait("Category", "Integration")]` and implement `IClassFixture<PostgresContainerFixture>` or `IClassFixture<RedisContainerFixture>` (in `tests/HrastERP.Infrastructure.Tests/Fixtures/`). `PostgresContainerFixture.NewConnectionString()` returns a unique database name per call (`test_{Guid:N}`) for test isolation. Tests using a custom `TestDbContext` call `EnsureCreated()`; tests using the real `HrastDbContext` call `MigrateAsync()` in `IAsyncLifetime.InitializeAsync()`.
-
-**Running tests:**
-```bash
-dotnet test --filter "Category!=Integration"   # fast, no Docker required
-dotnet test                                    # all tests, requires Docker
-dotnet test --filter "Category=Integration"    # integration only
-```
