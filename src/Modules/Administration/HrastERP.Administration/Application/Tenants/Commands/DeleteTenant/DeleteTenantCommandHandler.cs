@@ -1,6 +1,7 @@
 using HrastERP.Administration.Domain.Entities;
 using HrastERP.Infrastructure.Authentication;
 using HrastERP.Infrastructure.Database;
+using HrastERP.Infrastructure.FileStorage;
 using HrastERP.SharedKernel.Results;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -27,6 +28,15 @@ internal sealed class DeleteTenantCommandHandler(HrastDbContext dbContext)
 
         if (userCount > 0)
             return Result.Failure(AdministrationErrors.TenantHasUsers(userCount));
+
+        // Files have no foreign key to the tenant, so nothing in the database would stop them being orphaned.
+        // Soft-deleted files don't count: the purge job removes them anyway.
+        var fileCount = await dbContext.Set<StoredFile>()
+            .IgnoreQueryFilters()
+            .CountAsync(f => f.TenantId == request.Id && f.DeletedAt == null, cancellationToken);
+
+        if (fileCount > 0)
+            return Result.Failure(AdministrationErrors.TenantHasFiles(fileCount));
 
         dbContext.Set<Tenant>().Remove(tenant);
         await dbContext.SaveChangesAsync(cancellationToken);

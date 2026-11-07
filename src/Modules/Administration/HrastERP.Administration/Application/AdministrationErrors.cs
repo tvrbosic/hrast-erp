@@ -17,6 +17,9 @@ public static class AdministrationErrors
     public static Error TenantHasUsers(int userCount) =>
         Error.Conflict("Tenant.HasUsers", $"Tenant has {userCount} users. Remove them before deleting.");
 
+    public static Error TenantHasFiles(int fileCount) =>
+        Error.Conflict("Tenant.HasFiles", $"Tenant has {fileCount} stored files. Delete them before deleting.");
+
     public static readonly Error TenantInactive =
         Error.Validation("Tenant.Inactive", "Cannot create a user for an inactive tenant.");
     #endregion

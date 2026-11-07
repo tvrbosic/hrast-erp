@@ -99,6 +99,25 @@ Handlers do not catch `DbUpdateException`. If a concurrent request slips in betw
 `SaveChangesAsync`, the constraint rejects the write and `GlobalExceptionMiddleware` returns a 500. This is
 an accepted trade-off: the race is rare, and the data stays consistent.
 
+### Deleting entities that others depend on
+
+A delete handler never removes, reassigns, or cascades to dependent records. Before deleting, it counts
+every kind of record that still refers to the entity and, if any exist, returns a `Conflict` error that
+names the dependents and their count, so the caller knows what to clear first:
+
+```csharp
+public static Error RoleInUse(int userCount) =>
+    Error.Conflict("Role.InUse", $"Role is assigned to {userCount} users. Reassign them before deleting.");
+```
+
+Use one error per kind of dependent (`Tenant.HasUsers`, `Tenant.HasFiles`) and check them in order, returning
+the first that applies. Count with `IgnoreQueryFilters()` so dependents in other tenants or inactive ones are
+not missed; add `DeletedAt == null` for soft-deletable dependents, since the purge job removes those anyway.
+
+Check dependents even when no foreign key links them (e.g. `StoredFile.TenantId`): without a constraint,
+nothing else stops them from being orphaned. When a new entity refers to an existing one, add its check to
+that entity's delete handler.
+
 ---
 
 ## Error Type Selection Guide
