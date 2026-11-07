@@ -26,6 +26,11 @@ public abstract class RoleAssignmentTestBase(PostgresContainerFixture fixture) :
         var userManager = Substitute.For<UserManager<ApplicationUser>>(
             Substitute.For<IUserStore<ApplicationUser>>(), null, null, null, null, null, null, null, null);
         userManager.CreateAsync(Arg.Any<ApplicationUser>(), Arg.Any<string>()).Returns(IdentityResult.Success);
+        userManager.SetEmailAsync(Arg.Any<ApplicationUser>(), Arg.Any<string>()).Returns(IdentityResult.Success);
+        userManager.SetUserNameAsync(Arg.Any<ApplicationUser>(), Arg.Any<string>()).Returns(IdentityResult.Success);
+        // Same normalization as Identity's default UpperInvariantLookupNormalizer
+        userManager.NormalizeEmail(Arg.Any<string>()).Returns(c => c.Arg<string>().ToUpperInvariant());
+        userManager.NormalizeName(Arg.Any<string>()).Returns(c => c.Arg<string>().ToUpperInvariant());
         return userManager;
     }
 }

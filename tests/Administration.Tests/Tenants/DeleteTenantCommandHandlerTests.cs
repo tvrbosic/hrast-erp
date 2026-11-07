@@ -54,6 +54,24 @@ public class DeleteTenantCommandHandlerTests(PostgresContainerFixture fixture)
     }
 
     [Fact]
+    public async Task Returns_HasUsers_When_tenant_has_only_soft_deleted_users()
+    {
+        var tenant = await SeedTenantAsync();
+        var user = await SeedUserAsync(tenant.Id, roleId: null);
+        await using (var db = NewDbContext())
+        {
+            await db.Database.ExecuteSqlInterpolatedAsync(
+                $"UPDATE asp_net_users SET deleted_at = now() WHERE id = {user.Id}");
+        }
+
+        var result = await HandleAsync(tenant.Id);
+
+        result.Error.Should().Be(AdministrationErrors.TenantHasUsers(1));
+        await using var verifyDb = NewDbContext();
+        (await verifyDb.Set<Tenant>().AnyAsync(t => t.Id == tenant.Id)).Should().BeTrue();
+    }
+
+    [Fact]
     public async Task Returns_HasFiles_When_tenant_has_stored_files()
     {
         var tenant = await SeedTenantAsync();

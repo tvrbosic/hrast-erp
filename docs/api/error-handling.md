@@ -95,6 +95,11 @@ Check business rules such as "is this name taken?" with a query in the handler a
 `Result` error (e.g. `Role.NameTaken`). Back the rule with a database constraint (unique index, Restrict FK)
 as a safety net for data integrity.
 
+If the unique index also covers rows that the query filters hide (soft-deleted rows, or rows in other
+tenants), run the pre-check with `IgnoreQueryFilters()`. Otherwise the check passes, the index rejects the
+insert, and the API returns a 500. For example, users keep their email after a soft delete until
+`SoftDeleteCleanupJob` purges them.
+
 Handlers do not catch `DbUpdateException`. If a concurrent request slips in between the pre-check and
 `SaveChangesAsync`, the constraint rejects the write and `GlobalExceptionMiddleware` returns a 500. This is
 an accepted trade-off: the race is rare, and the data stays consistent.

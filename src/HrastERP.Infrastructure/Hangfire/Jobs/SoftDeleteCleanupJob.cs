@@ -20,7 +20,7 @@ namespace HrastERP.Infrastructure.Hangfire.Jobs;
 ///   <item>For each table, resolves the real table, key, <c>deleted_at</c> and <c>tenant_id</c> names from
 ///   EF metadata and builds the purge SQL with them.</item>
 ///   <item>Runs that SQL in batches of <see cref="BatchSize"/>. In each batch, Postgres finds the rows past the
-///   cutoff, deletes them, and writes one audit entry per deleted row with its full JSON snapshot. Stops when
+///   cutoff, deletes them, and writes one audit entry per deleted row with its JSON snapshot (minus <c>ExcludeFromAudit</c> columns). Stops when
 ///   a batch deletes fewer than <see cref="BatchSize"/> rows.</item>
 ///   <item>Logs how many rows were purged per table.</item>
 /// </list>
@@ -45,7 +45,7 @@ internal sealed class SoftDeleteCleanupJob(
         // One timestamp shared by every audit entry written in this run
         var utcNow = DateTime.UtcNow;
 
-        // Find every soft-deletable entity type (all BaseEntity types, across all modules);
+        // Find every soft-deletable entity type (all ISoftDeletable types, across all modules);
         // each one is a table to purge
         var entityTypes = dbContext.Model.GetEntityTypes()
             .Where(et => et.ClrType.IsAssignableTo(typeof(ISoftDeletable)))
@@ -76,7 +76,7 @@ internal sealed class SoftDeleteCleanupJob(
             if (pk is null || tableName is null)
                 continue;
 
-            // Assumes a single-column key, which BaseEntity<TId> guarantees
+            // Assumes a single-column key, which every ISoftDeletable entity has (a single Id key)
             var pkColumn = pk.Properties[0].GetColumnName();
 
             // Skip types whose DeletedAt property isn't mapped to a column (e.g. ignored in configuration)
@@ -97,11 +97,20 @@ internal sealed class SoftDeleteCleanupJob(
                 : null;
             var tenantExpression = isTenantEntity ? $"t.\"{tenantColumn}\"" : "{5}";
 
+            // Columns marked ExcludeFromAudit (e.g. password hashes) are removed from the snapshot
+            var excludedColumns = entityType.GetProperties()
+                .Where(p => p.IsExcludedFromAudit())
+                .Select(p => $"'{p.GetColumnName()}'")
+                .ToList();
+            var oldValuesExpression = excludedColumns.Count == 0
+                ? "row_to_json(t.*)::text"
+                : $"(row_to_json(t.*)::jsonb - ARRAY[{string.Join(", ", excludedColumns)}])::text";
+
             // One batch in a single atomic statement:
             //   1. inner SELECT picks up to {1} rows soft-deleted before the cutoff {0}
             //      (no DELETE ... LIMIT in Postgres, so the batch is chosen by subquery)
             //   2. DELETE removes them; RETURNING outputs each removed row's id, tenant and
-            //      full JSON snapshot (keys = column names), read just before removal
+            //      JSON snapshot without excluded columns (keys = column names), read just before removal
             //   3. INSERT writes one 'Purged' audit entry per row that DELETE returned, so
             //      rows already removed by a concurrent run get no duplicate entry
             // Affected rows = rows purged; fewer than BatchSize means the table is done.
@@ -121,7 +130,7 @@ internal sealed class SoftDeleteCleanupJob(
                     )
                     RETURNING t."{{pkColumn}}"::text AS entity_id,
                               {{tenantExpression}} AS tenant_id,
-                              row_to_json(t.*)::text AS old_values
+                              {{oldValuesExpression}} AS old_values
                 )
                 INSERT INTO {{auditTable}} ({{auditColumns}})
                 SELECT gen_random_uuid(), {2}, entity_id, 'Purged', old_values, NULL, {3}, tenant_id, {4}

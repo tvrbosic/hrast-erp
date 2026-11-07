@@ -6,7 +6,11 @@ Append-only change history that automatically captures entity state changes (cre
 
 ## What Gets Audit-Logged
 
-Any entity implementing `IAuditable` — which means all `BaseEntity<TId>` descendants. Entities that don't inherit `BaseEntity<TId>` (e.g., `Role`, `RefreshToken`, `ApplicationUser`, `AuditLogEntry` itself) are excluded automatically.
+Any entity implementing `IAuditable` — which means all `BaseEntity<TId>` descendants. `ApplicationUser` implements `IAuditable` directly, so it is audited too. Entities that don't implement it (e.g., `Role`, `RefreshToken`, `AuditLogEntry` itself) are excluded automatically.
+
+### Excluding properties
+
+Mark a property in its entity configuration with `.ExcludeFromAudit()` (`HrastERP.Infrastructure/Database/Audit/AuditExclusion.cs`) to keep its value out of the log. `AuditLogInterceptor` skips these properties in `OldValues`/`NewValues`. `ApplicationUser` excludes `PasswordHash`, `SecurityStamp` and `ConcurrencyStamp`. `SoftDeleteCleanupJob` reads the same annotation and strips the excluded columns from the `Purged` `row_to_json` snapshot.
 
 ## AuditLogEntry
 
@@ -21,17 +25,17 @@ Plain class at `HrastERP.Infrastructure/Database/Audit/AuditLogEntry.cs`. Implem
 | `OldValues` | `string?` | JSON snapshot of previous state (keys are column names) |
 | `NewValues` | `string?` | JSON snapshot of new state (keys are column names) |
 | `UserId` | `Guid` | From `ICurrentUser`; `Guid.Empty` if unauthenticated |
-| `TenantId` | `Guid` | From `ICurrentTenant`; set explicitly by interceptor |
+| `TenantId` | `Guid` | Tenant that owns the changed data: the entity's own `TenantId` for `ITenantEntity`, otherwise `ICurrentTenant` |
 | `Timestamp` | `DateTime` | UTC timestamp |
 
 ## Value Capture Strategy
 
 | Action | OldValues | NewValues |
 |---|---|---|
-| Created | `null` | All properties (full snapshot) |
+| Created | `null` | All properties except those marked `ExcludeFromAudit()` |
 | Updated | Changed properties only | Changed properties only |
-| Deleted | All properties (full snapshot) | `null` |
-| Purged | Full row snapshot from `row_to_json` (written by `SoftDeleteCleanupJob`) | `null` |
+| Deleted | All properties except those marked `ExcludeFromAudit()` | `null` |
+| Purged | Row snapshot from `row_to_json`, without `ExcludeFromAudit()` columns (written by `SoftDeleteCleanupJob`) | `null` |
 
 ## Interceptor Ordering
 
@@ -58,7 +62,9 @@ entry.State == EntityState.Modified
 
 ## TenantId on AuditLogEntry
 
-`AuditLogInterceptor` sets `TenantId` explicitly from `ICurrentTenant` because `TenantEntityInterceptor` has already completed by the time audit log entries are added to the context.
+`TenantId` decides which tenant can see the entry (`AuditLogEntry` is an `ITenantEntity`, so the tenant query filter applies). It records the tenant that owns the changed data, not the caller's tenant: for an `ITenantEntity` it is the entity's own `TenantId`, so a super admin editing another tenant's user, or a login-time password rehash with no tenant context, is logged under the user's tenant. Entities without a tenant (e.g. `Tenant`) fall back to `ICurrentTenant`. `SoftDeleteCleanupJob` follows the same rule for `Purged` entries. Who made the change is recorded in `UserId`.
+
+The interceptor sets `TenantId` itself because `TenantEntityInterceptor` has already completed by the time audit log entries are added to the context.
 
 ## Database
 

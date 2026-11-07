@@ -88,7 +88,28 @@ namespace HrastERP.Infrastructure.Database.Migrations
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
                         .HasColumnType("text")
-                        .HasColumnName("concurrency_stamp");
+                        .HasColumnName("concurrency_stamp")
+                        .HasAnnotation("HrastERP:ExcludeFromAudit", true);
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<Guid>("CreatedBy")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasDefaultValue(new Guid("00000000-0000-0000-0000-000000000000"))
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by");
 
                     b.Property<string>("Email")
                         .HasMaxLength(256)
@@ -137,7 +158,8 @@ namespace HrastERP.Infrastructure.Database.Migrations
 
                     b.Property<string>("PasswordHash")
                         .HasColumnType("text")
-                        .HasColumnName("password_hash");
+                        .HasColumnName("password_hash")
+                        .HasAnnotation("HrastERP:ExcludeFromAudit", true);
 
                     b.Property<string>("PhoneNumber")
                         .HasColumnType("text")
@@ -153,7 +175,8 @@ namespace HrastERP.Infrastructure.Database.Migrations
 
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("text")
-                        .HasColumnName("security_stamp");
+                        .HasColumnName("security_stamp")
+                        .HasAnnotation("HrastERP:ExcludeFromAudit", true);
 
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid")
@@ -162,6 +185,14 @@ namespace HrastERP.Infrastructure.Database.Migrations
                     b.Property<bool>("TwoFactorEnabled")
                         .HasColumnType("boolean")
                         .HasColumnName("two_factor_enabled");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
 
                     b.Property<string>("UserName")
                         .HasMaxLength(256)

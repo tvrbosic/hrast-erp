@@ -2,6 +2,7 @@ using HrastERP.Administration.Application.Users.Commands.ActivateUser;
 using HrastERP.Administration.Application.Users.Commands.ChangePassword;
 using HrastERP.Administration.Application.Users.Commands.CreateUser;
 using HrastERP.Administration.Application.Users.Commands.DeactivateUser;
+using HrastERP.Administration.Application.Users.Commands.DeleteUser;
 using HrastERP.Administration.Application.Users.Commands.UpdateUser;
 using HrastERP.Administration.Application.Users.Queries.GetUserById;
 using HrastERP.Administration.Application.Users.Queries.GetUsers;
@@ -61,6 +62,14 @@ public sealed class UsersController(ISender sender) : ControllerBase
 
         var result = await sender.Send(command, ct);
         return result.ToActionResult();
+    }
+
+    [RequirePermission(Permission.AdministrationDelete)]
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
+    {
+        var result = await sender.Send(new DeleteUserCommand(id), ct);
+        return result.IsSuccess ? NoContent() : result.ToActionResult();
     }
 
     [RequirePermission(Permission.AdministrationView)]

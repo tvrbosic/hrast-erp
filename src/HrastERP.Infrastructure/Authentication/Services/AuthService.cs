@@ -22,6 +22,7 @@ internal sealed class AuthService(
     {
         // Look up user and verify credentials.
         // IgnoreQueryFilters: no JWT exists yet at login, so tenant filter would exclude all users.
+        // It also bypasses the soft-delete filter, so deleted users are rejected explicitly below.
         var user = await userManager.Users
             .IgnoreQueryFilters()
             .Include(u => u.Role)
@@ -29,7 +30,7 @@ internal sealed class AuthService(
         if (user is null)
             return AuthErrors.InvalidCredentials;
 
-        if (!user.IsActive)
+        if (!user.IsActive || user.DeletedAt is not null)
             return AuthErrors.InactiveUser;
 
         var passwordValid = await userManager.CheckPasswordAsync(user, password);
@@ -58,6 +59,9 @@ internal sealed class AuthService(
 
         if (storedToken is null || !storedToken.IsActive)
             return AuthErrors.InvalidRefreshToken;
+
+        if (!storedToken.User.IsActive || storedToken.User.DeletedAt is not null)
+            return AuthErrors.InactiveUser;
 
         // Revoke old token
         storedToken.RevokedAt = DateTime.UtcNow;

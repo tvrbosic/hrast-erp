@@ -104,7 +104,8 @@ public class BlockInactiveEntityMiddleware(
             .AsNoTracking()
             .IgnoreQueryFilters()
             .Where(u => u.Id == userId)
-            .Select(u => (bool?)u.IsActive)
+            // IgnoreQueryFilters also drops the soft-delete filter, so a deleted user counts as inactive here.
+            .Select(u => (bool?)(u.IsActive && u.DeletedAt == null))
             .FirstOrDefaultAsync();
 
         if (isActive.HasValue)

@@ -20,7 +20,7 @@ Settings are validated at startup with `ValidateDataAnnotations()` + `ValidateOn
 
 ## Entities
 
-- **`ApplicationUser`** — extends `IdentityUser<Guid>` with `TenantId`, `FirstName`, `LastName`, `IsActive`, a `RefreshTokens` navigation collection, and a nullable `RoleId` FK + `Role` navigation (single role per user).
+- **`ApplicationUser`** — extends `IdentityUser<Guid>` with `TenantId`, `FirstName`, `LastName`, `IsActive`, a `RefreshTokens` navigation collection, and a nullable `RoleId` FK + `Role` navigation (single role per user). It also implements `IAuditable` and `ISoftDeletable`: `CreatedAt`/`CreatedBy`, `UpdatedAt`/`UpdatedBy` and `DeletedAt`/`DeletedBy`, populated by the interceptors. Soft-deleted users are hidden by the global query filter.
 - **`RefreshToken`** — stores hashed refresh tokens with `ExpiresAt`, `RevokedAt`, and `ReplacedByToken` (for rotation audit trail). Exposes computed `IsActive` = not expired AND not revoked.
 
 ## Services
@@ -47,7 +47,7 @@ When `TokenService.GenerateAccessToken` creates a JWT, it includes:
 ### Login (`POST /api/auth/login`)
 
 1. Find user by email via `userManager.Users.Include(u => u.Role)` (eager-loads role so permissions are available for JWT generation)
-2. Reject if `IsActive` is false (`Auth.InactiveUser` error)
+2. Reject if `IsActive` is false or the user is soft-deleted (`Auth.InactiveUser` error)
 3. Verify password via `UserManager.CheckPasswordAsync`
 4. Generate JWT access token with user claims
 5. Generate refresh token pair (raw + SHA-256 hash)
@@ -61,6 +61,7 @@ Uses **refresh token rotation** — each use invalidates the old token and issue
 1. Hash the incoming raw refresh token
 2. Find the matching record in the database (include `User` + `ThenInclude(u => u.Role)` so permissions are available for JWT generation)
 3. Reject if not found or not active (`Auth.InvalidRefreshToken` error)
+   - Also reject if the user is inactive or deleted (`Auth.InactiveUser` error); the token is not rotated
 4. **Revoke** the old token (set `RevokedAt`)
 5. Generate a new refresh token pair
 6. Set `ReplacedByToken` on the old record (audit trail)
@@ -175,4 +176,4 @@ Client                        API                         Infrastructure
 - **Token rotation** — each refresh invalidates the old token and issues a new one
 - **No clock skew** — `ClockSkew = TimeSpan.Zero`, tokens expire exactly on time
 - **Short-lived access tokens** — 15 min default, limits exposure window
-- **Inactive user check** — deactivated accounts are rejected at login
+- **Inactive user check** — deactivated and deleted accounts are rejected at login and token refresh

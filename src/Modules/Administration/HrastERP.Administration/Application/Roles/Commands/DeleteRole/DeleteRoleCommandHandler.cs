@@ -35,8 +35,8 @@ internal sealed class DeleteRoleCommandHandler(HrastDbContext dbContext)
         return Result.Success();
     }
 
-    // Roles are global, so count users across all tenants (and inactive ones) —
-    // the tenant query filter would otherwise hide some of them.
+    // Roles are global, so count users across all tenants, including inactive and
+    // soft-deleted ones. A deleted user keeps their role until the purge job removes them.
     private Task<int> CountAssignedUsersAsync(Guid roleId, CancellationToken cancellationToken) =>
         dbContext.Set<ApplicationUser>()
             .IgnoreQueryFilters()

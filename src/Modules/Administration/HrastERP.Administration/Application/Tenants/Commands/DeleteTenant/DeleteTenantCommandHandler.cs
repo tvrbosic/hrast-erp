@@ -19,9 +19,9 @@ internal sealed class DeleteTenantCommandHandler(HrastDbContext dbContext)
         if (tenant is null)
             return Result.Failure(AdministrationErrors.TenantNotFound);
 
-        // Users aren't soft-deletable, so they'd stay after the tenant is soft-deleted, and the purge job's
-        // hard delete would then be refused by the users → tenants foreign key (OnDelete Restrict).
-        // Ignore query filters so every user is counted, whatever the caller's context.
+        // Soft-deleted users still hold a row until the purge job removes them, so they'd outlive the tenant and
+        // the purge job's hard delete would then be refused by the users → tenants foreign key (OnDelete Restrict).
+        // Ignore query filters so every user, soft-deleted ones included, is counted whatever the caller's context.
         var userCount = await dbContext.Set<ApplicationUser>()
             .IgnoreQueryFilters()
             .CountAsync(u => u.TenantId == request.Id, cancellationToken);

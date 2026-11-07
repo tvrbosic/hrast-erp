@@ -47,6 +47,8 @@ A request missing the `Authorization` header returns `401 Unauthorized`. A valid
 
 `ApplicationUser` has a single nullable `Role` via `RoleId` FK. A user without a role gets `Permission.None` in the JWT. The FK uses `OnDelete: Restrict` — a role that is still assigned to any user (in any tenant, active or not) cannot be deleted. The `DeleteRole` handler checks this first and returns `409 Role.InUse`; the FK is defense in depth — if a user is assigned concurrently, the FK still blocks the delete and the request fails with a 500.
 
+Deleting a user (`DELETE /api/admin/users/{id}`) keeps their `RoleId`. `DeleteRole` counts soft-deleted users too, so the role can't be deleted until `SoftDeleteCleanupJob` purges them (`409 Role.InUse`). Outside the super admin tenant, the caller may only delete users whose role permissions they hold (`403 User.DeleteExceedsOwnPermissions`).
+
 ## Role Management API
 
 Roles are global (shared by all tenants). Any user with `AdministrationView` can read them — tenant admins need this to assign roles to users — but only super admin tenant users can change them.

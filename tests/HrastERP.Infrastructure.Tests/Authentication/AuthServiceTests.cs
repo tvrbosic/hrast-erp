@@ -178,6 +178,22 @@ public class AuthServiceTests : IClassFixture<PostgresContainerFixture>, IAsyncL
     }
 
     [Fact]
+    public async Task Returns_inactive_user_error_When_logging_in_as_deleted_user_still_marked_active()
+    {
+        var user = await SeedUserAsync();
+        // Soft-delete only; is_active stays true so the DeletedAt check alone must reject the login
+        await _dbContext.Database.ExecuteSqlAsync(
+            $"UPDATE asp_net_users SET deleted_at = now() WHERE id = {user.Id}");
+        // Raw SQL bypasses the change tracker, which would otherwise return the stale active user
+        _dbContext.ChangeTracker.Clear();
+
+        var result = await _sut.LoginAsync("test@example.com", "Password1");
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Be(AuthErrors.InactiveUser);
+    }
+
+    [Fact]
     public async Task Persists_refresh_token_to_database_When_login_succeeds()
     {
         await SeedUserAsync();
@@ -207,6 +223,40 @@ public class AuthServiceTests : IClassFixture<PostgresContainerFixture>, IAsyncL
             .FirstAsync(rt => rt.Token == hashedToken);
         oldToken.IsRevoked.Should().BeTrue();
         oldToken.ReplacedByToken.Should().NotBeNullOrEmpty();
+    }
+
+    [Fact]
+    public async Task Returns_inactive_user_error_When_refreshing_token_of_inactive_user()
+    {
+        var user = await SeedUserAsync(isActive: false);
+        var (rawToken, hashedToken) = _tokenService.GenerateRefreshToken();
+        var seeded = await SeedRefreshTokenAsync(user.Id, hashedToken);
+
+        var result = await _sut.RefreshAsync(rawToken);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Be(AuthErrors.InactiveUser);
+
+        var tokens = await _dbContext.Set<RefreshToken>().Where(rt => rt.UserId == user.Id).ToListAsync();
+        tokens.Should().ContainSingle();
+        tokens[0].Id.Should().Be(seeded.Id);
+        tokens[0].RevokedAt.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Returns_inactive_user_error_When_refreshing_token_of_deleted_user_still_marked_active()
+    {
+        var user = await SeedUserAsync();
+        var (rawToken, hashedToken) = _tokenService.GenerateRefreshToken();
+        await SeedRefreshTokenAsync(user.Id, hashedToken);
+        await _dbContext.Database.ExecuteSqlAsync(
+            $"UPDATE asp_net_users SET deleted_at = now() WHERE id = {user.Id}");
+        _dbContext.ChangeTracker.Clear();
+
+        var result = await _sut.RefreshAsync(rawToken);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Be(AuthErrors.InactiveUser);
     }
 
     [Fact]

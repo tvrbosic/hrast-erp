@@ -16,6 +16,7 @@ public class AuditLogInterceptorTests : IClassFixture<PostgresContainerFixture>
     private sealed class TestEntity(Guid id) : BaseEntity<Guid>(id)
     {
         public string Name { get; set; } = string.Empty;
+        public string Secret { get; set; } = string.Empty;
     }
 
     private sealed class TestDbContext(DbContextOptions<TestDbContext> options) : DbContext(options)
@@ -29,6 +30,7 @@ public class AuditLogInterceptorTests : IClassFixture<PostgresContainerFixture>
             {
                 b.HasKey(e => e.Id);
                 b.Property(e => e.Name).HasMaxLength(200);
+                b.Property(e => e.Secret).ExcludeFromAudit();
             });
 
             modelBuilder.Entity<AuditLogEntry>(b =>
@@ -254,6 +256,53 @@ public class AuditLogInterceptorTests : IClassFixture<PostgresContainerFixture>
 
         var oldValues = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(log.OldValues!);
         oldValues.Should().ContainKey("name");
+    }
+
+    // --- Excluded property tests ---
+
+    [Fact]
+    public async Task Omits_excluded_property_from_NewValues_When_entity_is_added()
+    {
+        await using var context = CreateContext();
+        context.TestEntities.Add(new TestEntity(Guid.NewGuid()) { Name = "Widget", Secret = "hash" });
+        await context.SaveChangesAsync();
+
+        var log = await context.AuditLogEntries.IgnoreQueryFilters().SingleAsync();
+        var newValues = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(log.NewValues!);
+        newValues!.Keys.Should().Contain("name").And.NotContain("secret");
+    }
+
+    [Fact]
+    public async Task Writes_Updated_entry_without_excluded_values_When_only_excluded_property_changes()
+    {
+        await using var context = CreateContext();
+        var entity = new TestEntity(Guid.NewGuid()) { Name = "Widget", Secret = "old-secret" };
+        context.TestEntities.Add(entity);
+        await context.SaveChangesAsync();
+
+        entity.Secret = "new-secret";
+        await context.SaveChangesAsync();
+
+        var logs = await context.AuditLogEntries.IgnoreQueryFilters().ToListAsync();
+        var updated = logs.Should().ContainSingle(l => l.Action == AuditAction.Updated).Subject;
+        (updated.OldValues ?? string.Empty).Should().NotContain("secret").And.NotContain("old-secret");
+        (updated.NewValues ?? string.Empty).Should().NotContain("secret").And.NotContain("new-secret");
+    }
+
+    [Fact]
+    public async Task Omits_excluded_property_from_OldValues_When_entity_is_soft_deleted()
+    {
+        await using var context = CreateContext();
+        var entity = new TestEntity(Guid.NewGuid()) { Name = "Widget", Secret = "hash" };
+        context.TestEntities.Add(entity);
+        await context.SaveChangesAsync();
+
+        context.TestEntities.Remove(entity);
+        await context.SaveChangesAsync();
+
+        var log = (await context.AuditLogEntries.IgnoreQueryFilters().ToListAsync())[1];
+        var oldValues = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(log.OldValues!);
+        oldValues!.Keys.Should().Contain("name").And.NotContain("secret");
     }
 
     // --- Edge case tests ---

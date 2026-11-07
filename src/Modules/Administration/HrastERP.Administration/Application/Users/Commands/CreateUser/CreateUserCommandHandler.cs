@@ -35,6 +35,16 @@ internal sealed class CreateUserCommandHandler(
         if (!tenant.IsActive)
             return AdministrationErrors.TenantInactive;
 
+        // Identity's own duplicate check goes through the query filters, so it can't see users of other
+        // tenants or soft-deleted users, which still hold the unique user name until they are purged.
+        var normalizedEmail = userManager.NormalizeEmail(request.Email);
+        var normalizedName = userManager.NormalizeName(request.Email);
+        if (await dbContext.Set<ApplicationUser>()
+                .IgnoreQueryFilters()
+                .AnyAsync(u => u.NormalizedEmail == normalizedEmail || u.NormalizedUserName == normalizedName,
+                    cancellationToken))
+            return AdministrationErrors.UserEmailTaken;
+
         if (request.RoleId.HasValue)
         {
             var rolePermissions = await RoleAssignment.GetPermissionsAsync(

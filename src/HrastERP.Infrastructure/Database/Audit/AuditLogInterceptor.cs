@@ -67,9 +67,12 @@ public sealed class AuditLogInterceptor(ICurrentUser currentUser, ICurrentTenant
                 OldValues = BuildOldValues(entry, action),
                 NewValues = BuildNewValues(entry, action),
                 UserId = userId,
-                // Set TenantId explicitly — TenantEntityInterceptor already ran
-                // and won't see this newly added entry.
-                TenantId = currentTenant.TenantId,
+                // The tenant that owns the changed data, so its admins see the entry even when a
+                // super admin (or a flow with no tenant context, like login) made the change.
+                // Set explicitly — TenantEntityInterceptor already ran and won't see this new entry.
+                TenantId = entry.Entity is ITenantEntity tenantEntity
+                    ? tenantEntity.TenantId
+                    : currentTenant.TenantId,
                 Timestamp = utcNow
             };
 
@@ -154,6 +157,6 @@ public sealed class AuditLogInterceptor(ICurrentUser currentUser, ICurrentTenant
     private static IEnumerable<PropertyEntry> GetScalarProperties(EntityEntry entry)
     {
         return entry.Properties
-            .Where(p => !p.Metadata.IsShadowProperty());
+            .Where(p => !p.Metadata.IsShadowProperty() && !p.Metadata.IsExcludedFromAudit());
     }
 }

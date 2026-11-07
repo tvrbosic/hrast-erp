@@ -15,7 +15,7 @@ public static class AdministrationErrors
         Error.Conflict("Tenant.NameTaken", "A tenant with this name already exists.");
 
     public static Error TenantHasUsers(int userCount) =>
-        Error.Conflict("Tenant.HasUsers", $"Tenant has {userCount} users. Remove them before deleting.");
+        Error.Conflict("Tenant.HasUsers", $"Tenant has {userCount} users, including deleted users awaiting permanent removal. Remove them before deleting.");
 
     public static Error TenantHasFiles(int fileCount) =>
         Error.Conflict("Tenant.HasFiles", $"Tenant has {fileCount} stored files. Delete them before deleting.");
@@ -39,6 +39,12 @@ public static class AdministrationErrors
 
     public static readonly Error UserRoleExceedsOwnPermissions =
         Error.Forbidden("User.RoleExceedsOwnPermissions", "You cannot change the role of a user who has permissions you do not have.");
+
+    public static readonly Error UserCannotDeleteSelf =
+        Error.Validation("User.CannotDeleteSelf", "You cannot delete your own account.");
+
+    public static readonly Error UserDeleteExceedsOwnPermissions =
+        Error.Forbidden("User.DeleteExceedsOwnPermissions", "You cannot delete a user who has permissions you do not have.");
     #endregion
 
     #region Role
@@ -52,7 +58,7 @@ public static class AdministrationErrors
         Error.Conflict("Role.AdministratorImmutable", "The Administrator role cannot be deleted and its permissions cannot be changed.");
 
     public static Error RoleInUse(int userCount) =>
-        Error.Conflict("Role.InUse", $"Role is assigned to {userCount} users. Reassign them before deleting.");
+        Error.Conflict("Role.InUse", $"Role is assigned to {userCount} users, including deleted users awaiting permanent removal. Reassign them before deleting.");
 
     public static readonly Error RoleExceedsOwnPermissions =
         Error.Forbidden("Role.ExceedsOwnPermissions", "You cannot assign a role with permissions you do not have.");

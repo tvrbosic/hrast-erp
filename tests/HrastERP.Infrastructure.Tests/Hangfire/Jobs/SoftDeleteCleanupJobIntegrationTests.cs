@@ -2,6 +2,7 @@ using System.Text.Json;
 using FluentAssertions;
 using HrastERP.Administration;
 using HrastERP.Administration.Domain.Entities;
+using HrastERP.Infrastructure.Authentication;
 using HrastERP.Infrastructure.Database;
 using HrastERP.Infrastructure.Database.Audit;
 using HrastERP.Infrastructure.FileStorage;
@@ -105,6 +106,55 @@ public class SoftDeleteCleanupJobIntegrationTests : IClassFixture<PostgresContai
             .Single(e => e.EntityId == fileId.ToString() && e.Action == AuditAction.Purged);
         entry.EntityName.Should().Be("StoredFile");
         entry.TenantId.Should().Be(tenantId);
+    }
+
+    [Fact]
+    public async Task Purges_user_When_soft_deleted_past_retention()
+    {
+        var (userId, _) = await AddUserDeletedAsync(TimeSpan.FromDays(91));
+
+        await RunJobAsync();
+
+        _context.Set<ApplicationUser>().IgnoreQueryFilters().AsNoTracking().Any(u => u.Id == userId).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Writes_Purged_entry_without_identity_secrets_When_user_is_purged()
+    {
+        var (userId, tenantId) = await AddUserDeletedAsync(TimeSpan.FromDays(91));
+
+        await RunJobAsync();
+
+        var entry = _context.Set<AuditLogEntry>().IgnoreQueryFilters().AsNoTracking()
+            .Single(e => e.EntityId == userId.ToString() && e.Action == AuditAction.Purged);
+        entry.EntityName.Should().Be("ApplicationUser");
+        entry.TenantId.Should().Be(tenantId);
+        var keys = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(entry.OldValues!)!.Keys;
+        keys.Should().Contain(["email", "tenant_id"])
+            .And.NotContain(["password_hash", "security_stamp", "concurrency_stamp"]);
+    }
+
+    private async Task<(Guid UserId, Guid TenantId)> AddUserDeletedAsync(TimeSpan age)
+    {
+        var tenantId = Guid.NewGuid();
+        _context.Set<Tenant>().Add(new Tenant(tenantId, $"Test tenant {tenantId}"));
+        var userId = Guid.NewGuid();
+        _context.Set<ApplicationUser>().Add(new ApplicationUser
+        {
+            Id = userId,
+            TenantId = tenantId,
+            UserName = $"user-{userId}",
+            Email = $"{userId}@example.com",
+            PasswordHash = "hash",
+            SecurityStamp = "stamp",
+            ConcurrencyStamp = "concurrency"
+        });
+        await _context.SaveChangesAsync();
+
+        await _context.Database.ExecuteSqlRawAsync(
+            "UPDATE asp_net_users SET deleted_at = {0} WHERE id = {1}",
+            DateTime.UtcNow - age, userId);
+        return (userId, tenantId);
     }
 
     private async Task<Guid> AddTenantDeletedAsync(TimeSpan age)
