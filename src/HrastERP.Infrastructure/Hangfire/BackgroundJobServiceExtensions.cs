@@ -10,6 +10,11 @@ namespace HrastERP.Infrastructure.Hangfire;
 
 internal static class BackgroundJobServiceExtensions
 {
+    /// <summary>
+    /// Registers Hangfire settings, PostgreSQL job storage, the Hangfire server and the recurring cleanup jobs.
+    /// Called internally by <see cref="InfrastructureServiceExtensions.AddInfrastructure"/>.
+    /// The jobs are scheduled later, by <c>RecurringJobRegistrar</c>, once the DI container is built.
+    /// </summary>
     internal static IServiceCollection AddBackgroundJobs(this IServiceCollection services)
     {
         services

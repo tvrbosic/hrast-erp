@@ -6,6 +6,10 @@ using Microsoft.Extensions.Options;
 
 namespace HrastERP.Infrastructure.Hangfire.Jobs;
 
+/// <summary>
+/// Recurring job that deletes expired refresh tokens, and revoked ones once they are older than
+/// <see cref="HangfireSettings.RevokedTokenRetentionDays"/>.
+/// </summary>
 internal sealed class RefreshTokenCleanupJob(
     HrastDbContext dbContext,
     IOptions<HangfireSettings> settings,
@@ -18,13 +22,14 @@ internal sealed class RefreshTokenCleanupJob(
 
     public async Task ExecuteAsync(CancellationToken cancellationToken)
     {
+        // Compute the cutoffs: expired means past ExpiresAt now; revoked tokens are kept for the retention period
         var cutoff = DateTime.UtcNow;
         var revokedCutoff = DateTime.UtcNow.AddDays(-settings.Value.RevokedTokenRetentionDays);
 
         var totalExpired = 0;
         var totalRevoked = 0;
 
-        // Delete expired tokens in batches
+        // Delete expired tokens in batches; Postgres has no DELETE ... LIMIT, so a subquery picks each batch
         int deleted;
         do
         {
@@ -61,6 +66,7 @@ internal sealed class RefreshTokenCleanupJob(
             totalRevoked += deleted;
         } while (deleted == BatchSize);
 
+        // Log the totals
         logger.LogInformation(
             "Refresh token cleanup completed: {ExpiredCount} expired and {RevokedCount} revoked tokens removed",
             totalExpired, totalRevoked);

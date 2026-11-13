@@ -5,6 +5,10 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace HrastERP.Infrastructure.Database;
 
+/// <summary>
+/// Sets <see cref="ITenantEntity.TenantId"/> to the current tenant on insert when it is still
+/// <see cref="Guid.Empty"/>, and throws when there is no tenant context to use.
+/// </summary>
 public sealed class TenantEntityInterceptor(ICurrentTenant currentTenant) : SaveChangesInterceptor
 {
     public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
@@ -41,6 +45,7 @@ public sealed class TenantEntityInterceptor(ICurrentTenant currentTenant) : Save
 
             var currentValue = (Guid)entry.Property(nameof(ITenantEntity.TenantId)).CurrentValue!;
 
+            // An explicit value is kept, so the super admin can create entities for other tenants
             if (currentValue != Guid.Empty)
                 continue;
 

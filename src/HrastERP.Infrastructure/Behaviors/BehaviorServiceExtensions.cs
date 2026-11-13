@@ -6,11 +6,12 @@ namespace HrastERP.Infrastructure.Behaviors;
 internal static class BehaviorServiceExtensions
 {
     /// <summary>
-    /// Registers MediatR pipeline behaviors for validation and logging.
+    /// Registers MediatR pipeline behaviors for logging, tenant validation and input validation.
     /// Called internally by <see cref="InfrastructureServiceExtensions.AddInfrastructure"/>.
     /// </summary>
     internal static IServiceCollection AddMediatRPipelineBehaviors(this IServiceCollection services)
     {
+        // Registration order is execution order: the first behavior registered runs outermost.
         // LoggingBehavior logs request/response with timing for all handlers
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
 

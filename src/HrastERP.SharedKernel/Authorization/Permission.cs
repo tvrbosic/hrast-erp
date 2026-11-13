@@ -1,5 +1,14 @@
 namespace HrastERP.SharedKernel.Authorization;
 
+/// <summary>
+/// Permission flags combined into a bitmask, four bits per module. Always reference named members,
+/// never raw values.
+/// </summary>
+/// <remarks>
+/// Bit positions are persisted (the roles table and the JWT <c>permissions</c> claim), so changing an
+/// existing member's bit changes what already-stored roles and issued tokens grant. Add new members on
+/// unused bits.
+/// </remarks>
 [Flags]
 public enum Permission : long
 {

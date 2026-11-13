@@ -6,6 +6,11 @@ using QuestPDF.Infrastructure;
 
 namespace HrastERP.Infrastructure.PdfGeneration;
 
+/// <summary>
+/// Shared layout helpers for the modules' <see cref="IReportGenerator{TData}"/> implementations: page
+/// defaults, header, footer, formatting and the brand colors from <see cref="PdfGenerationSettings"/>.
+/// Registered as a singleton.
+/// </summary>
 internal sealed class ReportBuilder(
     IOptions<PdfGenerationSettings> settings,
     ILogger<ReportBuilder> logger)
@@ -38,6 +43,7 @@ internal sealed class ReportBuilder(
         {
             column.Item().Row(row =>
             {
+                // Logo, if one is available, with a gap after it
                 var logo = LoadLogo();
                 if (logo is not null)
                 {
@@ -45,6 +51,7 @@ internal sealed class ReportBuilder(
                     row.ConstantItem(10);
                 }
 
+                // Company name on the left
                 row.RelativeItem().Column(col =>
                 {
                     col.Item().Text(_settings.CompanyName)
@@ -53,6 +60,7 @@ internal sealed class ReportBuilder(
                         .FontColor(_settings.PrimaryColor);
                 });
 
+                // Report title and generation date on the right
                 row.RelativeItem().Column(col =>
                 {
                     col.Item().AlignRight().Text(reportTitle)
@@ -65,6 +73,7 @@ internal sealed class ReportBuilder(
                 });
             });
 
+            // Divider below the header
             column.Item().PaddingTop(5).LineHorizontal(1).LineColor(_settings.PrimaryColor);
         });
     }
@@ -77,10 +86,12 @@ internal sealed class ReportBuilder(
     {
         container.PaddingTop(10).Column(column =>
         {
+            // Divider above the footer
             column.Item().LineHorizontal(1).LineColor(_settings.PrimaryColor);
 
             column.Item().PaddingTop(5).Row(row =>
             {
+                // Generation timestamp (UTC) on the left
                 row.RelativeItem().Text(text =>
                 {
                     text.Span(DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm"))
@@ -88,6 +99,7 @@ internal sealed class ReportBuilder(
                         .FontColor(Colors.Grey.Darken1);
                 });
 
+                // "Page X of Y" on the right
                 row.RelativeItem().AlignRight().Text(text =>
                 {
                     text.Span("Page ").FontSize(8).FontColor(Colors.Grey.Darken1);
@@ -126,6 +138,8 @@ internal sealed class ReportBuilder(
 
     private byte[]? LoadLogo()
     {
+        // Load the logo only once (even when none is found); this singleton may render several
+        // reports at the same time, so the lock with a second check stops a duplicate load
         if (_logoLoadAttempted)
             return _logoBytes;
 

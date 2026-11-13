@@ -1,9 +1,15 @@
 namespace HrastERP.SharedKernel.Common;
 
+/// <summary>
+/// One page of a list query's results; create it with <see cref="Create"/>.
+/// </summary>
 public sealed class PagedResult<T>
 {
     public IReadOnlyCollection<T> Items { get; }
+    /// <summary>Number of items across all pages, not just this one.</summary>
     public int TotalCount { get; }
+
+    /// <summary>1-based page number.</summary>
     public int Page { get; }
     public int PageSize { get; }
 

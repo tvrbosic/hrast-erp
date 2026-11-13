@@ -6,6 +6,11 @@ using Npgsql;
 
 namespace HrastERP.Infrastructure.Database;
 
+/// <summary>
+/// Runs the SQL seed scripts at startup, after migrations: <c>Seeds/Reference</c> always,
+/// <c>Seeds/Fixtures</c> only in Development. Each script runs once per database; applied scripts are
+/// recorded in the <c>seed_history</c> table.
+/// </summary>
 internal sealed class DatabaseSeeder
 {
     private readonly HrastDbContext _context;
@@ -19,6 +24,7 @@ internal sealed class DatabaseSeeder
 
     public async Task SeedAsync(CancellationToken cancellationToken = default)
     {
+        // Open the context's connection; the scripts run as raw ADO.NET commands on it
         var connection = (NpgsqlConnection)_context.Database.GetDbConnection();
         if (connection.State != ConnectionState.Open)
             await connection.OpenAsync(cancellationToken);
@@ -27,6 +33,7 @@ internal sealed class DatabaseSeeder
         {
             await EnsureHistoryTableAsync(connection, cancellationToken);
 
+            // Apply reference data everywhere and fixtures only in Development
             var baseDir = AppContext.BaseDirectory;
             await ApplyScriptsAsync(connection, Path.Combine(baseDir, "Seeds", "Reference"), cancellationToken);
 
@@ -56,6 +63,7 @@ internal sealed class DatabaseSeeder
         if (!Directory.Exists(folder))
             return;
 
+        // Order by the numeric NNNN prefix; files without one run last, by name
         var scripts = Directory
             .GetFiles(folder, "*.sql")
             .OrderBy(f =>
@@ -65,6 +73,7 @@ internal sealed class DatabaseSeeder
             })
             .ThenBy(Path.GetFileName);
 
+        // Run each script not yet in seed_history, then record it
         foreach (var scriptPath in scripts)
         {
             var scriptName = Path.GetFileName(scriptPath);
@@ -87,6 +96,8 @@ internal sealed class DatabaseSeeder
                     $"Seed script '{scriptName}' failed: {ex.Message}", ex);
             }
 
+            // Not in one transaction with the script: if recording fails, the script runs again on the
+            // next start, which is safe because scripts use INSERT ... ON CONFLICT DO NOTHING
             await RecordHistoryAsync(connection, scriptName, cancellationToken);
         }
     }

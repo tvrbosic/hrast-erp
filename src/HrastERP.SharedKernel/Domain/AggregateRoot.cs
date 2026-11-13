@@ -1,5 +1,9 @@
 namespace HrastERP.SharedKernel.Domain;
 
+/// <summary>
+/// Base for entities that raise domain events. Events are collected in <see cref="DomainEvents"/>
+/// until <see cref="ClearDomainEvents"/> is called.
+/// </summary>
 public abstract class AggregateRoot<TId> : BaseEntity<TId>
     where TId : notnull
 {

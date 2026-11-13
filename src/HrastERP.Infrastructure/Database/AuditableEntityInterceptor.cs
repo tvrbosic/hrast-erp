@@ -5,6 +5,10 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace HrastERP.Infrastructure.Database;
 
+/// <summary>
+/// Fills <see cref="IAuditable"/> fields on save: CreatedAt/CreatedBy on insert, UpdatedAt/UpdatedBy on
+/// update (UTC; <see cref="Guid.Empty"/> when no user is authenticated). First in the interceptor chain.
+/// </summary>
 public sealed class AuditableEntityInterceptor(ICurrentUser currentUser)
     : SaveChangesInterceptor
 {
@@ -52,6 +56,7 @@ public sealed class AuditableEntityInterceptor(ICurrentUser currentUser)
                 entry.Property(nameof(IAuditable.UpdatedAt)).CurrentValue = utcNow;
                 entry.Property(nameof(IAuditable.UpdatedBy)).CurrentValue = userId;
 
+                // Never write the creation fields on update, even if the entity was attached with them unset
                 entry.Property(nameof(IAuditable.CreatedAt)).IsModified = false;
                 entry.Property(nameof(IAuditable.CreatedBy)).IsModified = false;
             }

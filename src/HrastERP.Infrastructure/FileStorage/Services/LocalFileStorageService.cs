@@ -25,12 +25,14 @@ internal sealed class LocalFileStorageService(
         Stream fileStream, string fileName, string contentType,
         CancellationToken ct = default)
     {
+        // Reject files that are too large or of a type that isn't allowed
         if (fileStream.Length > _settings.MaxFileSizeBytes)
             return FileStorageErrors.FileTooLarge;
 
         if (!_settings.AllowedContentTypes.Contains(contentType, StringComparer.OrdinalIgnoreCase))
             return FileStorageErrors.ContentTypeNotAllowed;
 
+        // Build the tenant-isolated path; the file ID becomes the file name on disk
         var fileId = Guid.NewGuid();
         var extension = Path.GetExtension(fileName).ToLowerInvariant();
         var now = DateTime.UtcNow;
@@ -42,6 +44,7 @@ internal sealed class LocalFileStorageService(
 
         var fullPath = Path.Combine(_settings.RootPath, storagePath);
 
+        // Write the file to disk, then save its StoredFile record
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
@@ -68,6 +71,7 @@ internal sealed class LocalFileStorageService(
         {
             logger.LogError(ex, "Failed to store file {FileName}", fileName);
 
+            // Remove the file from disk so no file is left without a record
             try { File.Delete(fullPath); }
             catch { /* best-effort cleanup */ }
 
@@ -83,12 +87,14 @@ internal sealed class LocalFileStorageService(
     public async Task<Result<FileDownloadResult>> DownloadAsync(
         Guid fileId, CancellationToken ct = default)
     {
+        // Load the record; the tenant query filter hides other tenants' files
         var storedFile = await dbContext.Set<StoredFile>()
             .FirstOrDefaultAsync(f => f.Id == fileId, ct);
 
         if (storedFile is null)
             return FileStorageErrors.FileNotFound;
 
+        // Check that the file still exists on disk
         var fullPath = Path.Combine(_settings.RootPath, storedFile.StoragePath);
 
         if (!File.Exists(fullPath))
@@ -97,6 +103,7 @@ internal sealed class LocalFileStorageService(
             return FileStorageErrors.FileNotFound;
         }
 
+        // Open a read-only stream; the caller disposes it
         var stream = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read);
 
         return new FileDownloadResult
@@ -114,12 +121,14 @@ internal sealed class LocalFileStorageService(
     /// </summary>
     public async Task<Result> DeleteAsync(Guid fileId, CancellationToken ct = default)
     {
+        // Load the record
         var storedFile = await dbContext.Set<StoredFile>()
             .FirstOrDefaultAsync(f => f.Id == fileId, ct);
 
         if (storedFile is null)
             return Result.Failure(FileStorageErrors.FileNotFound);
 
+        // Delete the file from disk; a failure is only logged so the record is still removed
         var fullPath = Path.Combine(_settings.RootPath, storedFile.StoragePath);
 
         try { File.Delete(fullPath); }
@@ -128,6 +137,7 @@ internal sealed class LocalFileStorageService(
             logger.LogWarning(ex, "Failed to delete physical file at {Path}", fullPath);
         }
 
+        // Remove the record (turned into a soft delete by SoftDeleteInterceptor)
         dbContext.Set<StoredFile>().Remove(storedFile);
         await dbContext.SaveChangesAsync(ct);
 

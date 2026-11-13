@@ -15,6 +15,7 @@ public sealed class RefreshTokenConfiguration : IEntityTypeConfiguration<Refresh
 
         builder.HasIndex(rt => rt.TenantId);
 
+        // Holds the SHA-256 hex hash (64 characters), never the raw token
         builder.Property(rt => rt.Token)
             .IsRequired()
             .HasMaxLength(64);

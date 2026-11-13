@@ -7,6 +7,15 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace HrastERP.Infrastructure.Database.Audit;
 
+/// <summary>
+/// Adds one <see cref="AuditLogEntry"/> per created, updated or deleted <see cref="IAuditable"/> entity to
+/// the same SaveChanges, so the change and its audit entry are saved together.
+/// </summary>
+/// <remarks>
+/// Must be the last interceptor: it relies on the earlier ones having filled audit fields and turned
+/// deletes into soft-delete updates. Properties marked <c>ExcludeFromAudit</c> and shadow properties are
+/// left out of the logged values.
+/// </remarks>
 public sealed class AuditLogInterceptor(ICurrentUser currentUser, ICurrentTenant currentTenant)
     : SaveChangesInterceptor
 {
@@ -47,6 +56,7 @@ public sealed class AuditLogInterceptor(ICurrentUser currentUser, ICurrentTenant
 
         foreach (var entry in entries)
         {
+            // Map the EF state to an audit action; an update that just set DeletedAt is a soft delete
             var action = entry.State switch
             {
                 EntityState.Added => AuditAction.Created,
@@ -58,6 +68,7 @@ public sealed class AuditLogInterceptor(ICurrentUser currentUser, ICurrentTenant
                     $"Unexpected entity state: {entry.State}")
             };
 
+            // Build the entry with the old/new values the action calls for
             var auditLogEntry = new AuditLogEntry
             {
                 Id = Guid.NewGuid(),
@@ -99,6 +110,7 @@ public sealed class AuditLogInterceptor(ICurrentUser currentUser, ICurrentTenant
             .Select(p => entry.Property(p.Name).CurrentValue)
             .ToArray();
 
+        // Composite keys are stored as a JSON array of their values
         return keyValues.Length == 1
             ? keyValues[0]?.ToString() ?? string.Empty
             : JsonSerializer.Serialize(keyValues);

@@ -27,22 +27,18 @@ public class Result
 
 /// <summary>
 /// Represents the outcome of an operation that returns a value of type TValue on success.
-/// TValue is a generic type parameter — a placeholder replaced with a concrete type when used
-/// (e.g. Result&lt;Order&gt;, Result&lt;string&gt;).
 /// Inherits from Result so it can be used anywhere a Result is expected.
 /// </summary>
 public sealed class Result<TValue> : Result
 {
-    // Stores the actual value. Nullable because failed results have no value.
+    // Nullable because failed results have no value
     private readonly TValue? _value;
 
-    // Success constructor — stores the value and tells the base class this is a success.
     private Result(TValue value) : base(true, Error.None)
     {
         _value = value;
     }
 
-    // Failure constructor — no value to store, tells the base class this is a failure with the given error.
     private Result(Error error) : base(false, error)
     {
         _value = default;
@@ -54,7 +50,6 @@ public sealed class Result<TValue> : Result
         ? _value!
         : throw new InvalidOperationException("Cannot access Value of a failed result.");
 
-    // Factory methods — same pattern as the base Result class.
     public static Result<TValue> Success(TValue value) => new(value);
 
     // "new" keyword hides the parent's Failure method because this version

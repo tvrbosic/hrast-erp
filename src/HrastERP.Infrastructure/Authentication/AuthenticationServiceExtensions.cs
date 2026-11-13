@@ -39,8 +39,8 @@ internal static class AuthenticationServiceExtensions
         services.AddDataProtection();
 
         // Register authentication services:
-        // - ITokenService generates and validates JWT + refresh tokens
-        // - IAuthService handles login/register flows using Identity and ITokenService
+        // - ITokenService creates JWT access tokens and refresh tokens
+        // - IAuthService handles login, refresh token rotation and logout
         services.AddScoped<ITokenService, TokenService>();
         services.AddScoped<IAuthService, AuthService>();
 

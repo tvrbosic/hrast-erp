@@ -24,7 +24,7 @@ public static class InfrastructureServiceExtensions
         // Register ASP.NET Core Identity, JWT settings, and authentication services
         services.AddIdentityServices();
 
-        // Register MediatR pipeline behaviors (validation, logging) that apply to all module handlers
+        // Register MediatR pipeline behaviors (logging, tenant check, validation) that apply to all module handlers
         services.AddMediatRPipelineBehaviors();
 
         // Register Hangfire background job infrastructure and cleanup jobs

@@ -1,5 +1,10 @@
 namespace HrastERP.SharedKernel.Domain;
 
+/// <summary>
+/// Base for all domain entities: auditable and soft-deletable, with equality by runtime type and
+/// <see cref="Id"/>. Audit and soft-delete fields have private setters because EF Core interceptors
+/// fill them on save. Tenant scoping is opt-in through <see cref="ITenantEntity"/>.
+/// </summary>
 public abstract class BaseEntity<TId> : IAuditable, ISoftDeletable
     where TId : notnull
 {

@@ -33,12 +33,11 @@ public sealed class HrastDbContext(
         // Identity's mappings must be applied first so our configurations (e.g. ToTable) win.
         base.OnModelCreating(modelBuilder);
 
-        // Apply configurations defined in this assembly, reserved for cross-cutting
-        // infrastructure concerns (e.g. outbox table) that do not belong to any specific module
-        // (most entities are registered by each module's Infrastructure assembly).
+        // Apply configurations for the shared infrastructure entities that belong to no module
+        // (users, refresh tokens, roles, stored files, audit log)
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(HrastDbContext).Assembly);
 
-        // Apply configurations from each module's Infrastructure assembly
+        // Apply configurations from each module's assembly
         foreach (EntityConfigurationAssembly moduleAssembly in moduleAssemblies)
         {
             modelBuilder.ApplyConfigurationsFromAssembly(moduleAssembly.Assembly);
@@ -58,31 +57,27 @@ public sealed class HrastDbContext(
     // a single combined predicate per entity avoids that constraint.
     private void ApplyGlobalFilters(ModelBuilder modelBuilder)
     {
-        // Get all entity types EF Core has discovered in the model.
         foreach (var entityType in modelBuilder.Model.GetEntityTypes())
         {
-            // Get the CLR type of the entity.
+            // The lambda parameter "e" in the filter e => ...
             var clrType = entityType.ClrType;
-            // Create a parameter expression for the entity (e.g. "e" in "WHERE e.DeletedAt IS NULL").
             var parameter = Expression.Parameter(clrType, "e");
-            // Initialize a filter expression to null.
             Expression? filter = null;
 
-            // Soft delete filter (check if the entity implements the ISoftDeletable interface)
+            // Soft-deletable entities: e.DeletedAt == null
             if (typeof(ISoftDeletable).IsAssignableFrom(clrType))
             {
-                // Create a property expression for the DeletedAt property.
                 var deletedAtProp = Expression.Property(parameter, nameof(ISoftDeletable.DeletedAt));
-                // Create a constant expression for null.
                 var nullConstant = Expression.Constant(null, typeof(DateTime?));
-                // Create a filter expression to check if the DeletedAt property is equal to null.
                 filter = Expression.Equal(deletedAtProp, nullConstant);
             }
 
-            // Tenant filter
+            // Tenant entities: e.TenantId == CurrentTenantId, ANDed with the soft-delete check
             if (typeof(ITenantEntity).IsAssignableFrom(clrType))
             {
                 var tenantIdProp = Expression.Property(parameter, nameof(ITenantEntity.TenantId));
+                // Referencing the context instance (not a constant Guid) makes EF read CurrentTenantId
+                // from the context running each query, so the cached model works for every tenant
                 var dbContextRef = Expression.Constant(this, typeof(HrastDbContext));
                 var currentTenantIdProp = Expression.Property(dbContextRef, nameof(CurrentTenantId));
 
@@ -96,7 +91,7 @@ public sealed class HrastDbContext(
                 filter = filter is null ? tenantFilter : Expression.AndAlso(filter, tenantFilter);
             }
 
-            // If the filter expression is not null, apply it to the entity type.
+            // Entities with neither interface get no filter
             if (filter is not null)
             {
                 modelBuilder.Entity(clrType).HasQueryFilter(Expression.Lambda(filter, parameter));

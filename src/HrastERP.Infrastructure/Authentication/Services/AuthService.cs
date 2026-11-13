@@ -114,9 +114,6 @@ internal sealed class AuthService(
         return Result.Success();
     }
 
-    /// <summary>
-    /// Generates an access token and persists a new refresh token for the given user.
-    /// </summary>
     private async Task<AuthResponse> GenerateAuthResponseAsync(
         ApplicationUser user, CancellationToken ct)
     {

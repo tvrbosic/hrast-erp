@@ -5,6 +5,10 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace HrastERP.Infrastructure.Database;
 
+/// <summary>
+/// Turns deletes of <see cref="ISoftDeletable"/> entities into updates that set DeletedAt/DeletedBy.
+/// Runs before <c>AuditLogInterceptor</c>, which then records the change as <c>Deleted</c>.
+/// </summary>
 public sealed class SoftDeleteInterceptor(ICurrentUser currentUser)
     : SaveChangesInterceptor
 {

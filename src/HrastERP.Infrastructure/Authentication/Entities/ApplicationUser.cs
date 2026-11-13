@@ -4,6 +4,10 @@ using Microsoft.AspNetCore.Identity;
 
 namespace HrastERP.Infrastructure.Authentication;
 
+/// <summary>
+/// The Identity user. It implements the auditing, soft-delete and tenant interfaces directly because
+/// it cannot inherit <c>BaseEntity</c> next to Identity's base class.
+/// </summary>
 public sealed class ApplicationUser : IdentityUser<Guid>, ITenantEntity, IAuditable, ISoftDeletable
 {
     public Guid TenantId { get; set; }

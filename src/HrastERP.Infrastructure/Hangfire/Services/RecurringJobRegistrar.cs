@@ -5,6 +5,10 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace HrastERP.Infrastructure.Hangfire.Services;
 
+/// <summary>
+/// Schedules every <see cref="IRecurringJobDefinition"/> with Hangfire. Called from Program.cs after the
+/// DI container is built.
+/// </summary>
 internal static class RecurringJobRegistrar
 {
     public static void RegisterAll(IServiceProvider serviceProvider)

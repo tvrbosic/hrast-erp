@@ -1,5 +1,9 @@
 namespace HrastERP.SharedKernel.Domain;
 
+/// <summary>
+/// Base for value objects: two instances of the same type are equal when all values returned by
+/// <see cref="GetEqualityComponents"/> are equal, in order.
+/// </summary>
 public abstract class ValueObject
 {
     protected abstract IEnumerable<object?> GetEqualityComponents();

@@ -16,6 +16,7 @@ internal sealed class LocalhostDashboardAuthorizationFilter : IDashboardAuthoriz
         if (System.Net.IPAddress.IsLoopback(remoteIp))
             return true;
 
+        // Also allow a request from this machine that arrives on a non-loopback address
         return localIp is not null && remoteIp.Equals(localIp);
     }
 }

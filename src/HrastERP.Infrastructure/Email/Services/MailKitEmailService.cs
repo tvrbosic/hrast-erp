@@ -44,12 +44,14 @@ internal sealed class MailKitEmailService(
         EmailMessage message,
         CancellationToken ct = default)
     {
+        // Load the template and fill in the placeholders
         var template = LoadTemplate(templateName);
         if (template is null)
             return Result.Failure(EmailErrors.TemplateNotFound);
 
         var renderedBody = RenderTemplate(template, placeholders);
 
+        // Send a copy of the message with the rendered template as its body
         var templatedMessage = new EmailMessage
         {
             To = message.To,
@@ -66,6 +68,7 @@ internal sealed class MailKitEmailService(
     internal string? LoadTemplate(string templateName)
     {
         var assembly = typeof(MailKitEmailService).Assembly;
+        // Templates are embedded resources, named after their folder path (Email/Templates/<name>.html)
         var resourceName = $"HrastERP.Infrastructure.Email.Templates.{templateName}.html";
 
         using var stream = assembly.GetManifestResourceStream(resourceName);
@@ -78,6 +81,7 @@ internal sealed class MailKitEmailService(
 
     internal static string RenderTemplate(string template, Dictionary<string, string> placeholders)
     {
+        // Placeholders with no value in the dictionary stay in the text as {{name}}
         var result = template;
         foreach (var (key, value) in placeholders)
         {
