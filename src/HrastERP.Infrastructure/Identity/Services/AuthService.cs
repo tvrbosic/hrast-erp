@@ -1,6 +1,7 @@
 using HrastERP.Infrastructure.Database;
 using HrastERP.SharedKernel.Abstractions;
 using HrastERP.SharedKernel.Authorization;
+using HrastERP.SharedKernel.Constants;
 using HrastERP.SharedKernel.Results;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -17,6 +18,9 @@ internal sealed class AuthService(
 {
     private readonly JwtSettings _settings = jwtOptions.Value;
 
+    // Hash of a random password, made once with the configured hasher so verifying it costs the same as a real one.
+    private static string? _dummyPasswordHash;
+
     /// <summary>
     /// Validates credentials and issues a new access/refresh token pair on success.
     /// </summary>
@@ -26,22 +30,40 @@ internal sealed class AuthService(
         // Look up user and verify credentials.
         // IgnoreQueryFilters: no JWT exists yet at login, so tenant filter would exclude all users.
         // It also bypasses the soft-delete filter, so deleted users are rejected explicitly below.
+        // Compared on NormalizedEmail, the column email uniqueness is checked on, so the case typed doesn't matter.
+        var normalizedEmail = userManager.NormalizeEmail(email);
         var user = await userManager.Users
             .IgnoreQueryFilters()
             .Include(u => u.Role)
-            .FirstOrDefaultAsync(u => u.Email == email, ct);
+            .FirstOrDefaultAsync(u => u.NormalizedEmail == normalizedEmail, ct);
         if (user is null)
+        {
+            // Hash anyway so an unknown email takes as long as a wrong password and response time
+            // doesn't reveal which emails are registered.
+            userManager.PasswordHasher.VerifyHashedPassword(null!, DummyPasswordHash(), password);
+            return AuthErrors.InvalidCredentials;
+        }
+
+        // Password before status, so only someone who knows the password learns the account is inactive.
+        var passwordValid = await userManager.CheckPasswordAsync(user, password);
+        if (!passwordValid)
             return AuthErrors.InvalidCredentials;
 
         if (!user.IsActive || user.DeletedAt is not null)
             return AuthErrors.InactiveUser;
 
-        var passwordValid = await userManager.CheckPasswordAsync(user, password);
-        if (!passwordValid)
-            return AuthErrors.InvalidCredentials;
+        // Login runs without the middleware, so an inactive tenant is refused here. The super admin tenant
+        // is never blocked, matching BlockInactiveEntityMiddleware.
+        if (user.TenantId != TenantConstants.SuperAdminTenantId &&
+            !await dbContext.Set<Tenant>().IgnoreQueryFilters()
+                .AnyAsync(t => t.Id == user.TenantId && t.IsActive && t.DeletedAt == null, ct))
+            return AuthErrors.InactiveTenant;
 
         return await GenerateAuthResponseAsync(user, ct);
     }
+
+    private string DummyPasswordHash() =>
+        _dummyPasswordHash ??= userManager.PasswordHasher.HashPassword(null!, Guid.NewGuid().ToString());
 
     /// <summary>
     /// Rotates the refresh token: revokes the old token and issues a new access/refresh token pair.
@@ -65,6 +87,13 @@ internal sealed class AuthService(
 
         if (!storedToken.User.IsActive || storedToken.User.DeletedAt is not null)
             return AuthErrors.InactiveUser;
+
+        // Checked before rotation, so a refused refresh leaves the token untouched (same as above).
+        var tenantId = storedToken.User.TenantId;
+        if (tenantId != TenantConstants.SuperAdminTenantId &&
+            !await dbContext.Set<Tenant>().IgnoreQueryFilters()
+                .AnyAsync(t => t.Id == tenantId && t.IsActive && t.DeletedAt == null, ct))
+            return AuthErrors.InactiveTenant;
 
         // Revoke old token
         storedToken.RevokedAt = DateTime.UtcNow;

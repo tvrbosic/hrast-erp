@@ -26,12 +26,12 @@ internal sealed class TokenService(IOptions<JwtSettings> jwtOptions) : ITokenSer
         {
             new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
             new Claim(JwtRegisteredClaimNames.Email, user.Email!),
-            new Claim("tenant_id", user.TenantId.ToString()),
+            new Claim(JwtClaimNames.TenantId, user.TenantId.ToString()),
             new Claim(JwtRegisteredClaimNames.GivenName, user.FirstName),
             new Claim(JwtRegisteredClaimNames.FamilyName, user.LastName),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             // The role's Permission flags as a decimal long; CurrentUser parses it back into Permission
-            new Claim("permissions", ((long)(user.Role?.Permissions ?? Permission.None)).ToString())
+            new Claim(JwtClaimNames.Permissions, ((long)(user.Role?.Permissions ?? Permission.None)).ToString())
         };
 
         var token = new JwtSecurityToken(

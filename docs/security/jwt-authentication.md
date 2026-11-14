@@ -47,14 +47,15 @@ When `TokenService.GenerateAccessToken` creates a JWT, it includes:
 
 ### Login (`POST /api/auth/login`)
 
-1. Find user by email via `userManager.Users.Include(u => u.Role)` (eager-loads role so permissions are available for JWT generation)
-2. Reject if `IsActive` is false or the user is soft-deleted (`Auth.InactiveUser` error)
-3. Verify password via `UserManager.CheckPasswordAsync`
-4. Generate JWT access token with user claims
-5. Generate refresh token pair (raw + SHA-256 hash)
-6. Save the **hashed** refresh token to the database
-7. Load the authenticated user (see below) with the permissions that went into the token
-8. Return `AuthTokens(accessToken, rawRefreshToken, expiresAt, user)`
+1. Find user by `NormalizedEmail` (case-insensitive) via `userManager.Users.Include(u => u.Role)` (eager-loads role so permissions are available for JWT generation). If none is found, verify the password against a dummy hash anyway, so response time doesn't reveal which emails exist, and return `Auth.InvalidCredentials`
+2. Verify password via `UserManager.CheckPasswordAsync` (`Auth.InvalidCredentials`)
+3. Reject if `IsActive` is false or the user is soft-deleted (`Auth.InactiveUser`). This comes after the password check, so only someone who knows the password learns the account is inactive
+4. Reject if the user's tenant is inactive or soft-deleted (`Auth.InactiveTenant`); the super admin tenant is never blocked, matching `BlockInactiveEntityMiddleware`. Login runs without the middleware, so this check lives here
+5. Generate JWT access token with user claims
+6. Generate refresh token pair (raw + SHA-256 hash)
+7. Save the **hashed** refresh token to the database
+8. Load the authenticated user (see below) with the permissions that went into the token
+9. Return `AuthTokens(accessToken, rawRefreshToken, expiresAt, user)`
 
 ### Refresh (`POST /api/auth/refresh`)
 
@@ -63,7 +64,7 @@ Uses **refresh token rotation** — each use invalidates the old token and issue
 1. Hash the incoming raw refresh token
 2. Find the matching record in the database (include `User` + `ThenInclude(u => u.Role)` so permissions are available for JWT generation)
 3. Reject if not found or not active (`Auth.InvalidRefreshToken` error)
-   - Also reject if the user is inactive or deleted (`Auth.InactiveUser` error); the token is not rotated
+   - Also reject if the user is inactive or deleted (`Auth.InactiveUser` error) or the user's tenant is inactive or deleted (`Auth.InactiveTenant`, never for the super admin tenant); the token is not rotated
 4. **Revoke** the old token (set `RevokedAt`)
 5. Generate a new refresh token pair
 6. Set `ReplacedByToken` on the old record (audit trail)
@@ -81,7 +82,7 @@ Uses **refresh token rotation** — each use invalidates the old token and issue
 
 ### Current user (`GET /api/auth/me`)
 
-`[Authorize]` only — any authenticated user can read their own data, so there is no `[RequirePermission]`. `AuthService.GetCurrentUserAsync` loads the user by `ICurrentUser.UserId` and passes `ICurrentUser.EffectivePermissions` (the caller's token) as the permissions. It adds no checks of its own: `BlockInactiveEntityMiddleware` already returns `403` for inactive or deleted users and inactive tenants. A user that no longer exists gives `404 Auth.UserNotFound`.
+`[Authorize]` only — any authenticated user can read their own data, so there is no `[RequirePermission]`. `AuthService.GetCurrentUserAsync` loads the user by `ICurrentUser.UserId` and passes `ICurrentUser.EffectivePermissions` (the caller's token) as the permissions. It adds no checks of its own: `BlockInactiveEntityMiddleware` already returns `403` for inactive or deleted users (including super admin tenant users) and inactive tenants. A user that no longer exists gives `404 Auth.UserNotFound`.
 
 ### Authenticated user
 
@@ -93,8 +94,8 @@ Login, refresh and `/me` return the same `AuthenticatedUser`, built by one priva
 
 | Endpoint | Body | Success | Failure |
 |----------|------|---------|---------|
-| `POST /api/auth/login` | `{ email, password }` | `200` + `AuthTokens` | `422` `Auth.InvalidCredentials` (unknown email or wrong password), `403` `Auth.InactiveUser` |
-| `POST /api/auth/refresh` | `{ refreshToken }` | `200` + `AuthTokens` | `422` `Auth.InvalidRefreshToken` (unknown, revoked or expired), `403` `Auth.InactiveUser` |
+| `POST /api/auth/login` | `{ email, password }` | `200` + `AuthTokens` | `422` `Auth.InvalidCredentials` (unknown email or wrong password), `403` `Auth.InactiveUser`, `403` `Auth.InactiveTenant` |
+| `POST /api/auth/refresh` | `{ refreshToken }` | `200` + `AuthTokens` | `422` `Auth.InvalidRefreshToken` (unknown, revoked or expired), `403` `Auth.InactiveUser`, `403` `Auth.InactiveTenant` |
 | `POST /api/auth/logout` | `{ refreshToken }` | `204` | none from the service (always succeeds) |
 | `GET /api/auth/me` | — (bearer token) | `200` + `AuthenticatedUser` | `401` no valid token, `403` inactive user or tenant (middleware), `404` `Auth.UserNotFound` |
 
@@ -117,7 +118,7 @@ A missing or malformed body field fails model binding on login, refresh or logou
 
 ## Middleware Pipeline
 
-Configured in `Program.cs`:
+Services are registered by `AddApiAuthentication()` (`HrastERP.API/Authentication/AuthenticationServiceExtensions.cs`, called from `Program.cs`); the middleware is added in `Program.cs`:
 
 1. `AddAuthentication(JwtBearerDefaults.AuthenticationScheme)` — sets JWT Bearer as the default scheme
 2. `AddJwtBearer` — configures token validation (issuer, audience, signing key, lifetime, `ClockSkew = TimeSpan.Zero`)
@@ -126,9 +127,9 @@ Configured in `Program.cs`:
 
 ## Claim Extraction and Usage
 
-`CurrentUser` and `CurrentTenant` are thin wrappers around `HttpContext.User` (the `ClaimsPrincipal` populated by the JWT middleware). They implement `ICurrentUser` / `ICurrentTenant` and are registered as scoped services in `Program.cs` — one instance per HTTP request.
+`CurrentUser` and `CurrentTenant` are thin wrappers around `HttpContext.User` (the `ClaimsPrincipal` populated by the JWT middleware). They implement `ICurrentUser` / `ICurrentTenant` and are registered as scoped services by `AddApiAuthentication()` — one instance per HTTP request.
 
-Each property extracts a specific claim and falls back to a safe default when the claim is missing (unauthenticated requests):
+Custom claim names come from `JwtClaimNames` (`Infrastructure/Identity`), shared with `TokenService`, which writes them. Each property extracts a specific claim and falls back to a safe default when the claim is missing (unauthenticated requests):
 
 | Property | Claim | Fallback |
 |----------|-------|----------|
@@ -142,7 +143,7 @@ Each property extracts a specific claim and falls back to a safe default when th
 
 ### Why `IHttpContextAccessor` is always available
 
-`AddHttpContextAccessor()` in `Program.cs` registers `IHttpContextAccessor` as a singleton. ASP.NET Core guarantees that `HttpContext` is set on the accessor for the lifetime of any HTTP request.
+`AddHttpContextAccessor()` (called by `AddApiAuthentication()`) registers `IHttpContextAccessor` as a singleton. ASP.NET Core guarantees that `HttpContext` is set on the accessor for the lifetime of any HTTP request.
 
 `CurrentUser` and `CurrentTenant` are scoped — one instance per request — so `HttpContext` is always live when they are resolved. `HrastDbContext` is also scoped, and it captures `TenantId` once at construction time (the `CurrentTenantId` property). This is safe because the `DbContext` never outlives the request that created it.
 
@@ -205,4 +206,4 @@ Client                        API                         Infrastructure
 - **Token rotation** — each refresh invalidates the old token and issues a new one
 - **No clock skew** — `ClockSkew = TimeSpan.Zero`, tokens expire exactly on time
 - **Short-lived access tokens** — 15 min default, limits exposure window
-- **Inactive user check** — deactivated and deleted accounts are rejected at login and token refresh
+- **Inactive user and tenant check** — deactivated and deleted accounts, and users of deactivated or deleted tenants, are rejected at login and token refresh

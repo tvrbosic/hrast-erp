@@ -83,19 +83,38 @@ Roles are global (shared by all tenants). Any user with `AdministrationView` can
   └─ Sets policy name "Permission:16"
   └─ PermissionPolicyProvider builds AuthorizationPolicy with PermissionRequirement(FinanceView)
   └─ PermissionAuthorizationHandler checks (EffectivePermissions & FinanceView) != 0
-  └─ 200 OK or 403 Forbidden
+  └─ 200 OK, or 403 General.Forbidden (ErrorResponse, written by ForbiddenResponseHandler)
 ```
 
 ## DI Registration
 
-In `Program.cs`, after `AddAuthorization()`:
+In `Program.cs`:
 
 ```csharp
+builder.Services.AddAuthorization(options =>
+    options.AddPolicy(RequireSuperAdminTenantAttribute.PolicyName, policy => policy
+        .RequireAuthenticatedUser()
+        .AddRequirements(new SuperAdminTenantRequirement())));
 builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
 builder.Services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
+builder.Services.AddScoped<IAuthorizationHandler, SuperAdminTenantAuthorizationHandler>();
+builder.Services.AddSingleton<IAuthorizationMiddlewareResultHandler, ForbiddenResponseHandler>();
 ```
 
-`PermissionPolicyProvider` is singleton — policy construction uses only static enum values. `PermissionAuthorizationHandler` is scoped — it depends on scoped `ICurrentUser`.
+`PermissionPolicyProvider` is singleton — policy construction uses only static enum values. The two authorization handlers are scoped — they depend on scoped `ICurrentUser` / `ICurrentTenant`.
+
+## Folder layout
+
+`HrastERP.API/Authorization/` is one namespace (`HrastERP.API.Authorization`); each subfolder holds everything one policy needs, and the root holds what all policies share:
+
+| Path | Contents |
+|---|---|
+| `Permission/` | `RequirePermissionAttribute`, `PermissionRequirement`, `PermissionAuthorizationHandler`, `PermissionPolicyProvider` (builds `Permission:<long>` policies on demand) |
+| `SuperAdminTenant/` | `RequireSuperAdminTenantAttribute`, `SuperAdminTenantRequirement`, `SuperAdminTenantAuthorizationHandler` (a fixed policy registered in `Program.cs`) |
+| `ForbiddenResponseHandler` | Writes every 403 from a failed policy as an `ErrorResponse`: the first `ErrorFailureReason`'s error, otherwise `General.Forbidden`. Challenges keep the bodiless 401. |
+| `ErrorFailureReason` | Failure reason carrying an `Error`; a handler fails with it to return a specific 403 code (e.g. `Tenant.SuperAdminRequired`). |
+
+A new policy gets its own subfolder (attribute, requirement, handler) and, if it needs a specific 403 code, fails with an `ErrorFailureReason` whose `Error` lives in `ApiErrors`.
 
 ## Out of Scope (Follow-up Sessions)
 

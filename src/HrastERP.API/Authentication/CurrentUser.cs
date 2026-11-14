@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using HrastERP.Infrastructure.Identity;
 using HrastERP.SharedKernel.Abstractions;
 using HrastERP.SharedKernel.Authorization;
 
@@ -20,10 +21,10 @@ internal sealed class CurrentUser(IHttpContextAccessor httpContextAccessor) : IC
             ? id
             : Guid.Empty;
 
-    // Parsed from the custom "tenant_id" claim written by TokenService.
+    // Parsed from the custom tenant id claim written by TokenService.
     // Falls back to Guid.Empty when the claim is absent or the request is unauthenticated.
     public Guid TenantId =>
-        Guid.TryParse(User?.FindFirstValue("tenant_id"), out var id)
+        Guid.TryParse(User?.FindFirstValue(JwtClaimNames.TenantId), out var id)
             ? id
             : Guid.Empty;
 
@@ -34,11 +35,11 @@ internal sealed class CurrentUser(IHttpContextAccessor httpContextAccessor) : IC
     public bool IsAuthenticated =>
         User?.Identity?.IsAuthenticated ?? false;
 
-    // Parsed from the custom "permissions" claim written by TokenService.
+    // Parsed from the custom permissions claim written by TokenService.
     // The claim stores the Permission flags enum as a long integer.
     // Falls back to Permission.None when the claim is absent or malformed.
     public Permission EffectivePermissions =>
-        long.TryParse(User?.FindFirstValue("permissions"), out var raw)
+        long.TryParse(User?.FindFirstValue(JwtClaimNames.Permissions), out var raw)
             ? (Permission)raw
             : Permission.None;
 }

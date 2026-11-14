@@ -103,6 +103,13 @@ public class AuthServiceTests : IClassFixture<PostgresContainerFixture>, IAsyncL
         return user;
     }
 
+    private async Task DeactivateTenantAsync()
+    {
+        var tenant = await _dbContext.Set<Tenant>().IgnoreQueryFilters().SingleAsync(t => t.Id == _tenantId);
+        tenant.Deactivate();
+        await _dbContext.SaveChangesAsync();
+    }
+
     private async Task<RefreshToken> SeedRefreshTokenAsync(
         Guid userId, string hashedToken, int expiresInDays = 7, bool revoked = false)
     {
@@ -346,6 +353,53 @@ public class AuthServiceTests : IClassFixture<PostgresContainerFixture>, IAsyncL
     }
 
     [Fact]
+    public async Task Returns_success_When_email_differs_only_in_case()
+    {
+        await SeedUserAsync();
+
+        var result = await _sut.LoginAsync("Test@Example.COM", "Password1");
+
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Returns_invalid_credentials_When_user_is_inactive_and_password_is_wrong()
+    {
+        await SeedUserAsync(isActive: false);
+
+        var result = await _sut.LoginAsync("test@example.com", "WrongPassword1");
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Be(AuthErrors.InvalidCredentials);
+    }
+
+    [Fact]
+    public async Task Returns_inactive_tenant_error_When_tenant_is_inactive()
+    {
+        await SeedUserAsync();
+        await DeactivateTenantAsync();
+
+        var result = await _sut.LoginAsync("test@example.com", "Password1");
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Be(AuthErrors.InactiveTenant);
+    }
+
+    [Fact]
+    public async Task Returns_inactive_tenant_error_When_tenant_is_soft_deleted()
+    {
+        await SeedUserAsync();
+        await _dbContext.Database.ExecuteSqlAsync(
+            $"UPDATE administration.tenants SET deleted_at = now() WHERE id = {_tenantId}");
+        _dbContext.ChangeTracker.Clear();
+
+        var result = await _sut.LoginAsync("test@example.com", "Password1");
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Be(AuthErrors.InactiveTenant);
+    }
+
+    [Fact]
     public async Task Returns_inactive_user_error_When_user_is_inactive()
     {
         await SeedUserAsync(isActive: false);
@@ -436,6 +490,25 @@ public class AuthServiceTests : IClassFixture<PostgresContainerFixture>, IAsyncL
 
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Be(AuthErrors.InactiveUser);
+    }
+
+    [Fact]
+    public async Task Returns_inactive_tenant_error_When_refreshing_token_of_user_in_inactive_tenant()
+    {
+        var user = await SeedUserAsync();
+        var (rawToken, hashedToken) = _tokenService.GenerateRefreshToken();
+        var seeded = await SeedRefreshTokenAsync(user.Id, hashedToken);
+        await DeactivateTenantAsync();
+
+        var result = await _sut.RefreshAsync(rawToken);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Be(AuthErrors.InactiveTenant);
+
+        var tokens = await _dbContext.Set<RefreshToken>().Where(rt => rt.UserId == user.Id).ToListAsync();
+        tokens.Should().ContainSingle();
+        tokens[0].Id.Should().Be(seeded.Id);
+        tokens[0].RevokedAt.Should().BeNull();
     }
 
     [Fact]

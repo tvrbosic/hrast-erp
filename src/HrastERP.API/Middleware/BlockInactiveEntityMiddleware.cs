@@ -29,27 +29,23 @@ public class BlockInactiveEntityMiddleware(
         }
 
         // Extract tenant and user IDs from JWT claims
-        if (!Guid.TryParse(context.User.FindFirstValue("tenant_id"), out var tenantId) ||
+        if (!Guid.TryParse(context.User.FindFirstValue(JwtClaimNames.TenantId), out var tenantId) ||
             !Guid.TryParse(context.User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
         {
             await next(context);
             return;
         }
 
-        // Super admin tenant is never blocked
-        if (tenantId == TenantConstants.SuperAdminTenantId)
+        // Check tenant active status; the super admin tenant itself is never blocked, but its users still are
+        if (tenantId != TenantConstants.SuperAdminTenantId)
         {
-            await next(context);
-            return;
-        }
-
-        // Check tenant active status
-        var tenantActive = await GetTenantActiveStatusAsync(tenantId);
-        if (tenantActive == false)
-        {
-            logger.LogWarning("Blocked request from inactive tenant {TenantId} by user {UserId}", tenantId, userId);
-            await WriteForbiddenResponseAsync(context);
-            return;
+            var tenantActive = await GetTenantActiveStatusAsync(tenantId);
+            if (tenantActive == false)
+            {
+                logger.LogWarning("Blocked request from inactive tenant {TenantId} by user {UserId}", tenantId, userId);
+                await WriteForbiddenResponseAsync(context);
+                return;
+            }
         }
 
         // Check user active status

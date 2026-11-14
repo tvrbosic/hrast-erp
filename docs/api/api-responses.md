@@ -122,7 +122,9 @@ Actions return `IActionResult`, so OpenAPI (and the Scalar UI) only knows their 
 - `[ProducesResponseType(StatusCodes.Status401Unauthorized)]` (no body) when the endpoint needs a token;
 - each error status the endpoint can return, typed `ErrorResponse`: `403` for any `[RequirePermission]` endpoint, `404` / `409` for the handler's `NotFound` / `Conflict` errors, and `422` when the action takes a body or query parameters or its handler returns a `Validation` error.
 
-`500` is not declared per action; `GlobalExceptionMiddleware` can return it from any endpoint. `ResponseTypeDeclarationTests` checks the success declarations and that every declared error uses `ErrorResponse`.
+`500` is not declared per action; `GlobalExceptionMiddleware` can return it from any endpoint. A 403 from a failed policy (`[RequirePermission]`, `[RequireSuperAdminTenant]`) is written by `ForbiddenResponseHandler` as an `ErrorResponse` — `General.Forbidden`, or the policy's own code such as `Tenant.SuperAdminRequired`; 401 has no body.
+
+`ResponseTypeDeclarationTests` checks the success declarations and that every declared error uses `ErrorResponse`.
 
 ---
 

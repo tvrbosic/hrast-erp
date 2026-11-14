@@ -97,12 +97,12 @@ No database query happens per request. Permissions travel inside the JWT:
 1. **Login / refresh** — `AuthService` loads the user with `.Include(u => u.Role)`.
 2. **Token generation** — `TokenService` writes the role's flags as a decimal string claim:
    ```csharp
-   new Claim("permissions", ((long)(user.Role?.Permissions ?? Permission.None)).ToString())
+   new Claim(JwtClaimNames.Permissions, ((long)(user.Role?.Permissions ?? Permission.None)).ToString())
    ```
 3. **Each request** — `CurrentUser.EffectivePermissions` (`HrastERP.API/Authentication/CurrentUser.cs`) parses the claim back:
    ```csharp
    public Permission EffectivePermissions =>
-       long.TryParse(User?.FindFirstValue("permissions"), out var raw)
+       long.TryParse(User?.FindFirstValue(JwtClaimNames.Permissions), out var raw)
            ? (Permission)raw
            : Permission.None;
    ```
@@ -115,7 +115,7 @@ Role permissions themselves are editable through `PUT /api/admin/roles/{id}` (su
 
 ## 4. The moving parts
 
-All four types live in `HrastERP.API/Authorization/` and plug into ASP.NET Core's policy-based authorization.
+All four types live in `HrastERP.API/Authorization/Permission/` (namespace `HrastERP.API.Authorization`) and plug into ASP.NET Core's policy-based authorization.
 
 | Type | Role |
 |---|---|
@@ -129,9 +129,10 @@ Registered in `Program.cs`:
 ```csharp
 builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
 builder.Services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
+builder.Services.AddSingleton<IAuthorizationMiddlewareResultHandler, ForbiddenResponseHandler>();
 ```
 
-The provider is a singleton (it only uses static enum values); the handler is scoped (it depends on scoped `ICurrentUser`).
+When the handler doesn't succeed, `ForbiddenResponseHandler` returns `403` with `{ "code": "General.Forbidden", "message": ... }` (see `docs/security/authorization.md`). The provider is a singleton (it only uses static enum values); the handler is scoped (it depends on scoped `ICurrentUser`).
 
 ## 5. End-to-end request flow
 
@@ -202,7 +203,7 @@ When you need "all of these", always stack attributes — don't combine flags.
 
 ### Combining with `[RequireSuperAdminTenant]`
 
-`[RequireSuperAdminTenant]` is a separate `IAuthorizationFilter` that returns `403` (`Tenant.SuperAdminRequired`) unless the user belongs to `TenantConstants.SuperAdminTenantId`. It does not look at permissions. `TenantsController` uses both, so a caller must be in the super admin tenant **and** hold the required permission:
+`[RequireSuperAdminTenant]` is a separate authorization policy (`Authorization/SuperAdminTenant/`) that fails with `403` `Tenant.SuperAdminRequired` unless the user belongs to `TenantConstants.SuperAdminTenantId`; an anonymous caller gets `401`. It does not look at permissions. When both policies fail, the response is `Tenant.SuperAdminRequired`. `TenantsController` uses both, so a caller must be in the super admin tenant **and** hold the required permission:
 
 ```csharp
 [RequireSuperAdminTenant]

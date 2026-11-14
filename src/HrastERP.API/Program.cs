@@ -1,4 +1,3 @@
-using System.Text;
 using Hangfire;
 using HrastERP.API.Authentication;
 using HrastERP.API.Authorization;
@@ -9,15 +8,11 @@ using HrastERP.Finance;
 using HrastERP.Infrastructure;
 using HrastERP.Infrastructure.Database;
 using HrastERP.Infrastructure.Hangfire;
-using HrastERP.Infrastructure.Identity;
 using HrastERP.Infrastructure.Logging;
 using HrastERP.Inventory;
 using HrastERP.Procurement;
 using HrastERP.Production;
-using HrastERP.SharedKernel.Abstractions;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -28,48 +23,26 @@ builder.AddLoggingInfrastructure();
 // Register all shared infrastructure: persistence (EF Core, interceptors), identity, and MediatR behaviors
 builder.Services.AddInfrastructure();
 
-// AddHttpContextAccessor registers IHttpContextAccessor, which gives DI-injected services (like CurrentUser)
-// access to HttpContext (and thus JWT claims) outside of controllers and middleware.
-builder.Services.AddHttpContextAccessor();
-
-// Register ICurrentUser and ICurrentTenant — resolved from JWT claims per-request by application handlers.
-builder.Services.AddScoped<ICurrentUser, CurrentUser>();
-builder.Services.AddScoped<ICurrentTenant, CurrentTenant>();
-
-var jwtSettings = builder.Configuration
-    .GetSection(JwtSettings.SectionName)
-    .Get<JwtSettings>()!;
-
-// Configure JWT Bearer as the default authentication scheme.
-// AddAuthentication sets the default scheme so [Authorize] uses it without naming it explicitly.
-// AddJwtBearer configures how incoming tokens are validated (issuer, audience, signing key, expiry).
-builder.Services
-    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
-    {
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
-            ValidateIssuerSigningKey = true,
-            ValidIssuer = jwtSettings.Issuer,
-            ValidAudience = jwtSettings.Audience,
-            IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(jwtSettings.SecretKey)),
-            ClockSkew = TimeSpan.Zero
-        };
-    });
+// Validate incoming JWT access tokens and expose their claims as ICurrentUser / ICurrentTenant.
+builder.Services.AddApiAuthentication(builder.Configuration);
 
 // Register authorization services that evaluate [Authorize] attributes and policies against the authenticated user.
-builder.Services.AddAuthorization();
+// The SuperAdminTenant policy is fixed; Permission policies are built on demand by PermissionPolicyProvider.
+builder.Services.AddAuthorization(options =>
+    options.AddPolicy(RequireSuperAdminTenantAttribute.PolicyName, policy => policy
+        .RequireAuthenticatedUser()
+        .AddRequirements(new SuperAdminTenantRequirement())));
 
 // Replace the default policy provider with one that builds Permission policies dynamically.
 // Singleton is safe — policy construction uses only static enum values.
 builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
 
-// Scoped because it depends on scoped ICurrentUser (one per HTTP request).
+// Scoped because they depend on scoped ICurrentUser / ICurrentTenant (one per HTTP request).
 builder.Services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
+builder.Services.AddScoped<IAuthorizationHandler, SuperAdminTenantAuthorizationHandler>();
+
+// Write every 403 from a failed policy as an ErrorResponse (the default is a bodiless 403).
+builder.Services.AddSingleton<IAuthorizationMiddlewareResultHandler, ForbiddenResponseHandler>();
 
 // Register each business module's services (MediatR handlers, validators, EF configurations, repositories)
 builder.Services
