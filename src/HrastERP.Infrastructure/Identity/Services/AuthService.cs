@@ -44,23 +44,41 @@ internal sealed class AuthService(
             return AuthErrors.InvalidCredentials;
         }
 
-        // Password before status, so only someone who knows the password learns the account is inactive.
-        var passwordValid = await userManager.CheckPasswordAsync(user, password);
-        if (!passwordValid)
+        // A locked account answers exactly like a wrong password (same error, same hashing cost), so
+        // lockout reveals neither that the account exists nor whether a guess was right.
+        if (await userManager.IsLockedOutAsync(user))
+        {
+            userManager.PasswordHasher.VerifyHashedPassword(null!, DummyPasswordHash(), password);
             return AuthErrors.InvalidCredentials;
+        }
+
+        // Password before status, so only someone who knows the password learns the account is inactive.
+        // Failures are counted towards lockout (Identity's Lockout options); a success resets the count.
+        if (!await userManager.CheckPasswordAsync(user, password))
+        {
+            await userManager.AccessFailedAsync(user);
+            return AuthErrors.InvalidCredentials;
+        }
+
+        await userManager.ResetAccessFailedCountAsync(user);
 
         if (!user.IsActive || user.DeletedAt is not null)
             return AuthErrors.InactiveUser;
 
-        // Login runs without the middleware, so an inactive tenant is refused here. The super admin tenant
-        // is never blocked, matching BlockInactiveEntityMiddleware.
-        if (user.TenantId != TenantConstants.SuperAdminTenantId &&
-            !await dbContext.Set<Tenant>().IgnoreQueryFilters()
-                .AnyAsync(t => t.Id == user.TenantId && t.IsActive && t.DeletedAt == null, ct))
+        // Login runs without the middleware, so an inactive tenant is refused here
+        var tenantName = await FindLoginTenantNameAsync(user.TenantId, ct);
+        if (tenantName is null)
             return AuthErrors.InactiveTenant;
 
-        return await GenerateAuthResponseAsync(user, ct);
+        return await GenerateAuthTokensAsync(user, tenantName, ct);
     }
+
+    // Ends every session of the user (all devices); used when refresh token reuse is detected.
+    private Task<int> RevokeAllRefreshTokensAsync(Guid userId, CancellationToken ct) =>
+        dbContext.Set<RefreshToken>()
+            .IgnoreQueryFilters()
+            .Where(rt => rt.UserId == userId && rt.RevokedAt == null)
+            .ExecuteUpdateAsync(s => s.SetProperty(rt => rt.RevokedAt, DateTime.UtcNow), ct);
 
     private string DummyPasswordHash() =>
         _dummyPasswordHash ??= userManager.PasswordHasher.HashPassword(null!, Guid.NewGuid().ToString());
@@ -82,25 +100,47 @@ internal sealed class AuthService(
             .ThenInclude(u => u.Role)
             .FirstOrDefaultAsync(rt => rt.Token == hashedToken, ct);
 
-        if (storedToken is null || !storedToken.IsActive)
+        if (storedToken is null || storedToken.IsExpired)
             return AuthErrors.InvalidRefreshToken;
+
+        if (storedToken.IsRevoked)
+        {
+            // A rotated token (it has a successor) presented again means someone holds a copy. Revoking all of
+            // the user's tokens also ends the other holder's chain. A token revoked by logout has no successor.
+            if (storedToken.ReplacedByToken is not null)
+                await RevokeAllRefreshTokensAsync(storedToken.UserId, ct);
+            return AuthErrors.InvalidRefreshToken;
+        }
 
         if (!storedToken.User.IsActive || storedToken.User.DeletedAt is not null)
             return AuthErrors.InactiveUser;
 
         // Checked before rotation, so a refused refresh leaves the token untouched (same as above).
-        var tenantId = storedToken.User.TenantId;
-        if (tenantId != TenantConstants.SuperAdminTenantId &&
-            !await dbContext.Set<Tenant>().IgnoreQueryFilters()
-                .AnyAsync(t => t.Id == tenantId && t.IsActive && t.DeletedAt == null, ct))
+        var tenantName = await FindLoginTenantNameAsync(storedToken.User.TenantId, ct);
+        if (tenantName is null)
             return AuthErrors.InactiveTenant;
 
-        // Revoke old token
-        storedToken.RevokedAt = DateTime.UtcNow;
-
-        // Generate new refresh token pair
+        // Build the response before rotating, so nothing can fail once the old token is revoked
+        var accessToken = tokenService.GenerateAccessToken(storedToken.User);
+        var user = ToAuthenticatedUser(storedToken.User, tenantName);
         var (rawNewToken, hashedNewToken) = tokenService.GenerateRefreshToken();
-        storedToken.ReplacedByToken = hashedNewToken;
+
+        // Revoke the old token only if it is still unrevoked, in one statement, inside a transaction with the
+        // insert of its successor. A concurrent refresh with the same token waits on the row lock and then
+        // matches no row, so exactly one request rotates it; the loser is treated as reuse.
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(ct);
+        var rotated = await dbContext.Set<RefreshToken>()
+            .IgnoreQueryFilters()
+            .Where(rt => rt.Id == storedToken.Id && rt.RevokedAt == null)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(rt => rt.RevokedAt, DateTime.UtcNow)
+                .SetProperty(rt => rt.ReplacedByToken, hashedNewToken), ct);
+        if (rotated == 0)
+        {
+            await transaction.RollbackAsync(ct);
+            await RevokeAllRefreshTokensAsync(storedToken.UserId, ct);
+            return AuthErrors.InvalidRefreshToken;
+        }
 
         // Write new refresh token entry into database
         var newRefreshToken = new RefreshToken
@@ -114,13 +154,7 @@ internal sealed class AuthService(
         };
         dbContext.Set<RefreshToken>().Add(newRefreshToken);
         await dbContext.SaveChangesAsync(ct);
-
-        // Generate access token for user, with the role's current permissions
-        var accessToken = tokenService.GenerateAccessToken(storedToken.User);
-
-        // Load the authenticated user with the same permissions that went into the token
-        var user = await GetAuthenticatedUserAsync(
-            storedToken.UserId, PermissionsInToken(storedToken.User), ct);
+        await transaction.CommitAsync(ct);
 
         return new AuthTokens(
             accessToken,
@@ -160,11 +194,12 @@ internal sealed class AuthService(
         return user is not null ? user : AuthErrors.UserNotFound;
     }
 
-    private async Task<AuthTokens> GenerateAuthResponseAsync(
-        ApplicationUser user, CancellationToken ct)
+    private async Task<AuthTokens> GenerateAuthTokensAsync(
+        ApplicationUser user, string tenantName, CancellationToken ct)
     {
-        // Generate token pair
+        // Build the response before saving, so nothing can fail once the refresh token is stored
         var accessToken = tokenService.GenerateAccessToken(user);
+        var authenticatedUser = ToAuthenticatedUser(user, tenantName);
         var (rawRefreshToken, hashedRefreshToken) = tokenService.GenerateRefreshToken();
 
         // Persist refresh token
@@ -181,9 +216,6 @@ internal sealed class AuthService(
         dbContext.Set<RefreshToken>().Add(refreshToken);
         await dbContext.SaveChangesAsync(ct);
 
-        // Load the authenticated user with the same permissions that went into the token
-        var authenticatedUser = await GetAuthenticatedUserAsync(user.Id, PermissionsInToken(user), ct);
-
         return new AuthTokens(
             accessToken,
             rawRefreshToken,
@@ -196,16 +228,34 @@ internal sealed class AuthService(
     private static Permission PermissionsInToken(ApplicationUser user) =>
         user.Role?.Permissions ?? Permission.None;
 
-    // Called after the tokens are issued, so the user is known to exist; a missing user is a bug.
-    private async Task<AuthenticatedUser> GetAuthenticatedUserAsync(
-        Guid userId, Permission permissions, CancellationToken ct) =>
-        await FindAuthenticatedUserAsync(userId, permissions, ct)
-        ?? throw new InvalidOperationException($"User {userId} was not found after issuing its tokens.");
+    // Returns the tenant's name, or null when its users may not log in or refresh (inactive, deleted or
+    // missing). The super admin tenant is never refused, matching BlockInactiveEntityMiddleware.
+    // IgnoreQueryFilters: login and refresh run without a tenant context.
+    private Task<string?> FindLoginTenantNameAsync(Guid tenantId, CancellationToken ct) =>
+        dbContext.Set<Tenant>()
+            .IgnoreQueryFilters()
+            .Where(t => t.Id == tenantId &&
+                (t.Id == TenantConstants.SuperAdminTenantId || (t.IsActive && t.DeletedAt == null)))
+            .Select(t => (string?)t.Name)
+            .FirstOrDefaultAsync(ct);
 
-    // Returns null when the user doesn't exist. IgnoreQueryFilters: login and refresh run without a
-    // tenant context, and the id always comes from a trusted source (verified credentials, a stored
-    // refresh token or a validated JWT). Permissions are passed in rather than read from the role,
-    // so they always equal the ones in the caller's access token.
+    // Login and refresh build the authenticated user from the user they already loaded (with its role),
+    // with the same permissions that go into the access token.
+    private static AuthenticatedUser ToAuthenticatedUser(ApplicationUser user, string tenantName) =>
+        new(
+            user.Id,
+            user.Email!,
+            user.FirstName,
+            user.LastName,
+            user.TenantId,
+            tenantName,
+            user.RoleId,
+            user.Role?.Name,
+            PermissionMapper.ToNames(PermissionsInToken(user)));
+
+    // Used by /me. Returns null when the user doesn't exist. IgnoreQueryFilters: the id comes from a
+    // validated JWT, and a soft-deleted user is blocked by the middleware, not here. Permissions are
+    // passed in rather than read from the role, so they always equal the ones in the caller's access token.
     private async Task<AuthenticatedUser?> FindAuthenticatedUserAsync(
         Guid userId, Permission permissions, CancellationToken ct)
     {

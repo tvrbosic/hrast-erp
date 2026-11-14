@@ -33,6 +33,11 @@ internal static class IdentityServiceExtensions
                 options.Password.RequireUppercase = true;
                 options.Password.RequireNonAlphanumeric = false;
                 options.User.RequireUniqueEmail = true;
+
+                // Lock an account for 15 minutes after 5 failed logins in a row (counted by AuthService.LoginAsync).
+                options.Lockout.AllowedForNewUsers = true;
+                options.Lockout.MaxFailedAccessAttempts = 5;
+                options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
             })
             .AddEntityFrameworkStores<HrastDbContext>()
             .AddDefaultTokenProviders();

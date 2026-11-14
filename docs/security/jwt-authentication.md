@@ -48,13 +48,13 @@ When `TokenService.GenerateAccessToken` creates a JWT, it includes:
 ### Login (`POST /api/auth/login`)
 
 1. Find user by `NormalizedEmail` (case-insensitive) via `userManager.Users.Include(u => u.Role)` (eager-loads role so permissions are available for JWT generation). If none is found, verify the password against a dummy hash anyway, so response time doesn't reveal which emails exist, and return `Auth.InvalidCredentials`
-2. Verify password via `UserManager.CheckPasswordAsync` (`Auth.InvalidCredentials`)
+2. Verify password via `UserManager.CheckPasswordAsync` (`Auth.InvalidCredentials`). A locked-out account (`IsLockedOutAsync`) gets the same `Auth.InvalidCredentials` after a dummy hash, so lockout reveals nothing; a wrong password calls `AccessFailedAsync` (5 failures in a row lock the account for 15 minutes, set in `AddIdentityServices()`), a correct one calls `ResetAccessFailedCountAsync`
 3. Reject if `IsActive` is false or the user is soft-deleted (`Auth.InactiveUser`). This comes after the password check, so only someone who knows the password learns the account is inactive
-4. Reject if the user's tenant is inactive or soft-deleted (`Auth.InactiveTenant`); the super admin tenant is never blocked, matching `BlockInactiveEntityMiddleware`. Login runs without the middleware, so this check lives here
+4. Reject if the user's tenant is inactive or soft-deleted (`Auth.InactiveTenant`); the super admin tenant is never blocked, matching `BlockInactiveEntityMiddleware`. Login runs without the middleware, so this check lives here. The same query loads the tenant's name for the response
 5. Generate JWT access token with user claims
-6. Generate refresh token pair (raw + SHA-256 hash)
-7. Save the **hashed** refresh token to the database
-8. Load the authenticated user (see below) with the permissions that went into the token
+6. Build the authenticated user (see below) from the loaded user, role and tenant name, with the permissions that went into the token
+7. Generate refresh token pair (raw + SHA-256 hash)
+8. Save the **hashed** refresh token to the database. Nothing that can fail runs after this
 9. Return `AuthTokens(accessToken, rawRefreshToken, expiresAt, user)`
 
 ### Refresh (`POST /api/auth/refresh`)
@@ -63,15 +63,15 @@ Uses **refresh token rotation** — each use invalidates the old token and issue
 
 1. Hash the incoming raw refresh token
 2. Find the matching record in the database (include `User` + `ThenInclude(u => u.Role)` so permissions are available for JWT generation)
-3. Reject if not found or not active (`Auth.InvalidRefreshToken` error)
-   - Also reject if the user is inactive or deleted (`Auth.InactiveUser` error) or the user's tenant is inactive or deleted (`Auth.InactiveTenant`, never for the super admin tenant); the token is not rotated
-4. **Revoke** the old token (set `RevokedAt`)
-5. Generate a new refresh token pair
-6. Set `ReplacedByToken` on the old record (audit trail)
-7. Save the new hashed token to the database
-8. Generate a new access token for the user
-9. Load the authenticated user with the permissions that went into the new token
-10. Return new `AuthTokens` with both new tokens and the user
+3. Reject if not found or expired (`Auth.InvalidRefreshToken` error)
+4. If it is revoked, reject with `Auth.InvalidRefreshToken`. A revoked token that has a `ReplacedByToken` was rotated, so presenting it again is **reuse**: someone holds a copy. All of the user's active refresh tokens are revoked (every session on every device), which also ends the other holder's chain. A token revoked by logout has no successor and only gets the error
+5. Reject if the user is inactive or deleted (`Auth.InactiveUser`) or the user's tenant is inactive or deleted (`Auth.InactiveTenant`, never for the super admin tenant); the token is not rotated. The tenant query also loads the tenant's name
+6. Generate a new access token and build the authenticated user from the loaded user, role and tenant name, with the permissions that went into the token. This happens before rotation, so nothing can fail once the old token is revoked
+7. Generate a new refresh token pair
+8. In one transaction: **revoke** the old token with a single `UPDATE … WHERE revoked_at IS NULL` that also sets `ReplacedByToken`, then save the new hashed token. A concurrent refresh with the same token waits on the row lock and updates no row; it is treated as reuse (step 4). So exactly one request rotates a token
+9. Return new `AuthTokens` with both new tokens and the user
+
+Clients must not refresh the same token twice in parallel (e.g. two browser tabs): the second request counts as reuse and logs the user out everywhere. Share one refresh across tabs.
 
 ### Logout (`POST /api/auth/logout`)
 
@@ -86,9 +86,9 @@ Uses **refresh token rotation** — each use invalidates the old token and issue
 
 ### Authenticated user
 
-Login, refresh and `/me` return the same `AuthenticatedUser`, built by one private `AuthService` helper: a single query that joins the user to its tenant (inner) and role (left) with `IgnoreQueryFilters()` — login and refresh have no tenant context, and the user id always comes from a trusted source (verified credentials, a stored refresh token or a validated JWT).
+Login, refresh and `/me` return the same `AuthenticatedUser`. Login and refresh build it from the user and role they already loaded, plus the tenant name from their tenant check, before anything is saved, so a failure can't leave a stored or revoked token behind. `/me` loads it with a single query that joins the user to its tenant (inner) and role (left) with `IgnoreQueryFilters()`; the user id comes from a validated JWT.
 
-**Permission rule: the authenticated user's `permissions` are always the permissions in the access token that goes with it.** Login and refresh issue a token from the role's current permissions (`user.Role?.Permissions ?? Permission.None`) and pass that same value to the helper. `/me` issues no token and passes the caller's token permissions, so after a role change it shows the old permissions until the next refresh (at most `AccessTokenExpirationMinutes`) — exactly what the API enforces meanwhile. Every other field comes from the database, so in that window `/me` can show a new role name with the old permissions. The UI can therefore trust `permissions` to decide which menus and buttons to show, without decoding the JWT or knowing the `Permission` bit layout.
+**Permission rule: the authenticated user's `permissions` are always the permissions in the access token that goes with it.** Login and refresh issue a token from the role's current permissions (`user.Role?.Permissions ?? Permission.None`) and build the user from that same value. `/me` issues no token and passes the caller's token permissions, so after a role change it shows the old permissions until the next refresh (at most `AccessTokenExpirationMinutes`) — exactly what the API enforces meanwhile. Every other field comes from the database, so in that window `/me` can show a new role name with the old permissions. The UI can therefore trust `permissions` to decide which menus and buttons to show, without decoding the JWT or knowing the `Permission` bit layout.
 
 ## API Endpoints
 
@@ -203,7 +203,10 @@ Client                        API                         Infrastructure
 ## Security Properties
 
 - **Hashed storage** — refresh tokens are stored as SHA-256 hashes, never raw
-- **Token rotation** — each refresh invalidates the old token and issues a new one
+- **Token rotation** — each refresh invalidates the old token and issues a new one, atomically
+- **Reuse detection** — presenting an already rotated token revokes all of the user's refresh tokens
 - **No clock skew** — `ClockSkew = TimeSpan.Zero`, tokens expire exactly on time
 - **Short-lived access tokens** — 15 min default, limits exposure window
+- **Account lockout** — Identity lockout: 5 failed logins in a row lock the account for 15 minutes; a locked account gets the same response as a wrong password
 - **Inactive user and tenant check** — deactivated and deleted accounts, and users of deactivated or deleted tenants, are rejected at login and token refresh
+- **No caching of tokens** — login and refresh responses send `Cache-Control: no-store` (`[ResponseCache(NoStore = true)]`), so browsers and proxies never store them

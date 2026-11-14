@@ -83,14 +83,15 @@ public class AuthServiceTests : IClassFixture<PostgresContainerFixture>, IAsyncL
         string email = "test@example.com",
         string password = "Password1",
         bool isActive = true,
-        Guid? roleId = null)
+        Guid? roleId = null,
+        Guid? tenantId = null)
     {
         var user = new ApplicationUser
         {
             Id = Guid.NewGuid(),
             Email = email,
             UserName = email,
-            TenantId = _tenantId,
+            TenantId = tenantId ?? _tenantId,
             FirstName = "Test",
             LastName = "User",
             IsActive = isActive,
@@ -227,6 +228,25 @@ public class AuthServiceTests : IClassFixture<PostgresContainerFixture>, IAsyncL
     }
 
     [Fact]
+    public async Task Returns_tenant_name_When_super_admin_tenant_is_inactive()
+    {
+        // Arrange: a user of the super admin tenant, which is deactivated (it is never blocked)
+        var superAdminTenant = new Tenant(TenantConstants.SuperAdminTenantId, "Platform");
+        superAdminTenant.Deactivate();
+        _dbContext.Set<Tenant>().Add(superAdminTenant);
+        await _dbContext.SaveChangesAsync();
+        await SeedUserAsync(tenantId: TenantConstants.SuperAdminTenantId);
+
+        // Act
+        var login = await _sut.LoginAsync("test@example.com", "Password1");
+        var refresh = await _sut.RefreshAsync(login.Value.RefreshToken);
+
+        // Assert
+        login.Value.User.TenantName.Should().Be("Platform");
+        refresh.Value.User.TenantName.Should().Be("Platform");
+    }
+
+    [Fact]
     public async Task Returns_authenticated_user_When_refresh_succeeds()
     {
         var role = await SeedRoleAsync(Permission.FinanceView);
@@ -353,6 +373,48 @@ public class AuthServiceTests : IClassFixture<PostgresContainerFixture>, IAsyncL
     }
 
     [Fact]
+    public async Task Returns_invalid_credentials_When_correct_password_is_used_after_lockout()
+    {
+        await SeedUserAsync();
+        for (var i = 0; i < 5; i++)
+            await _sut.LoginAsync("test@example.com", "WrongPassword1");
+
+        var result = await _sut.LoginAsync("test@example.com", "Password1");
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Be(AuthErrors.InvalidCredentials);
+    }
+
+    [Fact]
+    public async Task Resets_failed_count_When_login_succeeds()
+    {
+        var user = await SeedUserAsync();
+        for (var i = 0; i < 4; i++)
+            await _sut.LoginAsync("test@example.com", "WrongPassword1");
+
+        await _sut.LoginAsync("test@example.com", "Password1");
+        // Four more failures would lock the account only if the earlier four still counted
+        for (var i = 0; i < 4; i++)
+            await _sut.LoginAsync("test@example.com", "WrongPassword1");
+
+        (await _userManager.IsLockedOutAsync(user)).Should().BeFalse();
+        (await _userManager.GetAccessFailedCountAsync(user)).Should().Be(4);
+    }
+
+    [Fact]
+    public async Task Returns_success_When_lockout_has_expired()
+    {
+        var user = await SeedUserAsync();
+        for (var i = 0; i < 5; i++)
+            await _sut.LoginAsync("test@example.com", "WrongPassword1");
+        await _userManager.SetLockoutEndDateAsync(user, DateTimeOffset.UtcNow.AddSeconds(-1));
+
+        var result = await _sut.LoginAsync("test@example.com", "Password1");
+
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
     public async Task Returns_success_When_email_differs_only_in_case()
     {
         await SeedUserAsync();
@@ -452,7 +514,9 @@ public class AuthServiceTests : IClassFixture<PostgresContainerFixture>, IAsyncL
         result.Value.AccessToken.Should().NotBeNullOrEmpty();
         result.Value.RefreshToken.Should().NotBe(rawToken);
 
+        // Rotation uses ExecuteUpdate, which bypasses the change tracker, so read the row untracked
         var oldToken = await _dbContext.Set<RefreshToken>()
+            .AsNoTracking()
             .FirstAsync(rt => rt.Token == hashedToken);
         oldToken.IsRevoked.Should().BeTrue();
         oldToken.ReplacedByToken.Should().NotBeNullOrEmpty();
@@ -525,16 +589,60 @@ public class AuthServiceTests : IClassFixture<PostgresContainerFixture>, IAsyncL
     }
 
     [Fact]
-    public async Task Returns_error_When_refresh_token_is_revoked()
+    public async Task Returns_error_and_keeps_other_tokens_When_refresh_token_was_revoked_by_logout()
     {
         var user = await SeedUserAsync();
         var (rawToken, hashedToken) = _tokenService.GenerateRefreshToken();
         await SeedRefreshTokenAsync(user.Id, hashedToken, revoked: true);
+        var (_, otherHashedToken) = _tokenService.GenerateRefreshToken();
+        await SeedRefreshTokenAsync(user.Id, otherHashedToken);
 
         var result = await _sut.RefreshAsync(rawToken);
 
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Be(AuthErrors.InvalidRefreshToken);
+        var other = await _dbContext.Set<RefreshToken>().AsNoTracking().SingleAsync(rt => rt.Token == otherHashedToken);
+        other.IsRevoked.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Revokes_all_user_tokens_When_rotated_refresh_token_is_reused()
+    {
+        var user = await SeedUserAsync();
+        var (rawToken, hashedToken) = _tokenService.GenerateRefreshToken();
+        await SeedRefreshTokenAsync(user.Id, hashedToken);
+        var (_, otherHashedToken) = _tokenService.GenerateRefreshToken();
+        await SeedRefreshTokenAsync(user.Id, otherHashedToken);
+        var first = await _sut.RefreshAsync(rawToken);
+
+        var reuse = await _sut.RefreshAsync(rawToken);
+
+        reuse.IsFailure.Should().BeTrue();
+        reuse.Error.Should().Be(AuthErrors.InvalidRefreshToken);
+        (await _dbContext.Set<RefreshToken>().AsNoTracking().Where(rt => rt.UserId == user.Id).ToListAsync())
+            .Should().OnlyContain(rt => rt.RevokedAt != null);
+        // The successor issued by the first refresh no longer works
+        (await _sut.RefreshAsync(first.Value.RefreshToken)).IsFailure.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Rotates_once_and_revokes_all_user_tokens_When_same_token_is_refreshed_concurrently()
+    {
+        var user = await SeedUserAsync();
+        var (rawToken, hashedToken) = _tokenService.GenerateRefreshToken();
+        await SeedRefreshTokenAsync(user.Id, hashedToken);
+
+        // Separate scopes give each request its own DbContext and connection, as in the API
+        using var scopeA = _serviceProvider.CreateScope();
+        using var scopeB = _serviceProvider.CreateScope();
+        var results = await Task.WhenAll(
+            scopeA.ServiceProvider.GetRequiredService<IAuthService>().RefreshAsync(rawToken),
+            scopeB.ServiceProvider.GetRequiredService<IAuthService>().RefreshAsync(rawToken));
+
+        // Whichever order the requests run in, one rotates and the other is treated as reuse
+        results.Count(r => r.IsSuccess).Should().Be(1);
+        (await _dbContext.Set<RefreshToken>().AsNoTracking().Where(rt => rt.UserId == user.Id).ToListAsync())
+            .Should().HaveCount(2).And.OnlyContain(rt => rt.RevokedAt != null);
     }
 
     [Fact]
