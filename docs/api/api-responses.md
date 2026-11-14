@@ -78,34 +78,51 @@ public async Task<IActionResult> Get(Guid id, CancellationToken ct)
 ```
 
 This returns:
-- `200 OK` with the value wrapped in an API envelope `{ "data": ... }` on success; for `PagedResult<T>`, the envelope also includes `"meta"` with pagination info
+- For `Result<T>`: `200 OK` with the value wrapped in an API envelope `{ "data": ... }` on success; for `PagedResult<T>`, the envelope also includes `"meta"` with pagination info
+- For a non-generic `Result`: `204 No Content` with no body on success
 - The appropriate error status code (422/403/404/409/500) with `{ code, message }` body on failure; validation (422) responses also include `errors` with field-level messages
 
-### Custom success responses
+### Choosing the success status
 
-When the default `200 OK` is not appropriate (e.g. `201 Created` or `204 NoContent`), handle the success branch inline:
+| Handler returns | Endpoint creates an addressable resource? | Controller calls | Status |
+|---|---|---|---|
+| `Result<Guid>` (the new id) | yes (has `GET …/{id}`) | `ToCreatedResult(nameof(GetById))` | 201 |
+| `Result<T>` | no | `ToActionResult()` | 200 |
+| `Result` | — | `ToActionResult()` | 204 |
 
 ```csharp
 [HttpPost]
-public async Task<IActionResult> Create(CreateOrderRequest request, CancellationToken ct)
+public async Task<IActionResult> Create(CreateOrderCommand command, CancellationToken ct)
 {
-    var result = await sender.Send(new CreateOrderCommand(request), ct);
-
-    return result.IsSuccess
-        ? CreatedAtAction(nameof(Get), new { id = result.Value.Id }, result.Value)
-        : result.ToActionResult();
-}
-
-[HttpDelete("{id}")]
-public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
-{
-    var result = await sender.Send(new DeleteOrderCommand(id), ct);
-
-    return result.IsSuccess
-        ? NoContent()
-        : result.ToActionResult();
+    // The result of a create is the id (Guid) of the newly created order; ToCreatedResult uses
+    // result.Value to build the Location header pointing at GetById for that id
+    var result = await sender.Send(command, ct);
+    return result.ToCreatedResult(nameof(GetById));
 }
 ```
+
+The body is `{ "data": "<id>" }` and the `Location` header points at `GetById`, with the new id passed as its `id` route value. ASP.NET Core builds that URL when the response is written, so `GetById`'s route must have an `{id}` parameter (`{id:guid}`); a mismatch fails the request with a 500 after the row is saved. `CreatedLocationRouteTests` checks this for every controller that creates resources.
+
+Never branch on `result.IsSuccess` to pick a success status; add an extension method to `ResultExtensions` instead.
+
+### Route id and body id must match
+
+`PUT` / `PATCH` actions whose command carries an `Id` check it against the `{id}` in the URL before sending the command. A mismatch returns `ApiErrors.RouteIdMismatch` (`src/HrastERP.API/Responses/ApiErrors.cs`) through `ToActionResult()`: `422` `General.Validation` with a field error on `id`, the same shape as any other validation failure. Never return a bare `BadRequest()`; it produces a `ProblemDetails` body, not `ErrorResponse`.
+
+```csharp
+if (id != command.Id)
+    return Result.Failure(ApiErrors.RouteIdMismatch).ToActionResult();
+```
+
+### Declaring responses for OpenAPI
+
+Actions return `IActionResult`, so OpenAPI (and the Scalar UI) only knows their responses from `[ProducesResponseType]`. Every action declares:
+
+- exactly one success response, matching the table above: `[ProducesResponseType<ApiResponse<T>>(StatusCodes.Status200OK)]` (paged lists use `ApiResponse<IReadOnlyCollection<TItem>>`), `[ProducesResponseType<ApiResponse<Guid>>(StatusCodes.Status201Created)]` or `[ProducesResponseType(StatusCodes.Status204NoContent)]`;
+- `[ProducesResponseType(StatusCodes.Status401Unauthorized)]` (no body) when the endpoint needs a token;
+- each error status the endpoint can return, typed `ErrorResponse`: `403` for any `[RequirePermission]` endpoint, `404` / `409` for the handler's `NotFound` / `Conflict` errors, and `422` when the action takes a body or query parameters or its handler returns a `Validation` error.
+
+`500` is not declared per action; `GlobalExceptionMiddleware` can return it from any endpoint. `ResponseTypeDeclarationTests` checks the success declarations and that every declared error uses `ErrorResponse`.
 
 ---
 

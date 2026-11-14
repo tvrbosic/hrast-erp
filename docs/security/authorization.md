@@ -57,9 +57,9 @@ Roles are global (shared by all tenants). Any user with `AdministrationView` can
 |---|---|---|
 | `GET /api/admin/roles?page=&pageSize=` | `AdministrationView` | 200 paged `RoleResponse` list |
 | `GET /api/admin/roles/{id}` | `AdministrationView` | 200 `RoleResponse` |
-| `POST /api/admin/roles` | `[RequireSuperAdminTenant]` + `AdministrationCreate` | 200 `{ data: Guid }` |
-| `PUT /api/admin/roles/{id}` | `[RequireSuperAdminTenant]` + `AdministrationEdit` | 200 |
-| `DELETE /api/admin/roles/{id}` | `[RequireSuperAdminTenant]` + `AdministrationDelete` | 200 |
+| `POST /api/admin/roles` | `[RequireSuperAdminTenant]` + `AdministrationCreate` | 201 `{ data: Guid }` + `Location` |
+| `PUT /api/admin/roles/{id}` | `[RequireSuperAdminTenant]` + `AdministrationEdit` | 204 |
+| `DELETE /api/admin/roles/{id}` | `[RequireSuperAdminTenant]` + `AdministrationDelete` | 204 |
 | `GET /api/admin/permissions` | `AdministrationView` | 200 permissions grouped by module |
 
 - `[RequireSuperAdminTenant]` is applied **per write action**, not on the controller, so reads stay open to tenant admins.

@@ -1,6 +1,6 @@
 ---
 name: he-cqrs-handler
-description: Guides writing MediatR command and query handlers in HrastERP — handler structure, FluentValidation validator placement, controller wiring with ISender, ToActionResult() mapping, and custom status codes (201/204). Use when implementing a new command or query.
+description: Guides writing MediatR command and query handlers in HrastERP — handler structure, FluentValidation validator placement, controller wiring with ISender, ToActionResult() mapping, and success status codes (ToCreatedResult 201, Result 204). Use when implementing a new command or query.
 ---
 
 # HrastERP: Writing a CQRS Handler
@@ -110,25 +110,26 @@ public class OrdersController(ISender sender) : ControllerBase
     public async Task<IActionResult> Get(Guid id, CancellationToken ct)
         => (await sender.Send(new GetOrderQuery(id), ct)).ToActionResult();
 
-    // Custom 201 Created
+    // 201 Created + Location header + { "data": id }
     [HttpPost]
     [RequirePermission(Permission.FinanceCreate)]
+    [ProducesResponseType<ApiResponse<Guid>>(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> Create(CreateOrderRequest request, CancellationToken ct)
     {
         var result = await sender.Send(new CreateOrderCommand(request.CustomerId, request.Quantity), ct);
-        return result.IsSuccess
-            ? CreatedAtAction(nameof(Get), new { id = result.Value }, result.Value)
-            : result.ToActionResult();
+        // The result of a create is the id (Guid) of the newly created order; ToCreatedResult uses
+        // result.Value to build the Location header pointing at Get for that id
+        return result.ToCreatedResult(nameof(Get));
     }
 
-    // 204 No Content
+    // Result (no value) → 204 No Content
     [HttpDelete("{id}")]
     [RequirePermission(Permission.FinanceDelete)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
-    {
-        var result = await sender.Send(new DeleteOrderCommand(id), ct);
-        return result.IsSuccess ? NoContent() : result.ToActionResult();
-    }
+        => (await sender.Send(new DeleteOrderCommand(id), ct)).ToActionResult();
 }
 ```
 
@@ -155,4 +156,6 @@ No extra code needed — these run on every handler:
 | Throwing exceptions for expected failures | Return `Result.Failure(error)` |
 | Manual validator registration | `AddValidatorsFromAssembly` in `Add<Module>Module()` handles it |
 | Forgetting `[RequirePermission]` | Add to every endpoint that needs authorization |
-| Using `ToActionResult()` for 201/204 | Handle `result.IsSuccess` branch manually for non-200 responses |
+| Branching on `IsSuccess` to pick a success status | Use `ToCreatedResult` (201) or `ToActionResult` (200 / 204) |
+| Missing `[ProducesResponseType]` on an action | Declare its one success status and its error statuses (`ErrorResponse`), see `docs/api/api-responses.md` |
+| `return BadRequest()` when route id and body id differ | `return Result.Failure(ApiErrors.RouteIdMismatch).ToActionResult();` (422) |

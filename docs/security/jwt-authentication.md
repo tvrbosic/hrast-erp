@@ -81,9 +81,11 @@ Uses **refresh token rotation** — each use invalidates the old token and issue
 
 | Endpoint | Body | Success | Failure |
 |----------|------|---------|---------|
-| `POST /api/auth/login` | `{ email, password }` | `200` + `AuthResponse` | `401` |
-| `POST /api/auth/refresh` | `{ refreshToken }` | `200` + `AuthResponse` | `401` |
-| `POST /api/auth/logout` | `{ refreshToken }` | `204` | `400` |
+| `POST /api/auth/login` | `{ email, password }` | `200` + `AuthResponse` | `422` `Auth.InvalidCredentials` (unknown email or wrong password), `403` `Auth.InactiveUser` |
+| `POST /api/auth/refresh` | `{ refreshToken }` | `200` + `AuthResponse` | `422` `Auth.InvalidRefreshToken` (unknown, revoked or expired), `403` `Auth.InactiveUser` |
+| `POST /api/auth/logout` | `{ refreshToken }` | `204` | none from the service (always succeeds) |
+
+A missing or malformed body field fails model binding on any of the three with `422` `General.Validation`. All failures use the flat `ErrorResponse` shape.
 
 `AuthResponse` shape: `{ accessToken, refreshToken, expiresAt }`.
 
