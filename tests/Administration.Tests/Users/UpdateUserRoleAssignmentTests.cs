@@ -2,7 +2,7 @@ using Administration.Tests.Fixtures;
 using FluentAssertions;
 using HrastERP.Administration.Application;
 using HrastERP.Administration.Application.Users.Commands.UpdateUser;
-using HrastERP.Infrastructure.Authentication;
+using HrastERP.Infrastructure.Identity;
 using HrastERP.SharedKernel.Abstractions;
 using HrastERP.SharedKernel.Authorization;
 using HrastERP.SharedKernel.Constants;

@@ -1,10 +1,9 @@
 using FluentAssertions;
 using HrastERP.Administration;
-using HrastERP.Administration.Domain.Entities;
-using HrastERP.Infrastructure.Authentication;
 using HrastERP.Infrastructure.Database;
 using HrastERP.Infrastructure.Hangfire;
 using HrastERP.Infrastructure.Hangfire.Jobs;
+using HrastERP.Infrastructure.Identity;
 using HrastERP.Infrastructure.Tests.Fixtures;
 using HrastERP.SharedKernel.Abstractions;
 using HrastERP.SharedKernel.Constants;

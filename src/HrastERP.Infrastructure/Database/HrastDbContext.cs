@@ -1,5 +1,5 @@
 using System.Linq.Expressions;
-using HrastERP.Infrastructure.Authentication;
+using HrastERP.Infrastructure.Identity;
 using HrastERP.SharedKernel.Abstractions;
 using HrastERP.SharedKernel.Constants;
 using HrastERP.SharedKernel.Domain;
@@ -34,7 +34,7 @@ public sealed class HrastDbContext(
         base.OnModelCreating(modelBuilder);
 
         // Apply configurations for the shared infrastructure entities that belong to no module
-        // (users, refresh tokens, roles, stored files, audit log)
+        // (tenants, users, refresh tokens, roles, stored files, audit log)
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(HrastDbContext).Assembly);
 
         // Apply configurations from each module's assembly

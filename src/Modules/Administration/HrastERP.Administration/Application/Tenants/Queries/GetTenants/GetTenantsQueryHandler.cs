@@ -1,6 +1,6 @@
 using HrastERP.Administration.Application.DTOs;
-using HrastERP.Administration.Domain.Entities;
 using HrastERP.Infrastructure.Database;
+using HrastERP.Infrastructure.Identity;
 using HrastERP.SharedKernel.Common;
 using HrastERP.SharedKernel.Results;
 using MediatR;

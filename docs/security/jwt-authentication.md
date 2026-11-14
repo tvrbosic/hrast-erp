@@ -6,7 +6,7 @@ The application uses JWT Bearer authentication with refresh token rotation. Acce
 
 ## Configuration
 
-JWT settings are defined in `appsettings.json` under the `"Jwt"` section and bound to `JwtSettings` (`Infrastructure/Authentication/JwtSettings.cs`):
+JWT settings are defined in `appsettings.json` under the `"Jwt"` section and bound to `JwtSettings` (`Infrastructure/Identity/JwtSettings.cs`):
 
 | Property | Description | Default |
 |----------|-------------|---------|
@@ -25,9 +25,9 @@ Settings are validated at startup with `ValidateDataAnnotations()` + `ValidateOn
 
 ## Services
 
-- **Identity registration** — `AddIdentityServices()` (`Infrastructure/Authentication/AuthenticationServiceExtensions.cs`) sets up `AddIdentityCore<ApplicationUser>` with the password and user rules, `AddEntityFrameworkStores<HrastDbContext>()`, and `AddDefaultTokenProviders()` plus `AddDataProtection()`. The token providers create the password reset tokens that the admin ChangePassword command uses, and Data Protection encrypts those tokens. Without them, `GeneratePasswordResetTokenAsync` throws and the endpoint returns a 500.
+- **Identity registration** — `AddIdentityServices()` (`Infrastructure/Identity/IdentityServiceExtensions.cs`) sets up `AddIdentityCore<ApplicationUser>` with the password and user rules, `AddEntityFrameworkStores<HrastDbContext>()`, and `AddDefaultTokenProviders()` plus `AddDataProtection()`. The token providers create the password reset tokens that the admin ChangePassword command uses, and Data Protection encrypts those tokens. Without them, `GeneratePasswordResetTokenAsync` throws and the endpoint returns a 500.
 - **`ITokenService` / `TokenService`** — generates JWT access tokens, generates refresh token pairs (raw + hash), and hashes raw tokens for DB lookup.
-- **`IAuthService` / `AuthService`** — orchestrates login, refresh, and logout flows using Identity's `UserManager` and `ITokenService`.
+- **`IAuthService` / `AuthService`** — orchestrates login, refresh, logout and the current user (`/me`) using Identity's `UserManager` and `ITokenService`. All of it lives in `Infrastructure/Identity/` (`Entities/`, `Persistence/`, `Services/`), namespace `HrastERP.Infrastructure.Identity`.
 
 ## Access Token Claims
 
@@ -53,7 +53,8 @@ When `TokenService.GenerateAccessToken` creates a JWT, it includes:
 4. Generate JWT access token with user claims
 5. Generate refresh token pair (raw + SHA-256 hash)
 6. Save the **hashed** refresh token to the database
-7. Return `AuthResponse(accessToken, rawRefreshToken, expiresAt)`
+7. Load the authenticated user (see below) with the permissions that went into the token
+8. Return `AuthResponse(accessToken, rawRefreshToken, expiresAt, user)`
 
 ### Refresh (`POST /api/auth/refresh`)
 
@@ -68,7 +69,8 @@ Uses **refresh token rotation** — each use invalidates the old token and issue
 6. Set `ReplacedByToken` on the old record (audit trail)
 7. Save the new hashed token to the database
 8. Generate a new access token for the user
-9. Return new `AuthResponse` with both new tokens
+9. Load the authenticated user with the permissions that went into the new token
+10. Return new `AuthResponse` with both new tokens and the user
 
 ### Logout (`POST /api/auth/logout`)
 
@@ -77,6 +79,16 @@ Uses **refresh token rotation** — each use invalidates the old token and issue
 3. If it exists and isn't already revoked, set `RevokedAt`
 4. Always return success (idempotent)
 
+### Current user (`GET /api/auth/me`)
+
+`[Authorize]` only — any authenticated user can read their own data, so there is no `[RequirePermission]`. `AuthService.GetCurrentUserAsync` loads the user by `ICurrentUser.UserId` and passes `ICurrentUser.EffectivePermissions` (the caller's token) as the permissions. It adds no checks of its own: `BlockInactiveEntityMiddleware` already returns `403` for inactive or deleted users and inactive tenants. A user that no longer exists gives `404 Auth.UserNotFound`.
+
+### Authenticated user
+
+Login, refresh and `/me` return the same `AuthenticatedUserResponse`, built by one private `AuthService` helper: a single query that joins the user to its tenant (inner) and role (left) with `IgnoreQueryFilters()` — login and refresh have no tenant context, and the user id always comes from a trusted source (verified credentials, a stored refresh token or a validated JWT).
+
+**Permission rule: the authenticated user's `permissions` are always the permissions in the access token that goes with it.** Login and refresh issue a token from the role's current permissions (`user.Role?.Permissions ?? Permission.None`) and pass that same value to the helper. `/me` issues no token and passes the caller's token permissions, so after a role change it shows the old permissions until the next refresh (at most `AccessTokenExpirationMinutes`) — exactly what the API enforces meanwhile. Every other field comes from the database, so in that window `/me` can show a new role name with the old permissions. The UI can therefore trust `permissions` to decide which menus and buttons to show, without decoding the JWT or knowing the `Permission` bit layout.
+
 ## API Endpoints
 
 | Endpoint | Body | Success | Failure |
@@ -84,10 +96,24 @@ Uses **refresh token rotation** — each use invalidates the old token and issue
 | `POST /api/auth/login` | `{ email, password }` | `200` + `AuthResponse` | `422` `Auth.InvalidCredentials` (unknown email or wrong password), `403` `Auth.InactiveUser` |
 | `POST /api/auth/refresh` | `{ refreshToken }` | `200` + `AuthResponse` | `422` `Auth.InvalidRefreshToken` (unknown, revoked or expired), `403` `Auth.InactiveUser` |
 | `POST /api/auth/logout` | `{ refreshToken }` | `204` | none from the service (always succeeds) |
+| `GET /api/auth/me` | — (bearer token) | `200` + `AuthenticatedUserResponse` | `401` no valid token, `403` inactive user or tenant (middleware), `404` `Auth.UserNotFound` |
 
-A missing or malformed body field fails model binding on any of the three with `422` `General.Validation`. All failures use the flat `ErrorResponse` shape.
+A missing or malformed body field fails model binding on login, refresh or logout with `422` `General.Validation`. All failures use the flat `ErrorResponse` shape.
 
-`AuthResponse` shape: `{ accessToken, refreshToken, expiresAt }`.
+`AuthResponse` shape (inside the `data` envelope): `{ accessToken, refreshToken, expiresAt, user }`.
+
+`AuthenticatedUserResponse` shape (`user` above, and the `data` of `/me`):
+
+```json
+{
+  "id": "…", "email": "…", "firstName": "…", "lastName": "…",
+  "tenantId": "…", "tenantName": "…",
+  "roleId": "…", "roleName": "…",
+  "permissions": ["AdministrationView", "FinanceView"]
+}
+```
+
+`roleId` / `roleName` are `null` for a user without a role, and `permissions` is then `[]`. Permissions are enum member names ordered by bit (never `None`), the same format the roles API uses.
 
 ## Middleware Pipeline
 
@@ -148,7 +174,7 @@ Client                        API                         Infrastructure
   |                            |  +-- Save hashed refresh to DB
   |<-- { accessToken,         |<------------------------------+
   |    refreshToken,           |                              |
-  |    expiresAt }             |                              |
+  |    expiresAt, user }       |                              |
   |                            |                              |
   +-- GET /api/resource ------>|                              |
   |  Authorization: Bearer JWT |                              |
@@ -166,7 +192,7 @@ Client                        API                         Infrastructure
   |                            |  +-- Save new to DB          |
   |<-- { new accessToken,     |<------------------------------+
   |    new refreshToken,       |                              |
-  |    expiresAt }             |                              |
+  |    expiresAt, user }       |                              |
   |                            |                              |
   +-- POST /api/auth/logout -->|                              |
   |  { refreshToken }          +-- Revoke token in DB         |

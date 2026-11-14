@@ -2,13 +2,11 @@ using System.Reflection;
 using System.Text.RegularExpressions;
 using FluentAssertions;
 using HrastERP.Administration;
-using HrastERP.Administration.Domain.Entities;
 using HrastERP.Finance;
-using HrastERP.Infrastructure.Authentication;
-using HrastERP.Infrastructure.Authorization;
 using HrastERP.Infrastructure.Database;
 using HrastERP.Infrastructure.Database.Audit;
 using HrastERP.Infrastructure.FileStorage;
+using HrastERP.Infrastructure.Identity;
 using HrastERP.Inventory;
 using HrastERP.Procurement;
 using HrastERP.Production;
@@ -45,6 +43,7 @@ public class DatabaseNamingConventionTests
         [typeof(IdentityUserToken<Guid>)] = DatabaseSchemas.Administration,
         [typeof(Role)] = DatabaseSchemas.Administration,
         [typeof(RefreshToken)] = DatabaseSchemas.Administration,
+        [typeof(Tenant)] = DatabaseSchemas.Administration,
     };
 
     private static IModel BuildModel()

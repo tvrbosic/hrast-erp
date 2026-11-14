@@ -1,4 +1,5 @@
 using HrastERP.Administration.Application.DTOs;
+using HrastERP.SharedKernel.Authorization;
 using HrastERP.SharedKernel.Results;
 using MediatR;
 

@@ -1,6 +1,6 @@
 using FluentAssertions;
-using HrastERP.Administration.Application.Roles;
 using HrastERP.Administration.Application.Roles.Queries.GetPermissions;
+using HrastERP.SharedKernel.Authorization;
 
 namespace Administration.Tests.Roles;
 

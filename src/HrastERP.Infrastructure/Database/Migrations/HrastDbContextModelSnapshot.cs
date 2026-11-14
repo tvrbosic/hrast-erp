@@ -22,11 +22,76 @@ namespace HrastERP.Infrastructure.Database.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("HrastERP.Administration.Domain.Entities.Tenant", b =>
+            modelBuilder.Entity("HrastERP.Infrastructure.Database.Audit.AuditLogEntry", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid")
                         .HasColumnName("id");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("action");
+
+                    b.Property<string>("EntityId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("entity_id");
+
+                    b.Property<string>("EntityName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("entity_name");
+
+                    b.Property<string>("NewValues")
+                        .HasColumnType("text")
+                        .HasColumnName("new_values");
+
+                    b.Property<string>("OldValues")
+                        .HasColumnType("text")
+                        .HasColumnName("old_values");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime>("Timestamp")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("timestamp");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_audit_logs");
+
+                    b.HasIndex("Timestamp")
+                        .HasDatabaseName("ix_audit_logs_timestamp");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_audit_logs_user_id");
+
+                    b.HasIndex("EntityName", "EntityId")
+                        .HasDatabaseName("ix_audit_logs_entity_name_entity_id");
+
+                    b.ToTable("audit_logs", "infrastructure");
+                });
+
+            modelBuilder.Entity("HrastERP.Infrastructure.FileStorage.StoredFile", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("content_type");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -44,17 +109,25 @@ namespace HrastERP.Infrastructure.Database.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("deleted_by");
 
-                    b.Property<bool>("IsActive")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(true)
-                        .HasColumnName("is_active");
-
-                    b.Property<string>("Name")
+                    b.Property<string>("FileName")
                         .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("name");
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("file_name");
+
+                    b.Property<long>("SizeInBytes")
+                        .HasColumnType("bigint")
+                        .HasColumnName("size_in_bytes");
+
+                    b.Property<string>("StoragePath")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)")
+                        .HasColumnName("storage_path");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -65,16 +138,19 @@ namespace HrastERP.Infrastructure.Database.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_tenants");
+                        .HasName("pk_stored_files");
 
-                    b.HasIndex("Name")
+                    b.HasIndex("StoragePath")
                         .IsUnique()
-                        .HasDatabaseName("ix_tenants_name");
+                        .HasDatabaseName("ix_stored_files_storage_path");
 
-                    b.ToTable("tenants", "administration");
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("ix_stored_files_tenant_id");
+
+                    b.ToTable("stored_files", "infrastructure");
                 });
 
-            modelBuilder.Entity("HrastERP.Infrastructure.Authentication.ApplicationUser", b =>
+            modelBuilder.Entity("HrastERP.Infrastructure.Identity.ApplicationUser", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -218,7 +294,7 @@ namespace HrastERP.Infrastructure.Database.Migrations
                     b.ToTable("users", "administration");
                 });
 
-            modelBuilder.Entity("HrastERP.Infrastructure.Authentication.RefreshToken", b =>
+            modelBuilder.Entity("HrastERP.Infrastructure.Identity.RefreshToken", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -271,7 +347,7 @@ namespace HrastERP.Infrastructure.Database.Migrations
                     b.ToTable("refresh_tokens", "administration");
                 });
 
-            modelBuilder.Entity("HrastERP.Infrastructure.Authorization.Role", b =>
+            modelBuilder.Entity("HrastERP.Infrastructure.Identity.Role", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -310,76 +386,11 @@ namespace HrastERP.Infrastructure.Database.Migrations
                     b.ToTable("roles", "administration");
                 });
 
-            modelBuilder.Entity("HrastERP.Infrastructure.Database.Audit.AuditLogEntry", b =>
+            modelBuilder.Entity("HrastERP.Infrastructure.Identity.Tenant", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid")
                         .HasColumnName("id");
-
-                    b.Property<string>("Action")
-                        .IsRequired()
-                        .HasMaxLength(16)
-                        .HasColumnType("character varying(16)")
-                        .HasColumnName("action");
-
-                    b.Property<string>("EntityId")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
-                        .HasColumnName("entity_id");
-
-                    b.Property<string>("EntityName")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)")
-                        .HasColumnName("entity_name");
-
-                    b.Property<string>("NewValues")
-                        .HasColumnType("text")
-                        .HasColumnName("new_values");
-
-                    b.Property<string>("OldValues")
-                        .HasColumnType("text")
-                        .HasColumnName("old_values");
-
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("tenant_id");
-
-                    b.Property<DateTime>("Timestamp")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("timestamp");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("user_id");
-
-                    b.HasKey("Id")
-                        .HasName("pk_audit_logs");
-
-                    b.HasIndex("Timestamp")
-                        .HasDatabaseName("ix_audit_logs_timestamp");
-
-                    b.HasIndex("UserId")
-                        .HasDatabaseName("ix_audit_logs_user_id");
-
-                    b.HasIndex("EntityName", "EntityId")
-                        .HasDatabaseName("ix_audit_logs_entity_name_entity_id");
-
-                    b.ToTable("audit_logs", "infrastructure");
-                });
-
-            modelBuilder.Entity("HrastERP.Infrastructure.FileStorage.StoredFile", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<string>("ContentType")
-                        .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)")
-                        .HasColumnName("content_type");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -397,25 +408,17 @@ namespace HrastERP.Infrastructure.Database.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("deleted_by");
 
-                    b.Property<string>("FileName")
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)")
-                        .HasColumnName("file_name");
-
-                    b.Property<long>("SizeInBytes")
-                        .HasColumnType("bigint")
-                        .HasColumnName("size_in_bytes");
-
-                    b.Property<string>("StoragePath")
-                        .IsRequired()
-                        .HasMaxLength(512)
-                        .HasColumnType("character varying(512)")
-                        .HasColumnName("storage_path");
-
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("tenant_id");
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -426,16 +429,13 @@ namespace HrastERP.Infrastructure.Database.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id")
-                        .HasName("pk_stored_files");
+                        .HasName("pk_tenants");
 
-                    b.HasIndex("StoragePath")
+                    b.HasIndex("Name")
                         .IsUnique()
-                        .HasDatabaseName("ix_stored_files_storage_path");
+                        .HasDatabaseName("ix_tenants_name");
 
-                    b.HasIndex("TenantId")
-                        .HasDatabaseName("ix_stored_files_tenant_id");
-
-                    b.ToTable("stored_files", "infrastructure");
+                    b.ToTable("tenants", "administration");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<System.Guid>", b =>
@@ -519,15 +519,15 @@ namespace HrastERP.Infrastructure.Database.Migrations
                     b.ToTable("user_tokens", "administration");
                 });
 
-            modelBuilder.Entity("HrastERP.Infrastructure.Authentication.ApplicationUser", b =>
+            modelBuilder.Entity("HrastERP.Infrastructure.Identity.ApplicationUser", b =>
                 {
-                    b.HasOne("HrastERP.Infrastructure.Authorization.Role", "Role")
+                    b.HasOne("HrastERP.Infrastructure.Identity.Role", "Role")
                         .WithMany("Users")
                         .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_users_role_role_id");
 
-                    b.HasOne("HrastERP.Administration.Domain.Entities.Tenant", null)
+                    b.HasOne("HrastERP.Infrastructure.Identity.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -537,9 +537,9 @@ namespace HrastERP.Infrastructure.Database.Migrations
                     b.Navigation("Role");
                 });
 
-            modelBuilder.Entity("HrastERP.Infrastructure.Authentication.RefreshToken", b =>
+            modelBuilder.Entity("HrastERP.Infrastructure.Identity.RefreshToken", b =>
                 {
-                    b.HasOne("HrastERP.Infrastructure.Authentication.ApplicationUser", "User")
+                    b.HasOne("HrastERP.Infrastructure.Identity.ApplicationUser", "User")
                         .WithMany("RefreshTokens")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -551,7 +551,7 @@ namespace HrastERP.Infrastructure.Database.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<System.Guid>", b =>
                 {
-                    b.HasOne("HrastERP.Infrastructure.Authentication.ApplicationUser", null)
+                    b.HasOne("HrastERP.Infrastructure.Identity.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -561,7 +561,7 @@ namespace HrastERP.Infrastructure.Database.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<System.Guid>", b =>
                 {
-                    b.HasOne("HrastERP.Infrastructure.Authentication.ApplicationUser", null)
+                    b.HasOne("HrastERP.Infrastructure.Identity.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -571,7 +571,7 @@ namespace HrastERP.Infrastructure.Database.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<System.Guid>", b =>
                 {
-                    b.HasOne("HrastERP.Infrastructure.Authentication.ApplicationUser", null)
+                    b.HasOne("HrastERP.Infrastructure.Identity.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -579,12 +579,12 @@ namespace HrastERP.Infrastructure.Database.Migrations
                         .HasConstraintName("fk_user_tokens_users_user_id");
                 });
 
-            modelBuilder.Entity("HrastERP.Infrastructure.Authentication.ApplicationUser", b =>
+            modelBuilder.Entity("HrastERP.Infrastructure.Identity.ApplicationUser", b =>
                 {
                     b.Navigation("RefreshTokens");
                 });
 
-            modelBuilder.Entity("HrastERP.Infrastructure.Authorization.Role", b =>
+            modelBuilder.Entity("HrastERP.Infrastructure.Identity.Role", b =>
                 {
                     b.Navigation("Users");
                 });

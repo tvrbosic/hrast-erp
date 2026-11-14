@@ -35,7 +35,7 @@ Modules never reference each other; cross-module communication uses domain event
 
 | Module | Project | Scope |
 |---|---|---|
-| Administration | `HrastERP.Administration` | Tenants, users, roles |
+| Administration | `HrastERP.Administration` | Manages tenants, users, roles (entities in the shared identity model, `HrastERP.Infrastructure/Identity/`) |
 | Finance | `HrastERP.Finance` | Invoicing, payments |
 | Inventory | `HrastERP.Inventory` | Products, stock |
 | Procurement | `HrastERP.Procurement` | Purchasing, suppliers |

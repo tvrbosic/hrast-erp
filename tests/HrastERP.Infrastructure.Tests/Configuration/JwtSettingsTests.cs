@@ -1,5 +1,5 @@
 using FluentAssertions;
-using HrastERP.Infrastructure.Authentication;
+using HrastERP.Infrastructure.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;

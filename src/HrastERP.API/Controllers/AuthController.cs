@@ -1,7 +1,8 @@
-using HrastERP.API.Requests.Auth;
 using HrastERP.API.Extensions;
+using HrastERP.API.Requests.Auth;
 using HrastERP.API.Responses;
-using HrastERP.Infrastructure.Authentication;
+using HrastERP.Infrastructure.Identity;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace HrastERP.API.Controllers;
@@ -39,6 +40,19 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
         LogoutRequest request, CancellationToken ct)
     {
         var result = await authService.LogoutAsync(request.RefreshToken, ct);
+        return result.ToActionResult();
+    }
+
+    // Any authenticated user may read their own data, so no [RequirePermission]
+    [HttpGet("me")]
+    [Authorize]
+    [ProducesResponseType<ApiResponse<AuthenticatedUserResponse>>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Me(CancellationToken ct)
+    {
+        var result = await authService.GetCurrentUserAsync(ct);
         return result.ToActionResult();
     }
 }

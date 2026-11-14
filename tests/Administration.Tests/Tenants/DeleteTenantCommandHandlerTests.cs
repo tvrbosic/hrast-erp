@@ -2,8 +2,8 @@ using Administration.Tests.Fixtures;
 using FluentAssertions;
 using HrastERP.Administration.Application;
 using HrastERP.Administration.Application.Tenants.Commands.DeleteTenant;
-using HrastERP.Administration.Domain.Entities;
 using HrastERP.Infrastructure.FileStorage;
+using HrastERP.Infrastructure.Identity;
 using HrastERP.SharedKernel.Results;
 using Microsoft.EntityFrameworkCore;
 

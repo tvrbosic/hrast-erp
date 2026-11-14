@@ -1,5 +1,5 @@
 using Administration.Tests.Fixtures;
-using HrastERP.Infrastructure.Authentication;
+using HrastERP.Infrastructure.Identity;
 using HrastERP.SharedKernel.Abstractions;
 using HrastERP.SharedKernel.Authorization;
 using Microsoft.AspNetCore.Identity;

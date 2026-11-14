@@ -1,4 +1,5 @@
 using FluentValidation;
+using HrastERP.SharedKernel.Authorization;
 
 namespace HrastERP.Administration.Application.Roles.Commands.CreateRole;
 

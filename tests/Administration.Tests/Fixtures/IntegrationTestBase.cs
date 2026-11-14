@@ -1,8 +1,6 @@
 using HrastERP.Administration;
-using HrastERP.Administration.Domain.Entities;
-using HrastERP.Infrastructure.Authentication;
-using HrastERP.Infrastructure.Authorization;
 using HrastERP.Infrastructure.Database;
+using HrastERP.Infrastructure.Identity;
 using HrastERP.SharedKernel.Abstractions;
 using HrastERP.SharedKernel.Authorization;
 using HrastERP.SharedKernel.Constants;

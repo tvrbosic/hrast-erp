@@ -9,6 +9,8 @@ description: Guides adding a domain entity to a HrastERP module — choosing Bas
 
 ## Step 1 — Define the entity (Domain layer)
 
+First check where it belongs: *is it about who / for whom (identity or tenancy), and do several modules need to read it?* Yes → the shared identity model in `HrastERP.Infrastructure/Identity/` (next to `Tenant`, `ApplicationUser`, `Role`, `RefreshToken`; configuration in `Identity/Persistence/`, table in `administration`; only Administration changes it). No → its module, as below.
+
 Create the entity in `Domain/Entities/` of the module project.
 
 | Base class | Use for |

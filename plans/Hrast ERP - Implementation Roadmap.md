@@ -220,18 +220,13 @@ HrastERP.<Module>/
 - `POST /admin/roles`, `PUT /admin/roles/{id}`, `DELETE /admin/roles/{id}`
 - `GET /admin/roles`, `GET /admin/roles/{id}`, `GET /admin/permissions`
 
-#### 1.3 User-Role Assignment
-- `AssignRolesToUser` command, `RemoveRoleFromUser` command
-- `GET /admin/users/{id}/roles`
-- `PUT /admin/users/{id}/roles` (replaces role set)
-
-#### 1.4 Auth Endpoints
+#### 1.3 Auth Endpoints
 - `POST /auth/login` — returns JWT + refresh token
 - `POST /auth/refresh` — exchanges refresh token for new JWT
 - `POST /auth/logout` — invalidates refresh token
 - `GET /auth/me` — current user profile with permissions
 
-#### 1.5 Tenant Management (Super-Admin)
+#### 1.4 Tenant Management (Super-Admin)
 - `Tenant` entity: name, status, created date
 - Seed initial tenant for development
 - Basic tenant CRUD accessible only to super-admin role

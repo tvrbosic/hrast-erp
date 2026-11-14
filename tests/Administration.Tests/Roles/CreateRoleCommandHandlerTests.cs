@@ -3,7 +3,7 @@ using Administration.Tests.Fixtures;
 using FluentAssertions;
 using HrastERP.Administration.Application;
 using HrastERP.Administration.Application.Roles.Commands.CreateRole;
-using HrastERP.Infrastructure.Authorization;
+using HrastERP.Infrastructure.Identity;
 using HrastERP.SharedKernel.Authorization;
 using Microsoft.EntityFrameworkCore;
 

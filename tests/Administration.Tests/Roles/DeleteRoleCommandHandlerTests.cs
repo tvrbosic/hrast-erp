@@ -1,9 +1,9 @@
 using Administration.Tests.Fixtures;
 using FluentAssertions;
 using HrastERP.Administration.Application;
-using HrastERP.Administration.Application.Roles;
 using HrastERP.Administration.Application.Roles.Commands.DeleteRole;
-using HrastERP.Infrastructure.Authorization;
+using HrastERP.Infrastructure.Identity;
+using HrastERP.SharedKernel.Authorization;
 using HrastERP.SharedKernel.Constants;
 using HrastERP.SharedKernel.Results;
 using Microsoft.EntityFrameworkCore;

@@ -1,11 +1,10 @@
 using System.Net;
 using System.Security.Claims;
 using System.Text.Json;
-using HrastERP.Administration.Domain.Entities;
-using HrastERP.Infrastructure.Authentication;
+using HrastERP.API.Responses;
 using HrastERP.Infrastructure.Caching;
 using HrastERP.Infrastructure.Database;
-using HrastERP.API.Responses;
+using HrastERP.Infrastructure.Identity;
 using HrastERP.SharedKernel.Constants;
 using Microsoft.EntityFrameworkCore;
 

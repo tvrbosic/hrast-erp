@@ -1,5 +1,6 @@
-using HrastERP.Infrastructure.Authorization;
 using HrastERP.Infrastructure.Database;
+using HrastERP.Infrastructure.Identity;
+using HrastERP.SharedKernel.Authorization;
 using HrastERP.SharedKernel.Constants;
 using HrastERP.SharedKernel.Results;
 using MediatR;

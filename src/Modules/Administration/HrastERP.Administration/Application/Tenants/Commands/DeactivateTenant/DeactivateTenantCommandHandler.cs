@@ -1,6 +1,6 @@
-using HrastERP.Administration.Domain.Entities;
 using HrastERP.Infrastructure.Caching;
 using HrastERP.Infrastructure.Database;
+using HrastERP.Infrastructure.Identity;
 using HrastERP.SharedKernel.Results;
 using MediatR;
 using Microsoft.EntityFrameworkCore;

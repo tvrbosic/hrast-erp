@@ -1,5 +1,5 @@
-using HrastERP.Infrastructure.Authorization;
 using HrastERP.Infrastructure.Database;
+using HrastERP.Infrastructure.Identity;
 using HrastERP.SharedKernel.Authorization;
 using Microsoft.EntityFrameworkCore;
 
