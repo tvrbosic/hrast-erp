@@ -68,7 +68,7 @@ The interceptor sets `TenantId` itself because `TenantEntityInterceptor` has alr
 
 ## Database
 
-- Table: `audit_logs` (schema `public`)
+- Table: `audit_logs` (schema `infrastructure`)
 - Indexes: `ix_audit_logs_entity_name_entity_id` (EntityName, EntityId), `ix_audit_logs_user_id` (UserId), `ix_audit_logs_timestamp` (Timestamp)
 - JSON keys in `OldValues`/`NewValues` are database column names (e.g. `created_at`, `tenant_id`), the same as `Purged` entries written by `SoftDeleteCleanupJob` via `row_to_json`. `EntityName` stays the C# class name.
 

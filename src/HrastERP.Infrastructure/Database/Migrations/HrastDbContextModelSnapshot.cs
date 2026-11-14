@@ -200,22 +200,22 @@ namespace HrastERP.Infrastructure.Database.Migrations
                         .HasColumnName("user_name");
 
                     b.HasKey("Id")
-                        .HasName("pk_asp_net_users");
+                        .HasName("pk_users");
 
                     b.HasIndex("NormalizedEmail")
-                        .HasDatabaseName("ix_asp_net_users_normalized_email");
+                        .HasDatabaseName("ix_users_normalized_email");
 
                     b.HasIndex("NormalizedUserName")
                         .IsUnique()
-                        .HasDatabaseName("ix_asp_net_users_normalized_user_name");
+                        .HasDatabaseName("ix_users_normalized_user_name");
 
                     b.HasIndex("RoleId")
-                        .HasDatabaseName("ix_asp_net_users_role_id");
+                        .HasDatabaseName("ix_users_role_id");
 
                     b.HasIndex("TenantId")
-                        .HasDatabaseName("ix_asp_net_users_tenant_id");
+                        .HasDatabaseName("ix_users_tenant_id");
 
-                    b.ToTable("asp_net_users", (string)null);
+                    b.ToTable("users", "administration");
                 });
 
             modelBuilder.Entity("HrastERP.Infrastructure.Authentication.RefreshToken", b =>
@@ -268,7 +268,7 @@ namespace HrastERP.Infrastructure.Database.Migrations
                     b.HasIndex("UserId")
                         .HasDatabaseName("ix_refresh_tokens_user_id");
 
-                    b.ToTable("refresh_tokens", (string)null);
+                    b.ToTable("refresh_tokens", "administration");
                 });
 
             modelBuilder.Entity("HrastERP.Infrastructure.Authorization.Role", b =>
@@ -307,7 +307,7 @@ namespace HrastERP.Infrastructure.Database.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_roles_normalized_name");
 
-                    b.ToTable("roles", (string)null);
+                    b.ToTable("roles", "administration");
                 });
 
             modelBuilder.Entity("HrastERP.Infrastructure.Database.Audit.AuditLogEntry", b =>
@@ -366,7 +366,7 @@ namespace HrastERP.Infrastructure.Database.Migrations
                     b.HasIndex("EntityName", "EntityId")
                         .HasDatabaseName("ix_audit_logs_entity_name_entity_id");
 
-                    b.ToTable("audit_logs", (string)null);
+                    b.ToTable("audit_logs", "infrastructure");
                 });
 
             modelBuilder.Entity("HrastERP.Infrastructure.FileStorage.StoredFile", b =>
@@ -435,7 +435,7 @@ namespace HrastERP.Infrastructure.Database.Migrations
                     b.HasIndex("TenantId")
                         .HasDatabaseName("ix_stored_files_tenant_id");
 
-                    b.ToTable("stored_files", (string)null);
+                    b.ToTable("stored_files", "infrastructure");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<System.Guid>", b =>
@@ -460,12 +460,12 @@ namespace HrastERP.Infrastructure.Database.Migrations
                         .HasColumnName("user_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_asp_net_user_claims");
+                        .HasName("pk_user_claims");
 
                     b.HasIndex("UserId")
-                        .HasDatabaseName("ix_asp_net_user_claims_user_id");
+                        .HasDatabaseName("ix_user_claims_user_id");
 
-                    b.ToTable("asp_net_user_claims", (string)null);
+                    b.ToTable("user_claims", "administration");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<System.Guid>", b =>
@@ -487,12 +487,12 @@ namespace HrastERP.Infrastructure.Database.Migrations
                         .HasColumnName("user_id");
 
                     b.HasKey("LoginProvider", "ProviderKey")
-                        .HasName("pk_asp_net_user_logins");
+                        .HasName("pk_user_logins");
 
                     b.HasIndex("UserId")
-                        .HasDatabaseName("ix_asp_net_user_logins_user_id");
+                        .HasDatabaseName("ix_user_logins_user_id");
 
-                    b.ToTable("asp_net_user_logins", (string)null);
+                    b.ToTable("user_logins", "administration");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<System.Guid>", b =>
@@ -514,9 +514,9 @@ namespace HrastERP.Infrastructure.Database.Migrations
                         .HasColumnName("value");
 
                     b.HasKey("UserId", "LoginProvider", "Name")
-                        .HasName("pk_asp_net_user_tokens");
+                        .HasName("pk_user_tokens");
 
-                    b.ToTable("asp_net_user_tokens", (string)null);
+                    b.ToTable("user_tokens", "administration");
                 });
 
             modelBuilder.Entity("HrastERP.Infrastructure.Authentication.ApplicationUser", b =>
@@ -525,14 +525,14 @@ namespace HrastERP.Infrastructure.Database.Migrations
                         .WithMany("Users")
                         .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_asp_net_users_role_role_id");
+                        .HasConstraintName("fk_users_role_role_id");
 
                     b.HasOne("HrastERP.Administration.Domain.Entities.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_asp_net_users_tenants_tenant_id");
+                        .HasConstraintName("fk_users_tenants_tenant_id");
 
                     b.Navigation("Role");
                 });
@@ -544,7 +544,7 @@ namespace HrastERP.Infrastructure.Database.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_refresh_tokens_asp_net_users_user_id");
+                        .HasConstraintName("fk_refresh_tokens_users_user_id");
 
                     b.Navigation("User");
                 });
@@ -556,7 +556,7 @@ namespace HrastERP.Infrastructure.Database.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_asp_net_user_claims_asp_net_users_user_id");
+                        .HasConstraintName("fk_user_claims_users_user_id");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<System.Guid>", b =>
@@ -566,7 +566,7 @@ namespace HrastERP.Infrastructure.Database.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_asp_net_user_logins_asp_net_users_user_id");
+                        .HasConstraintName("fk_user_logins_users_user_id");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<System.Guid>", b =>
@@ -576,7 +576,7 @@ namespace HrastERP.Infrastructure.Database.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_asp_net_user_tokens_asp_net_users_user_id");
+                        .HasConstraintName("fk_user_tokens_users_user_id");
                 });
 
             modelBuilder.Entity("HrastERP.Infrastructure.Authentication.ApplicationUser", b =>

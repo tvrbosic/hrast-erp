@@ -28,6 +28,8 @@ Settings in `appsettings.json` under `"Hangfire"`:
 
 Bound to `HangfireSettings` via `ValidateDataAnnotations()` + `ValidateOnStart()` — misconfiguration fails at startup.
 
+Job storage uses the same PostgreSQL database, with its tables in the `hangfire` schema (set explicitly via `PostgreSqlStorageOptions.SchemaName`). Hangfire creates and migrates these tables itself; they are not part of the EF model.
+
 ## Dashboard
 
 The Hangfire dashboard is available at `/hangfire` and restricted to localhost connections via `LocalhostDashboardAuthorizationFilter`.
@@ -69,7 +71,7 @@ _backgroundJobService.Schedule<MyService>(x => x.DoWorkAsync(), TimeSpan.FromMin
 
 - **JobId:** `infrastructure.refresh-token-cleanup`
 - **Purpose:** Removes expired and revoked refresh tokens
-- **Approach:** Batched raw SQL DELETE (100 per batch, snake_case identifiers such as `refresh_tokens`) — `RefreshToken` doesn't inherit `BaseEntity<TId>`, so no audit entries are written
+- **Approach:** Batched raw SQL DELETE (100 per batch, schema-qualified snake_case identifiers such as `administration.refresh_tokens`) — `RefreshToken` doesn't inherit `BaseEntity<TId>`, so no audit entries are written
 - **Retention:** Expired tokens deleted immediately; revoked tokens kept for `RevokedTokenRetentionDays`
 
 ### SoftDeleteCleanupJob

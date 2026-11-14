@@ -53,7 +53,7 @@ internal sealed class SoftDeleteCleanupJob(
 
         // Look up where audit entries are stored, so the purge SQL can insert into that table
         var audit = dbContext.Model.FindEntityType(typeof(AuditLogEntry))!;
-        var auditTable = $"\"{audit.GetSchema() ?? "public"}\".\"{audit.GetTableName()}\"";
+        var auditTable = $"\"{audit.GetSchema()}\".\"{audit.GetTableName()}\"";
 
         // Column list for the audit INSERT, e.g. "id", "entity_name", ... Each C# property name is mapped
         // to its real column name through EF metadata, so renames or naming-convention changes are picked up
@@ -67,9 +67,9 @@ internal sealed class SoftDeleteCleanupJob(
 
         foreach (var entityType in entityTypes)
         {
-            // Resolve the table's real location; entities without a module schema live in "public"
+            // Resolve the table's real location; every entity has an explicit schema (enforced by DatabaseNamingConventionTests)
             var tableName = entityType.GetTableName();
-            var schema = entityType.GetSchema() ?? "public";
+            var schema = entityType.GetSchema();
 
             // The purge SQL deletes by primary key from a real table, so skip keyless types and types not mapped to a table (e.g. views)
             var pk = entityType.FindPrimaryKey();

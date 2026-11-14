@@ -61,7 +61,7 @@ public class DeleteTenantCommandHandlerTests(PostgresContainerFixture fixture)
         await using (var db = NewDbContext())
         {
             await db.Database.ExecuteSqlInterpolatedAsync(
-                $"UPDATE asp_net_users SET deleted_at = now() WHERE id = {user.Id}");
+                $"UPDATE administration.users SET deleted_at = now() WHERE id = {user.Id}");
         }
 
         var result = await HandleAsync(tenant.Id);

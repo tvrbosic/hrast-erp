@@ -30,10 +30,10 @@ The prefix is parsed as an integer, so `0009_x.sql` always runs before `0010_x.s
 
 Scripts are safe to re-run because:
 
-1. **`seed_history` table** — the seeder records every applied script by filename. On subsequent startups, already-applied scripts are skipped.
+1. **`infrastructure.seed_history` table** — the seeder records every applied script by filename. On subsequent startups, already-applied scripts are skipped.
 2. **SQL guards** — scripts use `INSERT ... ON CONFLICT (id) DO NOTHING` so re-execution is a no-op at the database level.
 
-The `seed_history` table is created automatically by the seeder. It is not managed by EF Core migrations.
+The `infrastructure.seed_history` table (and the `infrastructure` schema, if missing) is created automatically by the seeder. It is not managed by EF Core migrations.
 
 ## Adding a New Seed Script
 
@@ -41,7 +41,7 @@ The `seed_history` table is created automatically by the seeder. It is not manag
 2. Choose the next available prefix number (check existing files in the folder).
 3. Create `NNNN_description.sql` with idempotent SQL using `ON CONFLICT (id) DO NOTHING`.
 4. The script will be copied to the build output automatically (configured via `<Content CopyToOutputDirectory="PreserveNewest">` in `HrastERP.Infrastructure.csproj`).
-5. The next application startup will apply it and record it in `seed_history`.
+5. The next application startup will apply it and record it in `infrastructure.seed_history`.
 
 ### Example Reference Script
 
@@ -56,7 +56,7 @@ ON CONFLICT (id) DO NOTHING;
 
 ```sql
 -- For development use only
-INSERT INTO asp_net_users (id, user_name, ...)
+INSERT INTO administration.users (id, user_name, ...)
 VALUES ('...', 'devuser', ...)
 ON CONFLICT (id) DO NOTHING;
 ```

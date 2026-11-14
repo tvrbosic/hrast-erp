@@ -66,7 +66,7 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
 {
     public void Configure(EntityTypeBuilder<Product> builder)
     {
-        builder.ToTable("products", "inventory");  // plural snake_case table, schema = module name, lowercase
+        builder.ToTable("products", DatabaseSchemas.Inventory);  // plural snake_case table, schema = the module's DatabaseSchemas constant
         builder.HasKey(p => p.Id);
         builder.Property(p => p.Name).IsRequired().HasMaxLength(200);
 
@@ -103,7 +103,8 @@ dotnet ef database update \
 | Setting `CreatedAt`, `DeletedAt` in domain code | Let interceptors handle audit/soft-delete fields |
 | Setting `TenantId` in factory method | Let `TenantEntityInterceptor` set it; or set it explicitly in handler for super admin cross-tenant creation |
 | Forgetting `private Entity() {}` | EF Core requires a parameterless constructor |
-| Using a flat table name without schema | Use `builder.ToTable("products", "inventory")` for module isolation |
-| Omitting `ToTable` | Always call it; the snake_case convention does not pluralize or pick a schema, so the table would get the singular class name in `public` |
+| Using a flat table name without schema | Use `builder.ToTable("products", DatabaseSchemas.Inventory)` for module isolation |
+| Omitting `ToTable` | Always call it; the snake_case convention does not pluralize or pick a schema, so the table would get the singular class name in `public` (`DatabaseNamingConventionTests` fails on any entity without a schema) |
+| Putting module data in `infrastructure` because the entity class lives in `HrastERP.Infrastructure` | The schema is the module whose data it is; use the module's `DatabaseSchemas` constant and add the type to `ModuleOwnedInfrastructureEntities` in `DatabaseNamingConventionTests` |
 | Hand-naming columns with `HasColumnName` / `HasDatabaseName` | Don't; `EFCore.NamingConventions` already produces snake_case columns, keys and indexes |
 | Registering `IEntityTypeConfiguration<T>` manually | Not needed — assembly scanning handles it |

@@ -44,9 +44,10 @@ public sealed class HrastDbContext(
         }
 
         // Identity sets these table names explicitly, so the naming convention does not rewrite them.
-        modelBuilder.Entity<IdentityUserClaim<Guid>>().ToTable("asp_net_user_claims");
-        modelBuilder.Entity<IdentityUserLogin<Guid>>().ToTable("asp_net_user_logins");
-        modelBuilder.Entity<IdentityUserToken<Guid>>().ToTable("asp_net_user_tokens");
+        // They hold user data, so they sit with the users table in the administration schema.
+        modelBuilder.Entity<IdentityUserClaim<Guid>>().ToTable("user_claims", DatabaseSchemas.Administration);
+        modelBuilder.Entity<IdentityUserLogin<Guid>>().ToTable("user_logins", DatabaseSchemas.Administration);
+        modelBuilder.Entity<IdentityUserToken<Guid>>().ToTable("user_tokens", DatabaseSchemas.Administration);
 
         ApplyGlobalFilters(modelBuilder);
     }

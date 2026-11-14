@@ -7,7 +7,7 @@ internal sealed class AuditLogConfiguration : IEntityTypeConfiguration<AuditLogE
 {
     public void Configure(EntityTypeBuilder<AuditLogEntry> builder)
     {
-        builder.ToTable("audit_logs");
+        builder.ToTable("audit_logs", DatabaseSchemas.Infrastructure);
 
         builder.HasKey(e => e.Id);
         builder.Property(e => e.Id).ValueGeneratedNever();

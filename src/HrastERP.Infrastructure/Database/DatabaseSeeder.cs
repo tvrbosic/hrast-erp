@@ -9,7 +9,7 @@ namespace HrastERP.Infrastructure.Database;
 /// <summary>
 /// Runs the SQL seed scripts at startup, after migrations: <c>Seeds/Reference</c> always,
 /// <c>Seeds/Fixtures</c> only in Development. Each script runs once per database; applied scripts are
-/// recorded in the <c>seed_history</c> table.
+/// recorded in the <c>infrastructure.seed_history</c> table.
 /// </summary>
 internal sealed class DatabaseSeeder
 {
@@ -50,7 +50,8 @@ internal sealed class DatabaseSeeder
     {
         await using var cmd = connection.CreateCommand();
         cmd.CommandText = """
-            CREATE TABLE IF NOT EXISTS seed_history (
+            CREATE SCHEMA IF NOT EXISTS infrastructure;
+            CREATE TABLE IF NOT EXISTS infrastructure.seed_history (
                 script_name TEXT PRIMARY KEY,
                 applied_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
             );
@@ -105,7 +106,7 @@ internal sealed class DatabaseSeeder
     private static async Task<bool> IsAppliedAsync(NpgsqlConnection connection, string scriptName, CancellationToken cancellationToken)
     {
         await using var cmd = connection.CreateCommand();
-        cmd.CommandText = "SELECT COUNT(1) FROM seed_history WHERE script_name = $1";
+        cmd.CommandText = "SELECT COUNT(1) FROM infrastructure.seed_history WHERE script_name = $1";
         cmd.Parameters.AddWithValue(scriptName);
         var count = (long)(await cmd.ExecuteScalarAsync(cancellationToken))!;
         return count > 0;
@@ -114,7 +115,7 @@ internal sealed class DatabaseSeeder
     private static async Task RecordHistoryAsync(NpgsqlConnection connection, string scriptName, CancellationToken cancellationToken)
     {
         await using var cmd = connection.CreateCommand();
-        cmd.CommandText = "INSERT INTO seed_history (script_name) VALUES ($1)";
+        cmd.CommandText = "INSERT INTO infrastructure.seed_history (script_name) VALUES ($1)";
         cmd.Parameters.AddWithValue(scriptName);
         await cmd.ExecuteNonQueryAsync(cancellationToken);
     }

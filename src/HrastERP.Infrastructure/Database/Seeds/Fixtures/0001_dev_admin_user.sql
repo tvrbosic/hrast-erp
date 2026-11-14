@@ -2,7 +2,7 @@
 -- Idempotent: ON CONFLICT (id) DO NOTHING
 -- WARNING: for development use only — do NOT run in production
 
-INSERT INTO asp_net_users (
+INSERT INTO administration.users (
     id,
     user_name,
     normalized_user_name,

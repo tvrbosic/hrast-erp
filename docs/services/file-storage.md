@@ -1,6 +1,6 @@
 # File Storage
 
-Local file storage with tenant-isolated directory structure. Files are stored on disk and tracked in the `stored_files` database table.
+Local file storage with tenant-isolated directory structure. Files are stored on disk and tracked in the `infrastructure.stored_files` database table.
 
 ## Configuration
 

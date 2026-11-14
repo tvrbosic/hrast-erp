@@ -1,5 +1,6 @@
 using HrastERP.Administration.Domain.Entities;
 using HrastERP.Infrastructure.Authentication;
+using HrastERP.Infrastructure.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -9,7 +10,7 @@ internal sealed class TenantConfiguration : IEntityTypeConfiguration<Tenant>
 {
     public void Configure(EntityTypeBuilder<Tenant> builder)
     {
-        builder.ToTable("tenants", "administration");
+        builder.ToTable("tenants", DatabaseSchemas.Administration);
         builder.HasKey(t => t.Id);
         builder.Property(t => t.Id).ValueGeneratedNever();
 

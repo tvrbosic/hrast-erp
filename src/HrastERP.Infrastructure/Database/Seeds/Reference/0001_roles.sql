@@ -1,7 +1,7 @@
 -- Reference seed: predefined RBAC roles
 -- Idempotent: ON CONFLICT (id) DO NOTHING
 
-INSERT INTO roles (id, name, normalized_name, description, permissions)
+INSERT INTO administration.roles (id, name, normalized_name, description, permissions)
 VALUES
     ('00000000-0000-0000-0000-000000000001', 'Administrator',        'ADMINISTRATOR',        'Full access to all modules',                    1048575),
     ('00000000-0000-0000-0000-000000000002', 'ProcurementOperator',  'PROCUREMENTOPERATOR',  'Access to procurement module operations',       61696),

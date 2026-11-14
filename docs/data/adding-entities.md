@@ -46,14 +46,23 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
 {
     public void Configure(EntityTypeBuilder<Product> builder)
     {
-        builder.ToTable("products", "inventory");
+        builder.ToTable("products", DatabaseSchemas.Inventory);
         builder.HasKey(p => p.Id);
         builder.Property(p => p.Name).IsRequired().HasMaxLength(200);
     }
 }
 ```
 
-Always call `ToTable("<plural_snake>", "<module>")` — the table name must be plural snake_case and the schema is the module name (shared infrastructure tables use `public`). The snake_case naming convention converts column, key and index names automatically, so never use `HasColumnName` or `HasDatabaseName` just to fix casing.
+Always call `ToTable("<plural_snake>", "<module>")` — the table name must be plural snake_case and the schema is the module name.
+
+**Schema rule: a table's schema is the module whose business data it holds**, not the project that happens to contain its entity class:
+
+- Module data → that module's schema (`inventory`, `finance`, …). This includes data whose entity class has to live in `HrastERP.Infrastructure` for technical reasons: users (`users`, and Identity's `user_claims`, `user_logins`, `user_tokens`), `roles` and `refresh_tokens` are needed by auth, JWT issuing, permission checks and tenant query filters, and Infrastructure cannot reference a module, so their classes live in Infrastructure while their tables sit in `administration`.
+- Technical tables no module owns → `infrastructure` (`audit_logs`, `stored_files`, `seed_history`, `ef_migrations_history`).
+- Hangfire's tables → `hangfire` (configured explicitly; Hangfire creates and migrates them itself).
+- Nothing lives in `public`.
+
+Every configuration names its schema with a `DatabaseSchemas` constant (`HrastERP.Infrastructure.Database`), never a string literal: one per module (`Administration`, `Finance`, `Inventory`, `Procurement`, `Production`) plus `Infrastructure` and `Hangfire`. Living in Infrastructure, they are usable from both modules and Infrastructure without Infrastructure referencing a module. `DatabaseNamingConventionTests` guards the rule: it fails when an entity has no schema, a module entity isn't in its module's schema, or an Infrastructure entity isn't in `infrastructure` without being listed in its `ModuleOwnedInfrastructureEntities` map. The snake_case naming convention converts column, key and index names automatically, so never use `HasColumnName` or `HasDatabaseName` just to fix casing.
 
 **No further registration is needed.** When the module's `Add<Module>Module()` is called at startup, it registers the module assembly as an `EntityConfigurationAssembly` singleton in DI. On first use, `HrastDbContext.OnModelCreating` calls `ApplyConfigurationsFromAssembly` for every registered module assembly, which picks up all `IEntityTypeConfiguration<T>` implementations automatically.
 

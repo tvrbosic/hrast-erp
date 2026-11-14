@@ -1,12 +1,17 @@
+using System.Reflection;
 using System.Text.RegularExpressions;
 using FluentAssertions;
 using HrastERP.Administration;
 using HrastERP.Administration.Domain.Entities;
+using HrastERP.Finance;
 using HrastERP.Infrastructure.Authentication;
 using HrastERP.Infrastructure.Authorization;
 using HrastERP.Infrastructure.Database;
 using HrastERP.Infrastructure.Database.Audit;
 using HrastERP.Infrastructure.FileStorage;
+using HrastERP.Inventory;
+using HrastERP.Procurement;
+using HrastERP.Production;
 using HrastERP.SharedKernel.Abstractions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -20,25 +25,50 @@ public class DatabaseNamingConventionTests
 {
     private static readonly Regex SnakeCase = new("^[a-z][a-z0-9_]*$");
 
+    // Every module assembly, so entities added to any module are covered by the schema guard
+    private static readonly Assembly[] ModuleAssemblies =
+    [
+        typeof(AdministrationModule).Assembly,
+        typeof(FinanceModule).Assembly,
+        typeof(InventoryModule).Assembly,
+        typeof(ProcurementModule).Assembly,
+        typeof(ProductionModule).Assembly,
+    ];
+
+    // Entities configured outside a module (Infrastructure or Identity) whose data belongs to a module.
+    // Anything else not defined in a module assembly must live in the infrastructure schema.
+    private static readonly Dictionary<Type, string> ModuleOwnedInfrastructureEntities = new()
+    {
+        [typeof(ApplicationUser)] = DatabaseSchemas.Administration,
+        [typeof(IdentityUserClaim<Guid>)] = DatabaseSchemas.Administration,
+        [typeof(IdentityUserLogin<Guid>)] = DatabaseSchemas.Administration,
+        [typeof(IdentityUserToken<Guid>)] = DatabaseSchemas.Administration,
+        [typeof(Role)] = DatabaseSchemas.Administration,
+        [typeof(RefreshToken)] = DatabaseSchemas.Administration,
+    };
+
     private static IModel BuildModel()
     {
         var options = new DbContextOptionsBuilder<HrastDbContext>().UseNpgsql("Host=unused").Options;
         var tenant = Substitute.For<ICurrentTenant>();
         using var context = new HrastDbContext(
             options,
-            [new EntityConfigurationAssembly(typeof(AdministrationModule).Assembly)],
+            ModuleAssemblies.Select(a => new EntityConfigurationAssembly(a)),
             tenant);
         return context.GetService<IDesignTimeModel>().Model;
     }
 
     [Theory]
     [InlineData(typeof(Tenant), "administration", "tenants")]
-    [InlineData(typeof(RefreshToken), null, "refresh_tokens")]
-    [InlineData(typeof(Role), null, "roles")]
-    [InlineData(typeof(AuditLogEntry), null, "audit_logs")]
-    [InlineData(typeof(StoredFile), null, "stored_files")]
-    [InlineData(typeof(ApplicationUser), null, "asp_net_users")]
-    public void Maps_entity_to_plural_snake_case_table_When_model_is_built(Type clrType, string? schema, string table)
+    [InlineData(typeof(RefreshToken), "administration", "refresh_tokens")]
+    [InlineData(typeof(Role), "administration", "roles")]
+    [InlineData(typeof(ApplicationUser), "administration", "users")]
+    [InlineData(typeof(IdentityUserClaim<Guid>), "administration", "user_claims")]
+    [InlineData(typeof(IdentityUserLogin<Guid>), "administration", "user_logins")]
+    [InlineData(typeof(IdentityUserToken<Guid>), "administration", "user_tokens")]
+    [InlineData(typeof(AuditLogEntry), "infrastructure", "audit_logs")]
+    [InlineData(typeof(StoredFile), "infrastructure", "stored_files")]
+    public void Maps_entity_to_plural_snake_case_table_When_model_is_built(Type clrType, string schema, string table)
     {
         var entityType = BuildModel().FindEntityType(clrType)!;
 
@@ -79,12 +109,28 @@ public class DatabaseNamingConventionTests
     }
 
     [Fact]
-    public void Maps_identity_helper_tables_to_snake_case_When_model_is_built()
+    public void Places_every_table_in_the_schema_of_the_module_owning_its_data_When_model_is_built()
     {
-        var model = BuildModel();
+        var violations = new List<string>();
 
-        model.FindEntityType(typeof(IdentityUserClaim<Guid>))!.GetTableName().Should().Be("asp_net_user_claims");
-        model.FindEntityType(typeof(IdentityUserLogin<Guid>))!.GetTableName().Should().Be("asp_net_user_logins");
-        model.FindEntityType(typeof(IdentityUserToken<Guid>))!.GetTableName().Should().Be("asp_net_user_tokens");
+        foreach (var entityType in BuildModel().GetEntityTypes())
+        {
+            // Owned types share their owner's table, which is checked through the owner
+            if (entityType.IsOwned())
+                continue;
+
+            // Module entities use the module's schema ("HrastERP.Administration" -> "administration");
+            // everything else uses infrastructure unless its data belongs to a module
+            var clrType = entityType.ClrType;
+            var expected = ModuleAssemblies.Contains(clrType.Assembly)
+                ? clrType.Assembly.GetName().Name!.Split('.')[^1].ToLowerInvariant()
+                : ModuleOwnedInfrastructureEntities.GetValueOrDefault(clrType, DatabaseSchemas.Infrastructure);
+
+            var schema = entityType.GetSchema();
+            if (schema != expected)
+                violations.Add($"{clrType.Name}: expected schema '{expected}', got '{schema ?? "<none>"}'");
+        }
+
+        violations.Should().BeEmpty();
     }
 }

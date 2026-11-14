@@ -36,7 +36,10 @@ internal static class DatabaseServiceExtensions
         services.AddDbContext<HrastDbContext>((sp, options) =>
         {
             var settings = sp.GetRequiredService<IOptions<DatabaseSettings>>().Value;
-            options.UseNpgsql(settings.ConnectionString);
+            // The migrations history is a technical table, so it lives in the infrastructure schema
+            options.UseNpgsql(
+                settings.ConnectionString,
+                npgsql => npgsql.MigrationsHistoryTable("ef_migrations_history", DatabaseSchemas.Infrastructure));
             options.AddInterceptors(
                 sp.GetRequiredService<AuditableEntityInterceptor>(),
                 sp.GetRequiredService<SoftDeleteInterceptor>(),

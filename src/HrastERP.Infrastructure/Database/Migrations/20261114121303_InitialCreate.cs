@@ -13,10 +13,14 @@ namespace HrastERP.Infrastructure.Database.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.EnsureSchema(
+                name: "infrastructure");
+
+            migrationBuilder.EnsureSchema(
                 name: "administration");
 
             migrationBuilder.CreateTable(
                 name: "audit_logs",
+                schema: "infrastructure",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -36,6 +40,7 @@ namespace HrastERP.Infrastructure.Database.Migrations
 
             migrationBuilder.CreateTable(
                 name: "roles",
+                schema: "administration",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -51,6 +56,7 @@ namespace HrastERP.Infrastructure.Database.Migrations
 
             migrationBuilder.CreateTable(
                 name: "stored_files",
+                schema: "infrastructure",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -92,7 +98,8 @@ namespace HrastERP.Infrastructure.Database.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "asp_net_users",
+                name: "users",
+                schema: "administration",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -101,6 +108,12 @@ namespace HrastERP.Infrastructure.Database.Migrations
                     last_name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
                     is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
                     role_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "now()"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: false, defaultValue: new Guid("00000000-0000-0000-0000-000000000000")),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true),
                     user_name = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
                     normalized_user_name = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
                     email = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
@@ -118,15 +131,16 @@ namespace HrastERP.Infrastructure.Database.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("pk_asp_net_users", x => x.id);
+                    table.PrimaryKey("pk_users", x => x.id);
                     table.ForeignKey(
-                        name: "fk_asp_net_users_role_role_id",
+                        name: "fk_users_role_role_id",
                         column: x => x.role_id,
+                        principalSchema: "administration",
                         principalTable: "roles",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "fk_asp_net_users_tenants_tenant_id",
+                        name: "fk_users_tenants_tenant_id",
                         column: x => x.tenant_id,
                         principalSchema: "administration",
                         principalTable: "tenants",
@@ -135,68 +149,8 @@ namespace HrastERP.Infrastructure.Database.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "asp_net_user_claims",
-                columns: table => new
-                {
-                    id = table.Column<int>(type: "integer", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    claim_type = table.Column<string>(type: "text", nullable: true),
-                    claim_value = table.Column<string>(type: "text", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_asp_net_user_claims", x => x.id);
-                    table.ForeignKey(
-                        name: "fk_asp_net_user_claims_asp_net_users_user_id",
-                        column: x => x.user_id,
-                        principalTable: "asp_net_users",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "asp_net_user_logins",
-                columns: table => new
-                {
-                    login_provider = table.Column<string>(type: "text", nullable: false),
-                    provider_key = table.Column<string>(type: "text", nullable: false),
-                    provider_display_name = table.Column<string>(type: "text", nullable: true),
-                    user_id = table.Column<Guid>(type: "uuid", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_asp_net_user_logins", x => new { x.login_provider, x.provider_key });
-                    table.ForeignKey(
-                        name: "fk_asp_net_user_logins_asp_net_users_user_id",
-                        column: x => x.user_id,
-                        principalTable: "asp_net_users",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "asp_net_user_tokens",
-                columns: table => new
-                {
-                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    login_provider = table.Column<string>(type: "text", nullable: false),
-                    name = table.Column<string>(type: "text", nullable: false),
-                    value = table.Column<string>(type: "text", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_asp_net_user_tokens", x => new { x.user_id, x.login_provider, x.name });
-                    table.ForeignKey(
-                        name: "fk_asp_net_user_tokens_asp_net_users_user_id",
-                        column: x => x.user_id,
-                        principalTable: "asp_net_users",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "refresh_tokens",
+                schema: "administration",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -212,89 +166,135 @@ namespace HrastERP.Infrastructure.Database.Migrations
                 {
                     table.PrimaryKey("pk_refresh_tokens", x => x.id);
                     table.ForeignKey(
-                        name: "fk_refresh_tokens_asp_net_users_user_id",
+                        name: "fk_refresh_tokens_users_user_id",
                         column: x => x.user_id,
-                        principalTable: "asp_net_users",
+                        principalSchema: "administration",
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "user_claims",
+                schema: "administration",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    claim_type = table.Column<string>(type: "text", nullable: true),
+                    claim_value = table.Column<string>(type: "text", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_user_claims", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_user_claims_users_user_id",
+                        column: x => x.user_id,
+                        principalSchema: "administration",
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "user_logins",
+                schema: "administration",
+                columns: table => new
+                {
+                    login_provider = table.Column<string>(type: "text", nullable: false),
+                    provider_key = table.Column<string>(type: "text", nullable: false),
+                    provider_display_name = table.Column<string>(type: "text", nullable: true),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_user_logins", x => new { x.login_provider, x.provider_key });
+                    table.ForeignKey(
+                        name: "fk_user_logins_users_user_id",
+                        column: x => x.user_id,
+                        principalSchema: "administration",
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "user_tokens",
+                schema: "administration",
+                columns: table => new
+                {
+                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    login_provider = table.Column<string>(type: "text", nullable: false),
+                    name = table.Column<string>(type: "text", nullable: false),
+                    value = table.Column<string>(type: "text", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_user_tokens", x => new { x.user_id, x.login_provider, x.name });
+                    table.ForeignKey(
+                        name: "fk_user_tokens_users_user_id",
+                        column: x => x.user_id,
+                        principalSchema: "administration",
+                        principalTable: "users",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateIndex(
-                name: "ix_asp_net_user_claims_user_id",
-                table: "asp_net_user_claims",
-                column: "user_id");
-
-            migrationBuilder.CreateIndex(
-                name: "ix_asp_net_user_logins_user_id",
-                table: "asp_net_user_logins",
-                column: "user_id");
-
-            migrationBuilder.CreateIndex(
-                name: "ix_asp_net_users_normalized_email",
-                table: "asp_net_users",
-                column: "normalized_email");
-
-            migrationBuilder.CreateIndex(
-                name: "ix_asp_net_users_normalized_user_name",
-                table: "asp_net_users",
-                column: "normalized_user_name",
-                unique: true);
-
-            migrationBuilder.CreateIndex(
-                name: "ix_asp_net_users_role_id",
-                table: "asp_net_users",
-                column: "role_id");
-
-            migrationBuilder.CreateIndex(
-                name: "ix_asp_net_users_tenant_id",
-                table: "asp_net_users",
-                column: "tenant_id");
-
-            migrationBuilder.CreateIndex(
                 name: "ix_audit_logs_entity_name_entity_id",
+                schema: "infrastructure",
                 table: "audit_logs",
                 columns: new[] { "entity_name", "entity_id" });
 
             migrationBuilder.CreateIndex(
                 name: "ix_audit_logs_timestamp",
+                schema: "infrastructure",
                 table: "audit_logs",
                 column: "timestamp");
 
             migrationBuilder.CreateIndex(
                 name: "ix_audit_logs_user_id",
+                schema: "infrastructure",
                 table: "audit_logs",
                 column: "user_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_refresh_tokens_tenant_id",
+                schema: "administration",
                 table: "refresh_tokens",
                 column: "tenant_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_refresh_tokens_token",
+                schema: "administration",
                 table: "refresh_tokens",
                 column: "token",
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "ix_refresh_tokens_user_id",
+                schema: "administration",
                 table: "refresh_tokens",
                 column: "user_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_roles_normalized_name",
+                schema: "administration",
                 table: "roles",
                 column: "normalized_name",
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "ix_stored_files_storage_path",
+                schema: "infrastructure",
                 table: "stored_files",
                 column: "storage_path",
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "ix_stored_files_tenant_id",
+                schema: "infrastructure",
                 table: "stored_files",
                 column: "tenant_id");
 
@@ -304,34 +304,79 @@ namespace HrastERP.Infrastructure.Database.Migrations
                 table: "tenants",
                 column: "name",
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_user_claims_user_id",
+                schema: "administration",
+                table: "user_claims",
+                column: "user_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_user_logins_user_id",
+                schema: "administration",
+                table: "user_logins",
+                column: "user_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_users_normalized_email",
+                schema: "administration",
+                table: "users",
+                column: "normalized_email");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_users_normalized_user_name",
+                schema: "administration",
+                table: "users",
+                column: "normalized_user_name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_users_role_id",
+                schema: "administration",
+                table: "users",
+                column: "role_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_users_tenant_id",
+                schema: "administration",
+                table: "users",
+                column: "tenant_id");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "asp_net_user_claims");
+                name: "audit_logs",
+                schema: "infrastructure");
 
             migrationBuilder.DropTable(
-                name: "asp_net_user_logins");
+                name: "refresh_tokens",
+                schema: "administration");
 
             migrationBuilder.DropTable(
-                name: "asp_net_user_tokens");
+                name: "stored_files",
+                schema: "infrastructure");
 
             migrationBuilder.DropTable(
-                name: "audit_logs");
+                name: "user_claims",
+                schema: "administration");
 
             migrationBuilder.DropTable(
-                name: "refresh_tokens");
+                name: "user_logins",
+                schema: "administration");
 
             migrationBuilder.DropTable(
-                name: "stored_files");
+                name: "user_tokens",
+                schema: "administration");
 
             migrationBuilder.DropTable(
-                name: "asp_net_users");
+                name: "users",
+                schema: "administration");
 
             migrationBuilder.DropTable(
-                name: "roles");
+                name: "roles",
+                schema: "administration");
 
             migrationBuilder.DropTable(
                 name: "tenants",

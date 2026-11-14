@@ -97,7 +97,7 @@ public class SoftDeleteCleanupJobIntegrationTests : IClassFixture<PostgresContai
         _context.Set<StoredFile>().Add(new StoredFile(fileId, "a.pdf", "application/pdf", 1, "x/a.pdf"));
         await _context.SaveChangesAsync();
         await _context.Database.ExecuteSqlRawAsync(
-            "UPDATE stored_files SET tenant_id = {0}, deleted_at = {1} WHERE id = {2}",
+            "UPDATE infrastructure.stored_files SET tenant_id = {0}, deleted_at = {1} WHERE id = {2}",
             tenantId, DateTime.UtcNow - TimeSpan.FromDays(91), fileId);
 
         await RunJobAsync();
@@ -152,7 +152,7 @@ public class SoftDeleteCleanupJobIntegrationTests : IClassFixture<PostgresContai
         await _context.SaveChangesAsync();
 
         await _context.Database.ExecuteSqlRawAsync(
-            "UPDATE asp_net_users SET deleted_at = {0} WHERE id = {1}",
+            "UPDATE administration.users SET deleted_at = {0} WHERE id = {1}",
             DateTime.UtcNow - age, userId);
         return (userId, tenantId);
     }

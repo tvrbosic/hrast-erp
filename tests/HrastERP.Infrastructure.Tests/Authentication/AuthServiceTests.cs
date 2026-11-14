@@ -173,7 +173,7 @@ public class AuthServiceTests : IClassFixture<PostgresContainerFixture>, IAsyncL
         var user = await SeedUserAsync();
         // Soft-delete only; is_active stays true so the DeletedAt check alone must reject the login
         await _dbContext.Database.ExecuteSqlAsync(
-            $"UPDATE asp_net_users SET deleted_at = now() WHERE id = {user.Id}");
+            $"UPDATE administration.users SET deleted_at = now() WHERE id = {user.Id}");
         // Raw SQL bypasses the change tracker, which would otherwise return the stale active user
         _dbContext.ChangeTracker.Clear();
 
@@ -240,7 +240,7 @@ public class AuthServiceTests : IClassFixture<PostgresContainerFixture>, IAsyncL
         var (rawToken, hashedToken) = _tokenService.GenerateRefreshToken();
         await SeedRefreshTokenAsync(user.Id, hashedToken);
         await _dbContext.Database.ExecuteSqlAsync(
-            $"UPDATE asp_net_users SET deleted_at = now() WHERE id = {user.Id}");
+            $"UPDATE administration.users SET deleted_at = now() WHERE id = {user.Id}");
         _dbContext.ChangeTracker.Clear();
 
         var result = await _sut.RefreshAsync(rawToken);

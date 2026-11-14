@@ -36,6 +36,10 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\HrastERP.Infrastructure\HrastERP.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\Modules\Administration\HrastERP.Administration\HrastERP.Administration.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Finance\HrastERP.Finance\HrastERP.Finance.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Inventory\HrastERP.Inventory\HrastERP.Inventory.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Procurement\HrastERP.Procurement\HrastERP.Procurement.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Production\HrastERP.Production\HrastERP.Production.csproj" />
   </ItemGroup>
 
 </Project>

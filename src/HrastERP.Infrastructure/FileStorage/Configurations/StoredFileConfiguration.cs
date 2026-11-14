@@ -1,3 +1,4 @@
+using HrastERP.Infrastructure.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -7,7 +8,7 @@ internal sealed class StoredFileConfiguration : IEntityTypeConfiguration<StoredF
 {
     public void Configure(EntityTypeBuilder<StoredFile> builder)
     {
-        builder.ToTable("stored_files");
+        builder.ToTable("stored_files", DatabaseSchemas.Infrastructure);
 
         builder.HasKey(e => e.Id);
         builder.Property(e => e.Id).ValueGeneratedNever();

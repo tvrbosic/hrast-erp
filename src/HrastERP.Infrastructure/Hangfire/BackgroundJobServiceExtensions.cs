@@ -27,7 +27,8 @@ internal static class BackgroundJobServiceExtensions
         {
             var dbSettings = sp.GetRequiredService<IOptions<DatabaseSettings>>().Value;
             config.UsePostgreSqlStorage(options =>
-                options.UseNpgsqlConnection(dbSettings.ConnectionString));
+                options.UseNpgsqlConnection(dbSettings.ConnectionString),
+                new PostgreSqlStorageOptions { SchemaName = DatabaseSchemas.Hangfire });
         });
 
         services.AddHangfireServer((sp, options) =>
