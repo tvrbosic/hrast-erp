@@ -21,28 +21,33 @@ Application/
         CreateOrderCommand.cs
         CreateOrderCommandHandler.cs
         CreateOrderCommandValidator.cs    # optional
+    Queries/
+      GetOrderById/
+        GetOrderByIdQuery.cs
+        GetOrderByIdQueryHandler.cs
+    Models/
+      OrderResponse.cs                    # what queries return; also the API contract
 ```
+
+Commands and queries are `public sealed record`s (the controller binds or creates them); handlers and validators are `internal sealed`. Handlers inject `HrastDbContext` and use `Set<T>()` — the context declares no `DbSet` properties. Type naming rules: `docs/architecture/type-naming.md`.
 
 ```csharp
 // CreateOrderCommand.cs
-public record CreateOrderCommand(Guid CustomerId, int Quantity) : IRequest<Result<Guid>>;
+public sealed record CreateOrderCommand(Guid CustomerId, int Quantity) : IRequest<Result<Guid>>;
 
 // CreateOrderCommandHandler.cs
-public sealed class CreateOrderCommandHandler : IRequestHandler<CreateOrderCommand, Result<Guid>>
+internal sealed class CreateOrderCommandHandler(HrastDbContext dbContext)
+    : IRequestHandler<CreateOrderCommand, Result<Guid>>
 {
-    private readonly HrastDbContext _db;
-
-    public CreateOrderCommandHandler(HrastDbContext db) => _db = db;
-
     public async Task<Result<Guid>> Handle(CreateOrderCommand command, CancellationToken ct)
     {
-        var customer = await _db.Customers.FindAsync([command.CustomerId], ct);
-        if (customer is null)
+        var customerExists = await dbContext.Set<Customer>().AnyAsync(c => c.Id == command.CustomerId, ct);
+        if (!customerExists)
             return OrderErrors.CustomerNotFound;  // implicit conversion to Result<Guid>.Failure
 
         var order = Order.Create(Guid.NewGuid(), command.CustomerId, command.Quantity);
-        _db.Orders.Add(order);
-        await _db.SaveChangesAsync(ct);
+        dbContext.Set<Order>().Add(order);
+        await dbContext.SaveChangesAsync(ct);
 
         return order.Id;  // implicit conversion to Result<Guid>.Success
     }
@@ -54,25 +59,30 @@ public sealed class CreateOrderCommandHandler : IRequestHandler<CreateOrderComma
 ## Query Structure
 
 ```csharp
-public record GetOrderQuery(Guid Id) : IRequest<Result<OrderDto>>;
+// Models/OrderResponse.cs — always in Application/<Feature>/Models/, even if only one query uses it
+public sealed record OrderResponse(Guid Id, int Quantity);
 
-public sealed class GetOrderQueryHandler : IRequestHandler<GetOrderQuery, Result<OrderDto>>
+// GetOrderByIdQuery.cs
+public sealed record GetOrderByIdQuery(Guid Id) : IRequest<Result<OrderResponse>>;
+
+// GetOrderByIdQueryHandler.cs
+internal sealed class GetOrderByIdQueryHandler(HrastDbContext dbContext)
+    : IRequestHandler<GetOrderByIdQuery, Result<OrderResponse>>
 {
-    public async Task<Result<OrderDto>> Handle(GetOrderQuery query, CancellationToken ct)
+    public async Task<Result<OrderResponse>> Handle(GetOrderByIdQuery query, CancellationToken ct)
     {
-        var order = await _db.Orders
+        var order = await dbContext.Set<Order>()
             .AsNoTracking()
-            .FirstOrDefaultAsync(o => o.Id == query.Id, ct);
+            .Where(o => o.Id == query.Id)
+            .Select(o => new OrderResponse(o.Id, o.Quantity))
+            .FirstOrDefaultAsync(ct);
 
-        if (order is null)
-            return OrderErrors.NotFound;
-
-        return new OrderDto(order.Id, order.Quantity);
+        return order is not null ? order : OrderErrors.NotFound;
     }
 }
 ```
 
-Use `AsNoTracking()` for read-only queries.
+Use `AsNoTracking()` for read-only queries and project straight into the `*Response`. Never name a type `*Dto`.
 
 ---
 
@@ -81,7 +91,7 @@ Use `AsNoTracking()` for read-only queries.
 Place next to the command. Auto-discovered via `AddValidatorsFromAssembly(assembly, includeInternalTypes: true)` — no manual registration. Validators are `internal sealed`, so the `includeInternalTypes: true` flag is required (FluentValidation skips internal types by default):
 
 ```csharp
-public sealed class CreateOrderCommandValidator : AbstractValidator<CreateOrderCommand>
+internal sealed class CreateOrderCommandValidator : AbstractValidator<CreateOrderCommand>
 {
     public CreateOrderCommandValidator()
     {
@@ -97,18 +107,22 @@ public sealed class CreateOrderCommandValidator : AbstractValidator<CreateOrderC
 
 ## Controller Wiring
 
-Controllers live in `src/HrastERP.API/Controllers/`, not in the module. Use `ISender` to dispatch and `ToActionResult()` to map:
+Controllers live in `src/HrastERP.API/Controllers/`, not in the module. Use `ISender` to dispatch and `ToActionResult()` to map. Bind the command directly as the body; add a `*Request` (in `HrastERP.API/Requests/`) only when no command exists or the body differs from the command. Every action declares its one success status and its error statuses with `[ProducesResponseType]` (`ResponseTypeDeclarationTests` enforces it):
 
 ```csharp
 [ApiController]
 [Route("api/orders")]
 public class OrdersController(ISender sender) : ControllerBase
 {
-    // Default 200 OK
-    [HttpGet("{id}")]
+    // Result<T> → 200 OK + { "data": T }. {id:guid} is required: ToCreatedResult points at this route.
+    [HttpGet("{id:guid}")]
     [RequirePermission(Permission.FinanceView)]
-    public async Task<IActionResult> Get(Guid id, CancellationToken ct)
-        => (await sender.Send(new GetOrderQuery(id), ct)).ToActionResult();
+    [ProducesResponseType<ApiResponse<OrderResponse>>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
+        => (await sender.Send(new GetOrderByIdQuery(id), ct)).ToActionResult();
 
     // 201 Created + Location header + { "data": id }
     [HttpPost]
@@ -116,18 +130,23 @@ public class OrdersController(ISender sender) : ControllerBase
     [ProducesResponseType<ApiResponse<Guid>>(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status404NotFound)]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status422UnprocessableEntity)]
-    public async Task<IActionResult> Create(CreateOrderRequest request, CancellationToken ct)
+    public async Task<IActionResult> Create(CreateOrderCommand command, CancellationToken ct)
     {
-        var result = await sender.Send(new CreateOrderCommand(request.CustomerId, request.Quantity), ct);
+        var result = await sender.Send(command, ct);
         // The result of a create is the id (Guid) of the newly created order; ToCreatedResult uses
-        // result.Value to build the Location header pointing at Get for that id
-        return result.ToCreatedResult(nameof(Get));
+        // result.Value to build the Location header pointing at GetById for that id
+        return result.ToCreatedResult(nameof(GetById));
     }
 
     // Result (no value) → 204 No Content
-    [HttpDelete("{id}")]
+    [HttpDelete("{id:guid}")]
     [RequirePermission(Permission.FinanceDelete)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
         => (await sender.Send(new DeleteOrderCommand(id), ct)).ToActionResult();
 }
@@ -158,4 +177,7 @@ No extra code needed — these run on every handler:
 | Forgetting `[RequirePermission]` | Add to every endpoint that needs authorization |
 | Branching on `IsSuccess` to pick a success status | Use `ToCreatedResult` (201) or `ToActionResult` (200 / 204) |
 | Missing `[ProducesResponseType]` on an action | Declare its one success status and its error statuses (`ErrorResponse`), see `docs/api/api-responses.md` |
+| Naming a returned type `*Dto` or putting it outside `Models/` | `*Response` in `Application/<Feature>/Models/` |
+| A `*Request` that maps 1:1 onto the command | Bind the command directly |
+| `public` validator or handler | `internal sealed` (validators need `includeInternalTypes: true`, already set) |
 | `return BadRequest()` when route id and body id differ | `return Result.Failure(ApiErrors.RouteIdMismatch).ToActionResult();` (422) |

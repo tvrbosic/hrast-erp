@@ -65,7 +65,7 @@ Contains the Result pattern types used to represent the outcome of an operation 
 Immutable record `Error(string Code, string Message, ErrorType Type)` representing a named, categorized failure reason. The `Code` is a dot-separated string identifying the error (e.g. `"User.NotFound"`, `"Order.AlreadyCancelled"`). The `Type` is an `ErrorType` enum that classifies the error for HTTP response mapping. Provides static factory methods `NotFound`, `Validation`, `Forbidden`, `Conflict`, and `Unexpected` as semantic constructors that set `Type` automatically, and a `None` constant representing the absence of an error. See `docs/api/error-handling.md` for the full error handling strategy.
 
 ### `ErrorType.cs`
-Enum defining the categories of errors: `Validation` (400), `NotFound` (404), `Forbidden` (403), `Conflict` (409), and `Unexpected` (500). Used by `ResultExtensions.ToActionResult()` in the API layer to map errors to HTTP status codes.
+Enum defining the categories of errors: `Validation` (422), `NotFound` (404), `Forbidden` (403), `Conflict` (409), and `Unexpected` (500). Used by `ResultExtensions.ToActionResult()` in the API layer to map errors to HTTP status codes.
 
 ### `Result.cs`
 Two closely related types:
