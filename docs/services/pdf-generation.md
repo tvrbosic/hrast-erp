@@ -35,7 +35,7 @@ Bound to `PdfGenerationSettings` via `ValidateDataAnnotations()` + `ValidateOnSt
 Reports use a **composition pattern** — no base class inheritance:
 
 1. **`ReportBuilder`** (singleton, DI-registered) provides shared layout: `ApplyDefaultPageSettings`, `ApplyHeader`, `ApplyFooter`, and formatting helpers like `FormatCurrency`, `FormatDate`.
-2. **`IReportGenerator<TData>`** is the interface each module implements. It takes typed data and returns `Result<ReportResult>` with the PDF bytes, filename, and content type.
+2. **`IReportGenerator<TData>`** is the interface each module implements. It takes typed data and returns `Result<GeneratedReport>` with the PDF bytes, filename, and content type.
 3. Module generators inject `ReportBuilder` and call its methods for the header/footer chrome, then fill in module-specific content in the page body.
 
 ## Report Layout
@@ -63,7 +63,7 @@ Each module creates an `IReportGenerator<TData>` implementation in its `Infrastr
 public sealed class ProcurementReportGenerator(
     ReportBuilder reportBuilder) : IReportGenerator<ProcurementReportData>
 {
-    public Result<ReportResult> Generate(ProcurementReportData data)
+    public Result<GeneratedReport> Generate(ProcurementReportData data)
     {
         try
         {
@@ -85,7 +85,7 @@ public sealed class ProcurementReportGenerator(
 
             var bytes = document.GeneratePdf();
 
-            return new ReportResult
+            return new GeneratedReport
             {
                 Content = bytes,
                 FileName = $"procurement-report-{DateTime.UtcNow:yyyyMMdd}.pdf",

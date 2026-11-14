@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 
-namespace HrastERP.Infrastructure.Database.Audit;
+namespace HrastERP.Infrastructure.Database;
 
 /// <summary>
 /// Adds one <see cref="AuditLogEntry"/> per created, updated or deleted <see cref="IAuditable"/> entity to

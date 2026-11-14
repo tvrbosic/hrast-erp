@@ -1,9 +1,8 @@
 namespace HrastERP.Infrastructure.FileStorage;
 
-public sealed class FileUploadResult
+public sealed class FileDownload
 {
-    public required Guid FileId { get; init; }
+    public required Stream Stream { get; init; }
     public required string FileName { get; init; }
     public required string ContentType { get; init; }
-    public required long SizeInBytes { get; init; }
 }

@@ -1,7 +1,5 @@
 using Hangfire;
 using Hangfire.PostgreSql;
-using HrastERP.Infrastructure.Hangfire.Jobs;
-using HrastERP.Infrastructure.Hangfire.Services;
 using HrastERP.Infrastructure.Database;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;

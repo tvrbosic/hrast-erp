@@ -1,4 +1,4 @@
-namespace HrastERP.Infrastructure.Database.Audit;
+namespace HrastERP.Infrastructure.Database;
 
 /// <summary>
 /// What happened to the entity in an <see cref="AuditLogEntry"/>. Stored by name, so renaming a member

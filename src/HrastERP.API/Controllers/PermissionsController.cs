@@ -1,4 +1,4 @@
-using HrastERP.Administration.Application.DTOs;
+using HrastERP.Administration.Application.Roles.Models;
 using HrastERP.Administration.Application.Roles.Queries.GetPermissions;
 using HrastERP.API.Authorization;
 using HrastERP.API.Extensions;

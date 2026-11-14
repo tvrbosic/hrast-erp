@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace HrastERP.Infrastructure.Database.Audit;
+namespace HrastERP.Infrastructure.Database;
 
 /// <summary>
 /// Marks properties whose values must never be written to the audit log (e.g. password hashes).

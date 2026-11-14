@@ -1,6 +1,6 @@
-namespace HrastERP.Administration.Application.DTOs;
+namespace HrastERP.Administration.Application.Roles.Models;
 
-public sealed record RoleResponse (
+public sealed record RoleResponse(
     Guid Id,
     string Name,
     string Description,

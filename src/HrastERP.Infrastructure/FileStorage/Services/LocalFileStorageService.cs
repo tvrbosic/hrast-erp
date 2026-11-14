@@ -21,7 +21,7 @@ internal sealed class LocalFileStorageService(
     /// and persists a StoredFile record in the database.
     /// On failure, attempts best-effort cleanup of the partially written file.
     /// </summary>
-    public async Task<Result<FileUploadResult>> UploadAsync(
+    public async Task<Result<StoredFileInfo>> UploadAsync(
         Stream fileStream, string fileName, string contentType,
         CancellationToken ct = default)
     {
@@ -59,7 +59,7 @@ internal sealed class LocalFileStorageService(
             logger.LogInformation("File uploaded: {FileId} ({FileName}, {ContentType}, {SizeInBytes} bytes)",
                 fileId, fileName, contentType, fileStream.Length);
 
-            return new FileUploadResult
+            return new StoredFileInfo
             {
                 FileId = fileId,
                 FileName = fileName,
@@ -84,7 +84,7 @@ internal sealed class LocalFileStorageService(
     /// physical file. Returns FileNotFound if the record or the physical file is missing.
     /// The caller is responsible for disposing the returned stream.
     /// </summary>
-    public async Task<Result<FileDownloadResult>> DownloadAsync(
+    public async Task<Result<FileDownload>> DownloadAsync(
         Guid fileId, CancellationToken ct = default)
     {
         // Load the record; the tenant query filter hides other tenants' files
@@ -106,7 +106,7 @@ internal sealed class LocalFileStorageService(
         // Open a read-only stream; the caller disposes it
         var stream = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read);
 
-        return new FileDownloadResult
+        return new FileDownload
         {
             Stream = stream,
             FileName = storedFile.FileName,

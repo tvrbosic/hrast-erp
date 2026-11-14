@@ -1,10 +1,9 @@
 using HrastERP.Infrastructure.Database;
-using HrastERP.Infrastructure.Hangfire.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace HrastERP.Infrastructure.Hangfire.Jobs;
+namespace HrastERP.Infrastructure.Hangfire;
 
 /// <summary>
 /// Recurring job that deletes expired refresh tokens, and revoked ones once they are older than

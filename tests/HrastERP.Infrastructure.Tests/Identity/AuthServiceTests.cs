@@ -167,7 +167,7 @@ public class AuthServiceTests : IClassFixture<PostgresContainerFixture>, IAsyncL
 
         // Assert: user, tenant and role fields, with permission names in bit order
         result.IsSuccess.Should().BeTrue();
-        result.Value.User.Should().BeEquivalentTo(new AuthenticatedUserResponse(
+        result.Value.User.Should().BeEquivalentTo(new AuthenticatedUser(
             user.Id,
             "test@example.com",
             "Test",

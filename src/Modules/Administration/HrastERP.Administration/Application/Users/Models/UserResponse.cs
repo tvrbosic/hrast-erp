@@ -1,4 +1,4 @@
-namespace HrastERP.Administration.Application.DTOs;
+namespace HrastERP.Administration.Application.Users.Models;
 
 public sealed record UserResponse(
     Guid Id,

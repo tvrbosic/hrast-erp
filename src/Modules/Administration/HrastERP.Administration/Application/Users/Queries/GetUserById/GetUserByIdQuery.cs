@@ -1,4 +1,4 @@
-using HrastERP.Administration.Application.DTOs;
+using HrastERP.Administration.Application.Users.Models;
 using HrastERP.SharedKernel.Results;
 using MediatR;
 

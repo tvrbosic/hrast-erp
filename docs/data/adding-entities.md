@@ -40,10 +40,10 @@ To make an entity **tenant-scoped**, also implement `ITenantEntity` and add a `T
 
 ## 2. Create the EF Core configuration (Infrastructure layer)
 
-Create an `IEntityTypeConfiguration<TEntity>` class in the `Infrastructure/Database/Configurations/` folder of the module project.
+Create an `IEntityTypeConfiguration<TEntity>` class in the `Infrastructure/Configurations/` folder of the module project.
 
 ```csharp
-// src/Modules/Inventory/HrastERP.Inventory/Infrastructure/Database/Configurations/ProductConfiguration.cs
+// src/Modules/Inventory/HrastERP.Inventory/Infrastructure/Configurations/ProductConfiguration.cs
 public class ProductConfiguration : IEntityTypeConfiguration<Product>
 {
     public void Configure(EntityTypeBuilder<Product> builder)

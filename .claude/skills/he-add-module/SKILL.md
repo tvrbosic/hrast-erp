@@ -19,16 +19,16 @@ Create `src/Modules/<Module>/HrastERP.<Module>/` with the standard folder struct
 HrastERP.<Module>/
 ├── Domain/
 │   ├── Entities/
-│   ├── ValueObjects/
-│   ├── Events/
-│   └── Enumerations/
+│   ├── Enumerations/
+│   └── Events/
 ├── Application/
-│   └── <Feature>/
-│       ├── Commands/
-│       └── Queries/
+│   ├── <Feature>/
+│   │   ├── Commands/
+│   │   ├── Queries/
+│   │   └── Models/            # *Response types; created with the feature
+│   └── <Module>Errors.cs
 ├── Infrastructure/
-│   └── Database/
-│       └── Configurations/
+│   └── Configurations/
 └── <Module>Module.cs
 ```
 

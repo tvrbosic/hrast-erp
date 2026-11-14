@@ -1,7 +1,7 @@
 namespace HrastERP.Infrastructure.Identity;
 
-public sealed record AuthResponse(
+public sealed record AuthTokens(
     string AccessToken,
     string RefreshToken,
     DateTime ExpiresAt,
-    AuthenticatedUserResponse User);
+    AuthenticatedUser User);

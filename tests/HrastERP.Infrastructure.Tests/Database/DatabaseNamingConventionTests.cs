@@ -4,7 +4,6 @@ using FluentAssertions;
 using HrastERP.Administration;
 using HrastERP.Finance;
 using HrastERP.Infrastructure.Database;
-using HrastERP.Infrastructure.Database.Audit;
 using HrastERP.Infrastructure.FileStorage;
 using HrastERP.Infrastructure.Identity;
 using HrastERP.Inventory;

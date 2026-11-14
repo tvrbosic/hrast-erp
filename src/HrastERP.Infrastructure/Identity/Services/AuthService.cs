@@ -20,7 +20,7 @@ internal sealed class AuthService(
     /// <summary>
     /// Validates credentials and issues a new access/refresh token pair on success.
     /// </summary>
-    public async Task<Result<AuthResponse>> LoginAsync(
+    public async Task<Result<AuthTokens>> LoginAsync(
         string email, string password, CancellationToken ct = default)
     {
         // Look up user and verify credentials.
@@ -46,7 +46,7 @@ internal sealed class AuthService(
     /// <summary>
     /// Rotates the refresh token: revokes the old token and issues a new access/refresh token pair.
     /// </summary>
-    public async Task<Result<AuthResponse>> RefreshAsync(
+    public async Task<Result<AuthTokens>> RefreshAsync(
         string refreshToken, CancellationToken ct = default)
     {
         // Hash inbound refresh token
@@ -93,7 +93,7 @@ internal sealed class AuthService(
         var user = await GetAuthenticatedUserAsync(
             storedToken.UserId, PermissionsInToken(storedToken.User), ct);
 
-        return new AuthResponse(
+        return new AuthTokens(
             accessToken,
             rawNewToken,
             DateTime.UtcNow.AddMinutes(_settings.AccessTokenExpirationMinutes),
@@ -125,13 +125,13 @@ internal sealed class AuthService(
     /// <summary>
     /// Returns the calling user with the permissions from their access token, not their role's current ones.
     /// </summary>
-    public async Task<Result<AuthenticatedUserResponse>> GetCurrentUserAsync(CancellationToken ct = default)
+    public async Task<Result<AuthenticatedUser>> GetCurrentUserAsync(CancellationToken ct = default)
     {
         var user = await FindAuthenticatedUserAsync(currentUser.UserId, currentUser.EffectivePermissions, ct);
         return user is not null ? user : AuthErrors.UserNotFound;
     }
 
-    private async Task<AuthResponse> GenerateAuthResponseAsync(
+    private async Task<AuthTokens> GenerateAuthResponseAsync(
         ApplicationUser user, CancellationToken ct)
     {
         // Generate token pair
@@ -155,7 +155,7 @@ internal sealed class AuthService(
         // Load the authenticated user with the same permissions that went into the token
         var authenticatedUser = await GetAuthenticatedUserAsync(user.Id, PermissionsInToken(user), ct);
 
-        return new AuthResponse(
+        return new AuthTokens(
             accessToken,
             rawRefreshToken,
             DateTime.UtcNow.AddMinutes(_settings.AccessTokenExpirationMinutes),
@@ -168,7 +168,7 @@ internal sealed class AuthService(
         user.Role?.Permissions ?? Permission.None;
 
     // Called after the tokens are issued, so the user is known to exist; a missing user is a bug.
-    private async Task<AuthenticatedUserResponse> GetAuthenticatedUserAsync(
+    private async Task<AuthenticatedUser> GetAuthenticatedUserAsync(
         Guid userId, Permission permissions, CancellationToken ct) =>
         await FindAuthenticatedUserAsync(userId, permissions, ct)
         ?? throw new InvalidOperationException($"User {userId} was not found after issuing its tokens.");
@@ -177,7 +177,7 @@ internal sealed class AuthService(
     // tenant context, and the id always comes from a trusted source (verified credentials, a stored
     // refresh token or a validated JWT). Permissions are passed in rather than read from the role,
     // so they always equal the ones in the caller's access token.
-    private async Task<AuthenticatedUserResponse?> FindAuthenticatedUserAsync(
+    private async Task<AuthenticatedUser?> FindAuthenticatedUserAsync(
         Guid userId, Permission permissions, CancellationToken ct)
     {
         // Load the user with its role and tenant names in one query
@@ -205,7 +205,7 @@ internal sealed class AuthService(
         // Convert the token's permission bitmask to the names clients use
         return user is null
             ? null
-            : new AuthenticatedUserResponse(
+            : new AuthenticatedUser(
                 user.Id,
                 user.Email!,
                 user.FirstName,

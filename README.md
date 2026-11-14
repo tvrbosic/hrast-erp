@@ -11,7 +11,7 @@ The codebase maps to Clean Architecture at two levels: **shared projects** provi
 
 | Clean Architecture Layer | Shared (project) | Per-module (folder) |
 |---|---|---|
-| **Domain** | `HrastERP.SharedKernel` — base entities, value objects, Result pattern, interfaces | `Domain/` — module-specific entities, value objects, events |
+| **Domain** | `HrastERP.SharedKernel` — base entities, value objects, Result pattern, interfaces | `Domain/` — module-specific entities, enumerations, events |
 | **Application** | — | `Application/` — use cases organized by feature (commands and queries via CQRS) |
 | **Infrastructure** | `HrastERP.Infrastructure` — DbContext, interceptors, Identity, Hangfire, pipeline behaviors | `Infrastructure/` — EF Core configurations |
 | **Presentation** | `HrastERP.API` — composition root, controllers, middleware, authorization | — |
@@ -55,7 +55,7 @@ src/
   Modules/
     <Module>/
       HrastERP.<Module>/                     # Single project per module
-        Domain/                              # Domain layer (entities, value objects, events)
+        Domain/                              # Domain layer (entities, enumerations, events)
         Application/                         # Application layer (features with commands/queries)
         Infrastructure/                      # Infrastructure layer (database configurations)
 tests/

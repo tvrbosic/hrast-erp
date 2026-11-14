@@ -60,10 +60,10 @@ Do **not** implement `ITenantEntity` on: the `Tenant` entity itself, or system-w
 
 ## Step 2 — Create EF Core configuration (Infrastructure layer)
 
-Create `IEntityTypeConfiguration<TEntity>` in `Infrastructure/Database/Configurations/`:
+Create `IEntityTypeConfiguration<TEntity>` in `Infrastructure/Configurations/`:
 
 ```csharp
-// src/Modules/Inventory/HrastERP.Inventory/Infrastructure/Database/Configurations/ProductConfiguration.cs
+// src/Modules/Inventory/HrastERP.Inventory/Infrastructure/Configurations/ProductConfiguration.cs
 public class ProductConfiguration : IEntityTypeConfiguration<Product>
 {
     public void Configure(EntityTypeBuilder<Product> builder)

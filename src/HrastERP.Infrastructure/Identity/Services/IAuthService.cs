@@ -8,18 +8,18 @@ namespace HrastERP.Infrastructure.Identity;
 /// <c>DeletedAt</c> explicitly.
 /// </summary>
 /// <remarks>
-/// Login, refresh and <see cref="GetCurrentUserAsync"/> return the same <see cref="AuthenticatedUserResponse"/>.
+/// Login, refresh and <see cref="GetCurrentUserAsync"/> return the same <see cref="AuthenticatedUser"/>.
 /// Its permissions are always the ones in the access token that goes with it.
 /// </remarks>
 public interface IAuthService
 {
-    Task<Result<AuthResponse>> LoginAsync(string email, string password, CancellationToken ct = default);
+    Task<Result<AuthTokens>> LoginAsync(string email, string password, CancellationToken ct = default);
 
     /// <summary>
     /// Revokes <paramref name="refreshToken"/> and returns a new token pair. For an inactive or deleted
     /// user it returns <c>Auth.InactiveUser</c> and leaves the token unchanged.
     /// </summary>
-    Task<Result<AuthResponse>> RefreshAsync(string refreshToken, CancellationToken ct = default);
+    Task<Result<AuthTokens>> RefreshAsync(string refreshToken, CancellationToken ct = default);
 
     /// <summary>
     /// Revokes <paramref name="refreshToken"/>. Succeeds even when the token is unknown or already revoked.
@@ -31,5 +31,5 @@ public interface IAuthService
     /// they stay the old ones until the next refresh, exactly what the API enforces meanwhile; all other
     /// fields come from the database. Returns <c>Auth.UserNotFound</c> when the user doesn't exist.
     /// </summary>
-    Task<Result<AuthenticatedUserResponse>> GetCurrentUserAsync(CancellationToken ct = default);
+    Task<Result<AuthenticatedUser>> GetCurrentUserAsync(CancellationToken ct = default);
 }

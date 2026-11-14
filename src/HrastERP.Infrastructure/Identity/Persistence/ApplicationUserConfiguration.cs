@@ -1,5 +1,4 @@
 using HrastERP.Infrastructure.Database;
-using HrastERP.Infrastructure.Database.Audit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 

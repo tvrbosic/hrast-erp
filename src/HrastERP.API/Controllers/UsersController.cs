@@ -1,10 +1,10 @@
-using HrastERP.Administration.Application.DTOs;
 using HrastERP.Administration.Application.Users.Commands.ActivateUser;
 using HrastERP.Administration.Application.Users.Commands.ChangePassword;
 using HrastERP.Administration.Application.Users.Commands.CreateUser;
 using HrastERP.Administration.Application.Users.Commands.DeactivateUser;
 using HrastERP.Administration.Application.Users.Commands.DeleteUser;
 using HrastERP.Administration.Application.Users.Commands.UpdateUser;
+using HrastERP.Administration.Application.Users.Models;
 using HrastERP.Administration.Application.Users.Queries.GetUserById;
 using HrastERP.Administration.Application.Users.Queries.GetUsers;
 using HrastERP.API.Authorization;

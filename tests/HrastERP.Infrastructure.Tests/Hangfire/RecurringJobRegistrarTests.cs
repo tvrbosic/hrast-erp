@@ -1,6 +1,6 @@
 using FluentAssertions;
 using Hangfire;
-using HrastERP.Infrastructure.Hangfire.Services;
+using HrastERP.Infrastructure.Hangfire;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 

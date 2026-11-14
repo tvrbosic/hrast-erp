@@ -1,4 +1,4 @@
-namespace HrastERP.Infrastructure.Hangfire.Services;
+namespace HrastERP.Infrastructure.Hangfire;
 
 /// <summary>
 /// A recurring Hangfire job. <c>RecurringJobRegistrar</c> registers every implementation at startup.

@@ -55,9 +55,9 @@ Inject `IFileStorageService` into your handler. All methods return `Result<T>` o
 
 ```csharp
 internal sealed class UploadDocumentHandler(IFileStorageService fileStorage)
-    : IRequestHandler<UploadDocumentCommand, Result<FileUploadResult>>
+    : IRequestHandler<UploadDocumentCommand, Result<StoredFileInfo>>
 {
-    public async Task<Result<FileUploadResult>> Handle(
+    public async Task<Result<StoredFileInfo>> Handle(
         UploadDocumentCommand command, CancellationToken ct)
     {
         return await fileStorage.UploadAsync(
@@ -66,7 +66,7 @@ internal sealed class UploadDocumentHandler(IFileStorageService fileStorage)
 }
 ```
 
-`UploadAsync` validates file size and content type, writes the file to disk, creates a `StoredFile` entity, and returns a `FileUploadResult` with the assigned `FileId`.
+`UploadAsync` validates file size and content type, writes the file to disk, creates a `StoredFile` entity, and returns a `StoredFileInfo` with the assigned `FileId`.
 
 ### Download
 

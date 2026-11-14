@@ -7,12 +7,12 @@ namespace HrastERP.Infrastructure.FileStorage;
 /// </summary>
 public interface IFileStorageService
 {
-    Task<Result<FileUploadResult>> UploadAsync(
+    Task<Result<StoredFileInfo>> UploadAsync(
         Stream fileStream, string fileName, string contentType,
         CancellationToken ct = default);
 
     /// <summary>The caller must dispose the returned stream.</summary>
-    Task<Result<FileDownloadResult>> DownloadAsync(
+    Task<Result<FileDownload>> DownloadAsync(
         Guid fileId, CancellationToken ct = default);
 
     Task<Result> DeleteAsync(Guid fileId, CancellationToken ct = default);

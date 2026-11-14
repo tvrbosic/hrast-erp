@@ -1,6 +1,6 @@
 using System.Linq.Expressions;
 
-namespace HrastERP.Infrastructure.Hangfire.Services;
+namespace HrastERP.Infrastructure.Hangfire;
 
 /// <summary>
 /// Enqueues and schedules Hangfire background jobs. Each enqueue/schedule method returns the Hangfire job ID.

@@ -1,4 +1,4 @@
-using HrastERP.Administration.Application.DTOs;
+using HrastERP.Administration.Application.Roles.Models;
 using HrastERP.Infrastructure.Identity;
 using HrastERP.SharedKernel.Authorization;
 

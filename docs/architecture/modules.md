@@ -12,16 +12,16 @@ The application is a modular monolith — a single deployable unit composed of i
 src/Modules/<Module>/HrastERP.<Module>/
 ├── Domain/
 │   ├── Entities/
-│   ├── ValueObjects/
-│   ├── Events/
-│   └── Enumerations/
+│   ├── Enumerations/
+│   └── Events/
 ├── Application/
-│   └── <Feature>/
-│       ├── Commands/
-│       └── Queries/
+│   ├── <Feature>/
+│   │   ├── Commands/
+│   │   ├── Queries/
+│   │   └── Models/            # *Response types; created with the feature
+│   └── <Module>Errors.cs
 ├── Infrastructure/
-│   └── Database/
-│       └── Configurations/
+│   └── Configurations/
 └── <Module>Module.cs          # DI registration entry point
 ```
 
@@ -131,7 +131,7 @@ builder.Services
     .Add<Module>Module(builder.Configuration);
 ```
 
-**b) Add controllers** — create controller classes in `src/HrastERP.API/Controllers/` for the module's endpoints. Controllers are in the API project (not in the module) to avoid circular dependencies. They reference the module's commands, queries, and DTOs via the API project's reference to the module.
+**b) Add controllers** — create controller classes in `src/HrastERP.API/Controllers/` for the module's endpoints. Controllers are in the API project (not in the module) to avoid circular dependencies. They reference the module's commands, queries, and response models via the API project's reference to the module.
 
 ### 4. Add a project reference from the API
 
@@ -157,7 +157,7 @@ The three `Add*` calls in `<Module>Module.cs` enable automatic discovery of hand
 
 ### EF Core entity configurations
 
-`services.AddSingleton(new EntityConfigurationAssembly(assembly))` registers the module's assembly reference in DI. `HrastDbContext` receives all registered `EntityConfigurationAssembly` instances via constructor injection and calls `ApplyConfigurationsFromAssembly` for each one during `OnModelCreating`. Any `IEntityTypeConfiguration<TEntity>` class placed in the module's `Infrastructure/Database/Configurations/` folder is applied automatically. See `docs/data/adding-entities.md` for details on adding entities.
+`services.AddSingleton(new EntityConfigurationAssembly(assembly))` registers the module's assembly reference in DI. `HrastDbContext` receives all registered `EntityConfigurationAssembly` instances via constructor injection and calls `ApplyConfigurationsFromAssembly` for each one during `OnModelCreating`. Any `IEntityTypeConfiguration<TEntity>` class placed in the module's `Infrastructure/Configurations/` folder is applied automatically. See `docs/data/adding-entities.md` for details on adding entities.
 
 ### Controllers
 

@@ -1,6 +1,6 @@
 using HrastERP.SharedKernel.Domain;
 
-namespace HrastERP.Infrastructure.Database.Audit;
+namespace HrastERP.Infrastructure.Database;
 
 /// <summary>
 /// One row of the append-only <c>audit_logs</c> table, written by <see cref="AuditLogInterceptor"/>

@@ -8,5 +8,5 @@ namespace HrastERP.Infrastructure.PdfGeneration;
 /// </summary>
 public interface IReportGenerator<in TData>
 {
-    Result<ReportResult> Generate(TData data);
+    Result<GeneratedReport> Generate(TData data);
 }

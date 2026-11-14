@@ -1,7 +1,5 @@
 using FluentAssertions;
 using HrastERP.Infrastructure.Hangfire;
-using HrastERP.Infrastructure.Hangfire.Jobs;
-using HrastERP.Infrastructure.Hangfire.Services;
 using HrastERP.Infrastructure.Database;
 using HrastERP.SharedKernel.Abstractions;
 using Microsoft.EntityFrameworkCore;

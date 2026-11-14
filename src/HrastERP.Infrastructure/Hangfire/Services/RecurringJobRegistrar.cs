@@ -3,7 +3,7 @@ using Hangfire;
 using Hangfire.Common;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace HrastERP.Infrastructure.Hangfire.Services;
+namespace HrastERP.Infrastructure.Hangfire;
 
 /// <summary>
 /// Schedules every <see cref="IRecurringJobDefinition"/> with Hangfire. Called from Program.cs after the

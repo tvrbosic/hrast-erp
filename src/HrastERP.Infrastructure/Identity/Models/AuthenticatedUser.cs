@@ -1,6 +1,6 @@
 namespace HrastERP.Infrastructure.Identity;
 
-public sealed record AuthenticatedUserResponse(
+public sealed record AuthenticatedUser(
     Guid Id,
     string Email,
     string FirstName,

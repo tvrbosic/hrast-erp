@@ -12,7 +12,7 @@ namespace HrastERP.API.Controllers;
 public sealed class AuthController(IAuthService authService) : ControllerBase
 {
     [HttpPost("login")]
-    [ProducesResponseType<ApiResponse<AuthResponse>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ApiResponse<AuthTokens>>(StatusCodes.Status200OK)]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status403Forbidden)]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> Login(
@@ -23,7 +23,7 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
     }
 
     [HttpPost("refresh")]
-    [ProducesResponseType<ApiResponse<AuthResponse>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ApiResponse<AuthTokens>>(StatusCodes.Status200OK)]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status403Forbidden)]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> Refresh(
@@ -46,7 +46,7 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
     // Any authenticated user may read their own data, so no [RequirePermission]
     [HttpGet("me")]
     [Authorize]
-    [ProducesResponseType<ApiResponse<AuthenticatedUserResponse>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ApiResponse<AuthenticatedUser>>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status403Forbidden)]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status404NotFound)]

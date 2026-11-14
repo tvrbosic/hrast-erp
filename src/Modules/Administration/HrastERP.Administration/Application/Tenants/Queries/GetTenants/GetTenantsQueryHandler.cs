@@ -1,4 +1,4 @@
-using HrastERP.Administration.Application.DTOs;
+using HrastERP.Administration.Application.Tenants.Models;
 using HrastERP.Infrastructure.Database;
 using HrastERP.Infrastructure.Identity;
 using HrastERP.SharedKernel.Common;

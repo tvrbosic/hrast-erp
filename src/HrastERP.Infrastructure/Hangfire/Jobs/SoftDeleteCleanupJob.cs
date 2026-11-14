@@ -1,12 +1,10 @@
 using HrastERP.Infrastructure.Database;
-using HrastERP.Infrastructure.Database.Audit;
-using HrastERP.Infrastructure.Hangfire.Services;
 using HrastERP.SharedKernel.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace HrastERP.Infrastructure.Hangfire.Jobs;
+namespace HrastERP.Infrastructure.Hangfire;
 
 /// <summary>
 /// Recurring job that permanently deletes soft-deleted rows older than the retention period

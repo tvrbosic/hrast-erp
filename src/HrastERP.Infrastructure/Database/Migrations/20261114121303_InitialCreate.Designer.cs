@@ -313,7 +313,7 @@ namespace HrastERP.Infrastructure.Database.Migrations
                     b.ToTable("roles", "administration");
                 });
 
-            modelBuilder.Entity("HrastERP.Infrastructure.Database.Audit.AuditLogEntry", b =>
+            modelBuilder.Entity("HrastERP.Infrastructure.Database.AuditLogEntry", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid")

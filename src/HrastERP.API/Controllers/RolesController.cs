@@ -1,7 +1,7 @@
-using HrastERP.Administration.Application.DTOs;
 using HrastERP.Administration.Application.Roles.Commands.CreateRole;
 using HrastERP.Administration.Application.Roles.Commands.DeleteRole;
 using HrastERP.Administration.Application.Roles.Commands.UpdateRole;
+using HrastERP.Administration.Application.Roles.Models;
 using HrastERP.Administration.Application.Roles.Queries.GetRoleById;
 using HrastERP.Administration.Application.Roles.Queries.GetRoles;
 using HrastERP.API.Authorization;

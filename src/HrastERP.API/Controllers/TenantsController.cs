@@ -1,9 +1,9 @@
-using HrastERP.Administration.Application.DTOs;
 using HrastERP.Administration.Application.Tenants.Commands.ActivateTenant;
 using HrastERP.Administration.Application.Tenants.Commands.CreateTenant;
 using HrastERP.Administration.Application.Tenants.Commands.DeactivateTenant;
 using HrastERP.Administration.Application.Tenants.Commands.DeleteTenant;
 using HrastERP.Administration.Application.Tenants.Commands.UpdateTenant;
+using HrastERP.Administration.Application.Tenants.Models;
 using HrastERP.Administration.Application.Tenants.Queries.GetTenantById;
 using HrastERP.Administration.Application.Tenants.Queries.GetTenants;
 using HrastERP.API.Authorization;

@@ -54,7 +54,7 @@ When `TokenService.GenerateAccessToken` creates a JWT, it includes:
 5. Generate refresh token pair (raw + SHA-256 hash)
 6. Save the **hashed** refresh token to the database
 7. Load the authenticated user (see below) with the permissions that went into the token
-8. Return `AuthResponse(accessToken, rawRefreshToken, expiresAt, user)`
+8. Return `AuthTokens(accessToken, rawRefreshToken, expiresAt, user)`
 
 ### Refresh (`POST /api/auth/refresh`)
 
@@ -70,7 +70,7 @@ Uses **refresh token rotation** — each use invalidates the old token and issue
 7. Save the new hashed token to the database
 8. Generate a new access token for the user
 9. Load the authenticated user with the permissions that went into the new token
-10. Return new `AuthResponse` with both new tokens and the user
+10. Return new `AuthTokens` with both new tokens and the user
 
 ### Logout (`POST /api/auth/logout`)
 
@@ -85,7 +85,7 @@ Uses **refresh token rotation** — each use invalidates the old token and issue
 
 ### Authenticated user
 
-Login, refresh and `/me` return the same `AuthenticatedUserResponse`, built by one private `AuthService` helper: a single query that joins the user to its tenant (inner) and role (left) with `IgnoreQueryFilters()` — login and refresh have no tenant context, and the user id always comes from a trusted source (verified credentials, a stored refresh token or a validated JWT).
+Login, refresh and `/me` return the same `AuthenticatedUser`, built by one private `AuthService` helper: a single query that joins the user to its tenant (inner) and role (left) with `IgnoreQueryFilters()` — login and refresh have no tenant context, and the user id always comes from a trusted source (verified credentials, a stored refresh token or a validated JWT).
 
 **Permission rule: the authenticated user's `permissions` are always the permissions in the access token that goes with it.** Login and refresh issue a token from the role's current permissions (`user.Role?.Permissions ?? Permission.None`) and pass that same value to the helper. `/me` issues no token and passes the caller's token permissions, so after a role change it shows the old permissions until the next refresh (at most `AccessTokenExpirationMinutes`) — exactly what the API enforces meanwhile. Every other field comes from the database, so in that window `/me` can show a new role name with the old permissions. The UI can therefore trust `permissions` to decide which menus and buttons to show, without decoding the JWT or knowing the `Permission` bit layout.
 
@@ -93,16 +93,16 @@ Login, refresh and `/me` return the same `AuthenticatedUserResponse`, built by o
 
 | Endpoint | Body | Success | Failure |
 |----------|------|---------|---------|
-| `POST /api/auth/login` | `{ email, password }` | `200` + `AuthResponse` | `422` `Auth.InvalidCredentials` (unknown email or wrong password), `403` `Auth.InactiveUser` |
-| `POST /api/auth/refresh` | `{ refreshToken }` | `200` + `AuthResponse` | `422` `Auth.InvalidRefreshToken` (unknown, revoked or expired), `403` `Auth.InactiveUser` |
+| `POST /api/auth/login` | `{ email, password }` | `200` + `AuthTokens` | `422` `Auth.InvalidCredentials` (unknown email or wrong password), `403` `Auth.InactiveUser` |
+| `POST /api/auth/refresh` | `{ refreshToken }` | `200` + `AuthTokens` | `422` `Auth.InvalidRefreshToken` (unknown, revoked or expired), `403` `Auth.InactiveUser` |
 | `POST /api/auth/logout` | `{ refreshToken }` | `204` | none from the service (always succeeds) |
-| `GET /api/auth/me` | — (bearer token) | `200` + `AuthenticatedUserResponse` | `401` no valid token, `403` inactive user or tenant (middleware), `404` `Auth.UserNotFound` |
+| `GET /api/auth/me` | — (bearer token) | `200` + `AuthenticatedUser` | `401` no valid token, `403` inactive user or tenant (middleware), `404` `Auth.UserNotFound` |
 
 A missing or malformed body field fails model binding on login, refresh or logout with `422` `General.Validation`. All failures use the flat `ErrorResponse` shape.
 
-`AuthResponse` shape (inside the `data` envelope): `{ accessToken, refreshToken, expiresAt, user }`.
+`AuthTokens` shape (inside the `data` envelope): `{ accessToken, refreshToken, expiresAt, user }`.
 
-`AuthenticatedUserResponse` shape (`user` above, and the `data` of `/me`):
+`AuthenticatedUser` shape (`user` above, and the `data` of `/me`):
 
 ```json
 {
