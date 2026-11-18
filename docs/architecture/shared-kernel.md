@@ -13,6 +13,8 @@ Nothing in SharedKernel should import from any module. It has no dependency on E
 | `Abstractions/` | Ambient request context | `ICurrentUser`, `ICurrentTenant` — "who is calling?" | Infrastructure service interfaces (email, file storage, jobs) |
 | `Authorization/` | Authorization primitives | `Permission` flags enum, `PermissionMapper` (permission names ↔ bitmask) | Authorization handlers, policy providers |
 | `Common/` | Shared utility types | `PagedResult<T>`, sorting descriptors, date/time wrappers | Domain model types, result types |
+| `Constants/` | Well-known ids shared across modules | `TenantConstants` (super admin tenant id), `RoleConstants` (predefined role ids) | Configuration values, module-specific constants |
+| `Logging/` | Logging markers usable from any layer | `SensitiveDataAttribute` (`[SensitiveData]`, masked by `LoggingBehavior`) | Logging setup, sinks, enrichers (Infrastructure) |
 
 ---
 

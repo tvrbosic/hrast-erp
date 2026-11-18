@@ -78,7 +78,7 @@ var perms = Permission.FinanceView | Permission.FinanceEdit;   // 80
 
 ### Seeded roles decoded
 
-Role permissions are stored as a single `bigint` in the `roles` table (`Reference/0001_roles.sql`). Decoded:
+Role permissions are stored as a single `bigint` in the `administration.roles` table (`Reference/0001_roles.sql`). Decoded:
 
 | Role | Stored value | Hex | Permissions |
 |---|---|---|---|

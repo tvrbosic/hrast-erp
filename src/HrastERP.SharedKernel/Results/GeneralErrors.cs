@@ -32,10 +32,24 @@ public static class GeneralErrors
         Error.Forbidden("General.MissingTenant", "A valid tenant context is required.");
 
     /// <summary>
-    /// The caller's user account or tenant was deactivated or deleted after the token was issued.
+    /// No endpoint matches the URL (404 written by <c>StatusCodeErrorResponse</c>). Not the same as a handler's
+    /// <c>*.NotFound</c>, which means the URL exists but the entity doesn't.
     /// </summary>
-    public static readonly Error InactiveEntity =
-        Error.Forbidden("General.InactiveEntity", "Your account or tenant has been deactivated. Contact your administrator.");
+    public static readonly Error RouteNotFound =
+        Error.NotFound("General.RouteNotFound", "The requested URL does not exist.");
+
+    /// <summary>
+    /// The URL exists but not for this HTTP method (405 written by <c>StatusCodeErrorResponse</c>; the
+    /// <c>Allow</c> header lists the supported methods).
+    /// </summary>
+    public static readonly Error MethodNotAllowed =
+        Error.Validation("General.MethodNotAllowed", "The HTTP method is not allowed for this URL.");
+
+    /// <summary>
+    /// The request body's <c>Content-Type</c> can't be read (415 written by <c>StatusCodeErrorResponse</c>).
+    /// </summary>
+    public static readonly Error UnsupportedMediaType =
+        Error.Validation("General.UnsupportedMediaType", "The request body must be JSON (Content-Type: application/json).");
 
     /// <summary>
     /// An unhandled exception; the details are only logged, never returned.

@@ -49,6 +49,10 @@ Add the `TenantId` column to the entity's `IEntityTypeConfiguration<T>`:
 
 ```csharp
 // src/Modules/Inventory/HrastERP.Inventory/Infrastructure/Configurations/ProductConfiguration.cs
+using HrastERP.Infrastructure.Database; // DatabaseSchemas
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
 public class ProductConfiguration : IEntityTypeConfiguration<Product>
 {
     public void Configure(EntityTypeBuilder<Product> builder)

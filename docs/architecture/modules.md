@@ -27,7 +27,7 @@ src/Modules/<Module>/HrastERP.<Module>/
 
 The API project (`HrastERP.API`) is the **composition root** — it references all modules, wires them together at startup, and **owns all controllers**. Controllers live in `HrastERP.API/Controllers/`, not in module projects. This avoids a circular dependency: modules reference Infrastructure and SharedKernel, while controllers need API-layer types (`ResultExtensions`, `RequirePermissionAttribute`, `ErrorResponse`) that live in the API project. If controllers were in modules, modules would need to reference the API project, creating a cycle (API → Module → API).
 
-Modules never reference each other; cross-module communication uses domain events (MediatR notifications) with contracts defined in `HrastERP.SharedKernel/IntegrationEvents/`.
+Modules never reference each other; cross-module communication uses domain events (MediatR notifications) with contracts defined in `HrastERP.SharedKernel/IntegrationEvents/` (the folder is created with the first integration event).
 
 ---
 
@@ -170,4 +170,4 @@ Controllers live in `HrastERP.API/Controllers/`, not in module projects. They ar
 - **No cross-module references.** Modules must not reference each other's projects. If module A needs to react to something in module B, use domain events via MediatR notifications.
 - **Inward-only dependencies.** Since layers are folders (not projects), the rule is enforced by convention: `Domain` must not import from `Application` or `Infrastructure`. `Application` must not import from `Infrastructure`.
 - **Shared code goes in SharedKernel.** Base classes, interfaces, value objects, and integration event contracts live in `HrastERP.SharedKernel`, which is referenced by all modules.
-- **One DbContext.** All modules share `HrastDbContext`. Entity isolation is achieved through EF Core schema namespacing (e.g. `builder.ToTable("products", DatabaseSchemas.Inventory)`), not separate contexts. Always call `ToTable("<plural_snake>", DatabaseSchemas.<Module>)` (e.g. `administration.tenants`); never use `HasColumnName` to fix casing — the snake_case naming convention handles that. A table's schema is the module whose business data it holds — see [adding-entities.md](../data/adding-entities.md) for the full rule, including tables configured in Infrastructure.
+- **One DbContext.** All modules share `HrastDbContext`. Tables are isolated by schema (e.g. `builder.ToTable("products", DatabaseSchemas.Inventory)`), not by separate contexts. The naming and schema rules are in [adding-entities.md](../data/adding-entities.md).

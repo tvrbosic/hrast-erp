@@ -82,7 +82,7 @@ Clients must not refresh the same token twice in parallel (e.g. two browser tabs
 
 ### Current user (`GET /api/auth/me`)
 
-`[Authorize]` only — any authenticated user can read their own data, so there is no `[RequirePermission]`. `AuthService.GetCurrentUserAsync` loads the user by `ICurrentUser.UserId` and passes `ICurrentUser.EffectivePermissions` (the caller's token) as the permissions. It adds no checks of its own: `BlockInactiveEntityMiddleware` already returns `403` for inactive or deleted users (including super admin tenant users) and inactive tenants. A user that no longer exists gives `404 Auth.UserNotFound`.
+`[Authorize]` only — any authenticated user can read their own data, so there is no `[RequirePermission]`. `AuthService.GetCurrentUserAsync` loads the user by `ICurrentUser.UserId` and passes `ICurrentUser.EffectivePermissions` (the caller's token) as the permissions. It adds no checks of its own: `BlockInactiveEntityMiddleware` already returns `403` `Auth.InactiveUser` for inactive or deleted users (including super admin tenant users) and `403` `Auth.InactiveTenant` for inactive tenants. A user that no longer exists gives `404 Auth.UserNotFound`.
 
 ### Authenticated user
 
@@ -97,7 +97,7 @@ Login, refresh and `/me` return the same `AuthenticatedUser`. Login and refresh 
 | `POST /api/auth/login` | `{ email, password }` | `200` + `AuthTokens` | `401` `Auth.InvalidCredentials` (unknown email, wrong password or locked account), `403` `Auth.InactiveUser`, `403` `Auth.InactiveTenant` |
 | `POST /api/auth/refresh` | `{ refreshToken }` | `200` + `AuthTokens` | `401` `Auth.InvalidRefreshToken` (unknown, revoked or expired), `403` `Auth.InactiveUser`, `403` `Auth.InactiveTenant` |
 | `POST /api/auth/logout` | `{ refreshToken }` | `204` | none from the service (always succeeds) |
-| `GET /api/auth/me` | — (bearer token) | `200` + `AuthenticatedUser` | `401` `General.Unauthorized` (no or invalid token) / `Auth.TokenExpired`, `403` inactive user or tenant (middleware), `404` `Auth.UserNotFound` |
+| `GET /api/auth/me` | — (bearer token) | `200` + `AuthenticatedUser` | `401` `General.Unauthorized` (no or invalid token) / `Auth.TokenExpired`, `403` `Auth.InactiveUser` / `Auth.InactiveTenant` (middleware), `404` `Auth.UserNotFound` |
 
 A missing or malformed body field fails model binding on login, refresh or logout with `422` `General.Validation`. All failures use the flat `ErrorResponse` shape.
 

@@ -107,7 +107,7 @@ internal sealed class CreateOrderCommandValidator : AbstractValidator<CreateOrde
 
 ## Controller Wiring
 
-Controllers live in `src/HrastERP.API/Controllers/`, not in the module. Use `ISender` to dispatch and `ToActionResult()` to map. Bind the command directly as the body; add a `*Request` (in `HrastERP.API/Requests/`) only when no command exists or the body differs from the command. Every action declares its one success status and its error statuses with `[ProducesResponseType]` (`ResponseTypeDeclarationTests` enforces it):
+Controllers live in `src/HrastERP.API/Controllers/`, not in the module. Use `ISender` to dispatch and `ToActionResult()` to map. Bind the command directly as the body; add a `*Request` (in `HrastERP.API/Requests/`) only when no command exists or the body differs from the command. Every action declares its one success status and its error statuses with `[ProducesResponseType]` (`ResponseTypeDeclarationTests` enforces it). The rules for choosing statuses and declarations are in `docs/api/api-responses.md`; the example below follows them:
 
 ```csharp
 [ApiController]

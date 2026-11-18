@@ -160,3 +160,17 @@ When ASP.NET Core fails to deserialize or bind the request body (malformed JSON,
 ```
 
 Field names are converted to camelCase to match `ValidationBehavior` output. The response status code is 422 Unprocessable Entity.
+
+---
+
+## Framework Error Responses
+
+Some errors are produced by ASP.NET Core itself, before any controller runs, with no body. `StatusCodeErrorResponse` (`HrastERP.API/Middleware/`, registered with `UseStatusCodePages` right after `GlobalExceptionMiddleware`) gives them an `ErrorResponse`:
+
+| Status | When | Code |
+|---|---|---|
+| 404 | No route matches the URL (typo, or an `{id:guid}` that isn't a GUID) | `General.RouteNotFound` |
+| 405 | The URL exists but not for this HTTP method (the `Allow` header lists the supported ones) | `General.MethodNotAllowed` |
+| 415 | The body's `Content-Type` isn't JSON | `General.UnsupportedMediaType` |
+
+ASP.NET Core only calls the handler for an error status with no body, so responses our code writes, such as a handler's 404 `Tenant.NotFound`, are never touched. `ConfigureModelBindingErrorFormat()` also sets `SuppressMapClientErrors = true`; otherwise `[ApiController]` would turn the 415 into `ProblemDetails` before the handler sees it.

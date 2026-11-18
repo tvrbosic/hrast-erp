@@ -44,7 +44,7 @@ public class BlockInactiveEntityMiddleware(
             if (tenantActive == false)
             {
                 logger.LogWarning("Blocked request from inactive tenant {TenantId} by user {UserId}", tenantId, userId);
-                await WriteForbiddenResponseAsync(context);
+                await WriteForbiddenResponseAsync(context, AuthErrors.InactiveTenant);
                 return;
             }
         }
@@ -54,7 +54,7 @@ public class BlockInactiveEntityMiddleware(
         if (userActive == false)
         {
             logger.LogWarning("Blocked request from inactive user {UserId} in tenant {TenantId}", userId, tenantId);
-            await WriteForbiddenResponseAsync(context);
+            await WriteForbiddenResponseAsync(context, AuthErrors.InactiveUser);
             return;
         }
 
@@ -110,12 +110,12 @@ public class BlockInactiveEntityMiddleware(
         return isActive;
     }
 
-    private static async Task WriteForbiddenResponseAsync(HttpContext context)
+    // Same errors login and refresh return, so clients handle one set of codes for a deactivated user or tenant
+    private static async Task WriteForbiddenResponseAsync(HttpContext context, Error error)
     {
         context.Response.StatusCode = (int)HttpStatusCode.Forbidden;
         context.Response.ContentType = "application/json";
 
-        var error = GeneralErrors.InactiveEntity;
         await context.Response.WriteAsJsonAsync(new ErrorResponse(error.Code, error.Message), JsonOptions);
     }
 }

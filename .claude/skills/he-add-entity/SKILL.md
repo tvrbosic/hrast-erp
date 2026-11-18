@@ -9,7 +9,7 @@ description: Guides adding a domain entity to a HrastERP module — choosing Bas
 
 ## Step 1 — Define the entity (Domain layer)
 
-First check where it belongs: *is it about who / for whom (identity or tenancy), and do several modules need to read it?* Yes → the shared identity model in `HrastERP.Infrastructure/Identity/` (next to `Tenant`, `ApplicationUser`, `Role`, `RefreshToken`; configuration in `Identity/Persistence/`, table in `administration`; only Administration changes it). No → its module, as below.
+First decide where it belongs with the "who / for whom" test in `docs/data/adding-entities.md` ("Where does the entity live?"). Shared identity model → `HrastERP.Infrastructure/Identity/` (configuration in `Identity/Persistence/`, table in `administration`). Otherwise → its module, as below.
 
 Create the entity in `Domain/Entities/` of the module project.
 
@@ -64,6 +64,10 @@ Create `IEntityTypeConfiguration<TEntity>` in `Infrastructure/Configurations/`:
 
 ```csharp
 // src/Modules/Inventory/HrastERP.Inventory/Infrastructure/Configurations/ProductConfiguration.cs
+using HrastERP.Infrastructure.Database; // DatabaseSchemas
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
 public class ProductConfiguration : IEntityTypeConfiguration<Product>
 {
     public void Configure(EntityTypeBuilder<Product> builder)
@@ -106,7 +110,7 @@ dotnet ef database update \
 | Setting `TenantId` in factory method | Let `TenantEntityInterceptor` set it; or set it explicitly in handler for super admin cross-tenant creation |
 | Forgetting `private Entity() {}` | EF Core requires a parameterless constructor |
 | Using a flat table name without schema | Use `builder.ToTable("products", DatabaseSchemas.Inventory)` for module isolation |
-| Omitting `ToTable` | Always call it; the snake_case convention does not pluralize or pick a schema, so the table would get the singular class name in `public` (`DatabaseNamingConventionTests` fails on any entity without a schema) |
+| Omitting `ToTable` | Always call it; the snake_case convention does not pluralize or pick a schema, so the table would get the singular class name in Postgres's default `public` schema, which no table may use (`DatabaseNamingConventionTests` fails on any entity without a schema) |
 | Putting module data in `infrastructure` because the entity class lives in `HrastERP.Infrastructure` | The schema is the module whose data it is; use the module's `DatabaseSchemas` constant and add the type to `ModuleOwnedInfrastructureEntities` in `DatabaseNamingConventionTests` |
 | Hand-naming columns with `HasColumnName` / `HasDatabaseName` | Don't; `EFCore.NamingConventions` already produces snake_case columns, keys and indexes |
 | Registering `IEntityTypeConfiguration<T>` manually | Not needed — assembly scanning handles it |

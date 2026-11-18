@@ -46,9 +46,10 @@ The `infrastructure.seed_history` table (and the `infrastructure` schema, if mis
 ### Example Reference Script
 
 ```sql
-INSERT INTO some_table (id, name)
+-- Tables are always schema-qualified (<schema>.<table>)
+INSERT INTO inventory.units_of_measure (id, code, name)
 VALUES
-    ('00000000-0000-0000-0000-000000000001', 'Default Value')
+    ('00000000-0000-0000-0000-000000000001', 'PCS', 'Pieces')
 ON CONFLICT (id) DO NOTHING;
 ```
 

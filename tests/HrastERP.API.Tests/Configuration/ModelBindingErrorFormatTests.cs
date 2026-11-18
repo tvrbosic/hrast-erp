@@ -32,6 +32,18 @@ public class ModelBindingErrorFormatTests
     }
 
     [Fact]
+    public void Suppresses_ProblemDetails_for_client_errors_When_configured()
+    {
+        var services = new ServiceCollection();
+        services.AddControllers();
+        services.ConfigureModelBindingErrorFormat();
+
+        var options = services.BuildServiceProvider().GetRequiredService<IOptions<ApiBehaviorOptions>>().Value;
+
+        options.SuppressMapClientErrors.Should().BeTrue();
+    }
+
+    [Fact]
     public void Returns_422_When_model_state_is_invalid()
     {
         var modelState = new ModelStateDictionary();

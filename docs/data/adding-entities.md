@@ -6,7 +6,14 @@ This document describes the steps required to add a new domain entity to a modul
 
 ## 1. Define the entity (Domain layer)
 
-First decide where it lives. Ask: *is it about who / for whom (identity or tenancy), and do several modules need to read it?* If yes, it belongs to the shared identity model in `HrastERP.Infrastructure/Identity/` (with tenants, users, roles and refresh tokens): every module may read it, only Administration changes it. Otherwise it belongs to its module, and other modules learn about it through events.
+### Where does the entity live?
+
+This is the single description of the rule; AGENTS.md and the `he-add-entity` skill link here. Ask: *is it about who / for whom (identity or tenancy), and do several modules need to read it?*
+
+- **Yes → the shared identity model** in `HrastERP.Infrastructure/Identity/`, next to tenants, users, roles and refresh tokens. Every module may read it through `HrastDbContext`; only Administration changes it, so its business rules (role-assignment ceiling, Administrator protection, email uniqueness, delete checks) have one owner. Its configuration goes in `Identity/Persistence/` and its table in `administration` (see the schema rule in step 2).
+- **No → its module.** Other modules learn about it through events.
+
+### Create the entity class
 
 Create the entity class in the `Domain/Entities/` folder of the module project, extending the appropriate base class from `HrastERP.SharedKernel`:
 
@@ -44,6 +51,10 @@ Create an `IEntityTypeConfiguration<TEntity>` class in the `Infrastructure/Confi
 
 ```csharp
 // src/Modules/Inventory/HrastERP.Inventory/Infrastructure/Configurations/ProductConfiguration.cs
+using HrastERP.Infrastructure.Database; // DatabaseSchemas
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
 public class ProductConfiguration : IEntityTypeConfiguration<Product>
 {
     public void Configure(EntityTypeBuilder<Product> builder)
@@ -57,7 +68,7 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
 
 Always call `ToTable("<plural_snake>", DatabaseSchemas.<Module>)` — the table name must be plural snake_case and the schema is set by the rule below.
 
-**Schema rule: a table's schema is the module whose business data it holds**, not the project that happens to contain its entity class:
+**Schema rule: a table's schema is the module whose business data it holds**, not the project that happens to contain its entity class. This is the single description of the rule; AGENTS.md, `modules.md` and the skills link here.
 
 - Module data → that module's schema (`inventory`, `finance`, …). This includes data whose entity class has to live in `HrastERP.Infrastructure` for technical reasons: the shared identity model — `tenants`, users (`users`, and Identity's `user_claims`, `user_logins`, `user_tokens`), `roles` and `refresh_tokens` — is needed by auth, JWT issuing, permission checks, tenant query filters and other modules, and Infrastructure cannot reference a module, so its classes live in `HrastERP.Infrastructure/Identity/` while its tables sit in `administration`.
 - Technical tables no module owns → `infrastructure` (`audit_logs`, `stored_files`, `seed_history`, `ef_migrations_history`).

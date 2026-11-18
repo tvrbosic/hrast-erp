@@ -63,7 +63,8 @@ builder.Services
     .AddApplicationPart(typeof(ProcurementModule).Assembly)
     .AddApplicationPart(typeof(ProductionModule).Assembly);
 
-// Configure the model binding error format to return consistent error message (ErrorResponse type) in case of API layer validation errors.
+// Configure the model binding error format to return consistent error message (ErrorResponse type) in case of API layer validation errors,
+// and keep other framework client errors (e.g. 415) bodiless so StatusCodeErrorResponse can write their ErrorResponse.
 builder.Services.ConfigureModelBindingErrorFormat();
 
 // Register OpenAPI document generation with JWT security scheme for Scalar UI.
@@ -89,6 +90,10 @@ RecurringJobRegistrar.RegisterAll(app.Services);
 // Safety net for unhandled infrastructure/framework exceptions. Must be first so it wraps the entire pipeline.
 // Application-layer failures use Result.Failure — this middleware only catches unexpected exceptions (DB errors, bugs, etc.).
 app.UseMiddleware<GlobalExceptionMiddleware>();
+
+// Give the framework's bodiless 404 (no route), 405 (wrong method) and 415 (unsupported Content-Type) an
+// ErrorResponse body. Only runs for error statuses with no body, so responses our code wrote are untouched.
+app.UseStatusCodePages(StatusCodeErrorResponse.WriteAsync);
 
 // Serilog HTTP request logging — one structured log line per request (method, path, status code, elapsed time).
 app.UseLoggingInfrastructure();

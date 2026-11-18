@@ -39,10 +39,14 @@ Inject `ICacheService` into your handler. All operations are non-throwing — ca
 ### Get
 
 ```csharp
-var roles = await cacheService.GetAsync<List<RoleDto>>("Roles:all", ct);
+var roles = await cacheService.GetAsync<List<RoleResponse>>("Roles:all", ct);
 if (roles is null)
 {
-    roles = await repository.GetAllAsync(ct);
+    // Handlers query HrastDbContext directly (no repositories)
+    roles = await dbContext.Set<Role>()
+        .AsNoTracking()
+        .Select(r => new RoleResponse(r.Id, r.Name, r.Description, PermissionMapper.ToNames(r.Permissions)))
+        .ToListAsync(ct);
     await cacheService.SetAsync("Roles:all", roles, cancellationToken: ct);
 }
 return roles;

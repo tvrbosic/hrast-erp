@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Text.Json;
 using FluentAssertions;
 using HrastERP.API.Middleware;
 using HrastERP.Infrastructure.Caching;
@@ -29,7 +30,17 @@ public class BlockInactiveEntityMiddlewareTests
         var identity = new ClaimsIdentity(
             [new Claim(JwtClaimNames.TenantId, tenantId.ToString()), new Claim(ClaimTypes.NameIdentifier, userId.ToString())],
             authenticationType: "Test");
-        return new DefaultHttpContext { User = new ClaimsPrincipal(identity) };
+        return new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(identity),
+            Response = { Body = new MemoryStream() }
+        };
+    }
+
+    private static string? ResponseCode(HttpContext context)
+    {
+        context.Response.Body.Position = 0;
+        return JsonSerializer.Deserialize<JsonElement>(context.Response.Body).GetProperty("code").GetString();
     }
 
     private void SetTenantActive(Guid tenantId, bool active) =>
@@ -39,7 +50,7 @@ public class BlockInactiveEntityMiddlewareTests
         _cache.GetAsync<bool?>($"Users:active:{userId}").Returns(active);
 
     [Fact]
-    public async Task Returns_403_When_super_admin_tenant_user_is_inactive()
+    public async Task Returns_403_InactiveUser_When_super_admin_tenant_user_is_inactive()
     {
         var userId = Guid.NewGuid();
         SetUserActive(userId, false);
@@ -48,6 +59,7 @@ public class BlockInactiveEntityMiddlewareTests
         await CreateSut().InvokeAsync(context);
 
         context.Response.StatusCode.Should().Be(StatusCodes.Status403Forbidden);
+        ResponseCode(context).Should().Be(AuthErrors.InactiveUser.Code);
         _nextCalled.Should().BeFalse();
     }
 
@@ -66,7 +78,7 @@ public class BlockInactiveEntityMiddlewareTests
     }
 
     [Fact]
-    public async Task Returns_403_When_tenant_is_inactive()
+    public async Task Returns_403_InactiveTenant_When_tenant_is_inactive()
     {
         var userId = Guid.NewGuid();
         SetTenantActive(RegularTenantId, false);
@@ -76,11 +88,12 @@ public class BlockInactiveEntityMiddlewareTests
         await CreateSut().InvokeAsync(context);
 
         context.Response.StatusCode.Should().Be(StatusCodes.Status403Forbidden);
+        ResponseCode(context).Should().Be(AuthErrors.InactiveTenant.Code);
         _nextCalled.Should().BeFalse();
     }
 
     [Fact]
-    public async Task Returns_403_When_user_is_inactive()
+    public async Task Returns_403_InactiveUser_When_user_is_inactive()
     {
         var userId = Guid.NewGuid();
         SetTenantActive(RegularTenantId, true);
@@ -90,6 +103,7 @@ public class BlockInactiveEntityMiddlewareTests
         await CreateSut().InvokeAsync(context);
 
         context.Response.StatusCode.Should().Be(StatusCodes.Status403Forbidden);
+        ResponseCode(context).Should().Be(AuthErrors.InactiveUser.Code);
         _nextCalled.Should().BeFalse();
     }
 

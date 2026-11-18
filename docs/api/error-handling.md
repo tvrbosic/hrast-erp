@@ -76,7 +76,7 @@ public static Error UserCreationFailed(IReadOnlyDictionary<string, string[]> fie
     Error.Validation("User.CreationFailed", "Failed to create user.", fieldErrors);
 ```
 
-**Other catalogs:** Infrastructure services and the API layer have their own catalogs (`AuthErrors`, `FileStorageErrors`, `ApiErrors`, ...). The cross-cutting `General.*` errors live in `GeneralErrors` (SharedKernel `Results/`): `Validation(fieldErrors)`, `Unauthorized`, `Forbidden`, `MissingTenant`, `InactiveEntity` and `Unexpected`. They are raised by pipeline behaviors, middleware and the API layer; a module handler returns its own catalog's errors, so the code names the actual failure.
+**Other catalogs:** Infrastructure services and the API layer have their own catalogs (`AuthErrors`, `FileStorageErrors`, `ApiErrors`, ...). The cross-cutting `General.*` errors live in `GeneralErrors` (SharedKernel `Results/`): `Validation(fieldErrors)`, `Unauthorized`, `Forbidden`, `MissingTenant`, `RouteNotFound`, `MethodNotAllowed`, `UnsupportedMediaType` and `Unexpected`. They are raised by pipeline behaviors, middleware and the API layer; a module handler returns its own catalog's errors, so the code names the actual failure.
 
 **Rules:** never call `Error.*(...)` outside a `*Errors` catalog, and define each code once. `ErrorCatalogTests` reads every catalog by reflection and fails if two of them define the same code (reusing a `GeneralErrors` error, as `ApiErrors.RouteIdMismatch` does, is allowed).
 

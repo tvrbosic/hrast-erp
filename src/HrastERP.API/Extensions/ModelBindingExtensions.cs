@@ -11,6 +11,10 @@ public static class ModelBindingExtensions
     {
         services.Configure<ApiBehaviorOptions>(options =>
         {
+            // [ApiController] would turn bodiless client errors (e.g. 415 for an unsupported Content-Type) into
+            // ProblemDetails; leave them bodiless so StatusCodeErrorResponse writes an ErrorResponse instead
+            options.SuppressMapClientErrors = true;
+
             options.InvalidModelStateResponseFactory = context =>
             {
                 var fieldErrors = context.ModelState
