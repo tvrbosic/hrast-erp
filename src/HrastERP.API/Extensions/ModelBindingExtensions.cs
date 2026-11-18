@@ -1,5 +1,6 @@
 using System.Text.Json;
 using HrastERP.API.Responses;
+using HrastERP.SharedKernel.Results;
 using Microsoft.AspNetCore.Mvc;
 
 namespace HrastERP.API.Extensions;
@@ -18,9 +19,10 @@ public static class ModelBindingExtensions
                         e => JsonNamingPolicy.CamelCase.ConvertName(e.Key),
                         e => e.Value!.Errors.Select(err => err.ErrorMessage).ToArray());
 
-                var body = new ErrorResponse("General.Validation", "One or more validation errors occurred.")
+                var error = GeneralErrors.Validation(fieldErrors);
+                var body = new ErrorResponse(error.Code, error.Message)
                 {
-                    Errors = fieldErrors
+                    Errors = error.ValidationErrors
                 };
 
                 return new UnprocessableEntityObjectResult(body);

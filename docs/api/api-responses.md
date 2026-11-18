@@ -47,7 +47,7 @@ All error responses follow a consistent shape:
 }
 ```
 
-Validation responses (422) additionally include an `errors` field with per-field messages. The `errors` key is omitted entirely from non-validation responses (404, 403, 409, 500).
+Validation responses (422) additionally include an `errors` field with per-field messages. The `errors` key is omitted entirely from non-validation responses (401, 403, 404, 409, 500).
 
 ```json
 {
@@ -80,7 +80,7 @@ public async Task<IActionResult> Get(Guid id, CancellationToken ct)
 This returns:
 - For `Result<T>`: `200 OK` with the value wrapped in an API envelope `{ "data": ... }` on success; for `PagedResult<T>`, the envelope also includes `"meta"` with pagination info
 - For a non-generic `Result`: `204 No Content` with no body on success
-- The appropriate error status code (422/403/404/409/500) with `{ code, message }` body on failure; validation (422) responses also include `errors` with field-level messages
+- The appropriate error status code (401/403/404/409/422/500) with `{ code, message }` body on failure; validation (422) responses also include `errors` with field-level messages
 
 ### Choosing the success status
 
@@ -119,10 +119,9 @@ if (id != command.Id)
 Actions return `IActionResult`, so OpenAPI (and the Scalar UI) only knows their responses from `[ProducesResponseType]`. Every action declares:
 
 - exactly one success response, matching the table above: `[ProducesResponseType<ApiResponse<T>>(StatusCodes.Status200OK)]` (paged lists use `ApiResponse<IReadOnlyCollection<TItem>>`), `[ProducesResponseType<ApiResponse<Guid>>(StatusCodes.Status201Created)]` or `[ProducesResponseType(StatusCodes.Status204NoContent)]`;
-- `[ProducesResponseType(StatusCodes.Status401Unauthorized)]` (no body) when the endpoint needs a token;
-- each error status the endpoint can return, typed `ErrorResponse`: `403` for any `[RequirePermission]` endpoint, `404` / `409` for the handler's `NotFound` / `Conflict` errors, and `422` when the action takes a body or query parameters or its handler returns a `Validation` error.
+- each error status the endpoint can return, typed `ErrorResponse`: `401` when the endpoint needs a token or its handler returns an `Unauthorized` error, `403` for any `[RequirePermission]` endpoint, `404` / `409` for the handler's `NotFound` / `Conflict` errors, and `422` when the action takes a body or query parameters or its handler returns a `Validation` error.
 
-`500` is not declared per action; `GlobalExceptionMiddleware` can return it from any endpoint. A 403 from a failed policy (`[RequirePermission]`, `[RequireSuperAdminTenant]`) is written by `ForbiddenResponseHandler` as an `ErrorResponse` — `General.Forbidden`, or the policy's own code such as `Tenant.SuperAdminRequired`; 401 has no body.
+`500` is not declared per action; `GlobalExceptionMiddleware` can return it from any endpoint. A 403 from a failed policy (`[RequirePermission]`, `[RequireSuperAdminTenant]`) is written by `ForbiddenResponseHandler` as an `ErrorResponse` — `General.Forbidden`, or the policy's own code such as `Tenant.SuperAdminRequired`. A 401 for a missing, invalid or expired access token is written by `JwtChallengeResponse` (JwtBearer `OnChallenge`) as an `ErrorResponse` — `Auth.TokenExpired` when the token has expired (the client should call `POST /api/auth/refresh`), otherwise `General.Unauthorized` — with a `WWW-Authenticate: Bearer` header. Login and refresh return their own 401 (`Auth.InvalidCredentials`, `Auth.InvalidRefreshToken`); a client must not try to refresh when `/refresh` itself returns 401.
 
 `ResponseTypeDeclarationTests` checks the success declarations and that every declared error uses `ErrorResponse`.
 

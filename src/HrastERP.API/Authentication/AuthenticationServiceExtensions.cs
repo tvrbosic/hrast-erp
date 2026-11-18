@@ -38,6 +38,9 @@ public static class AuthenticationServiceExtensions
                         Encoding.UTF8.GetBytes(jwtSettings.SecretKey)),
                     ClockSkew = TimeSpan.Zero
                 };
+
+                // Write 401s as an ErrorResponse instead of JwtBearer's bodiless default
+                options.Events = new JwtBearerEvents { OnChallenge = JwtChallengeResponse.WriteAsync };
             });
 
         // IHttpContextAccessor gives DI-injected services (like CurrentUser) access to HttpContext,

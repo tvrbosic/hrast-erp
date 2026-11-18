@@ -76,10 +76,12 @@ public class ResultExtensionsTests
     [InlineData(ErrorType.Conflict, 409)]
     [InlineData(ErrorType.Unexpected, 500)]
     [InlineData(ErrorType.Validation, 422)]
+    [InlineData(ErrorType.Unauthorized, 401)]
     public void Returns_mapped_status_When_result_fails(ErrorType type, int expectedStatus)
     {
         var error = type switch
         {
+            ErrorType.Unauthorized => Error.Unauthorized("Test.Code", "m"),
             ErrorType.NotFound => Error.NotFound("Test.Code", "m"),
             ErrorType.Forbidden => Error.Forbidden("Test.Code", "m"),
             ErrorType.Conflict => Error.Conflict("Test.Code", "m"),

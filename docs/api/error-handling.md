@@ -19,6 +19,7 @@ Hrast ERP uses the **Result pattern** instead of exceptions for expected failure
 | ErrorType    | HTTP Status | When to use |
 |-------------|-------------|-------------|
 | `Validation` | 422 Unprocessable Entity | Invalid input, business rule violation, precondition not met |
+| `Unauthorized` | 401 Unauthorized | The caller could not be authenticated (wrong credentials, invalid refresh token) |
 | `NotFound`   | 404 Not Found | Requested entity does not exist |
 | `Forbidden`  | 403 Forbidden | User lacks permission for the operation |
 | `Conflict`   | 409 Conflict | Duplicate resource, concurrent modification, already exists |
@@ -34,10 +35,11 @@ The `Error` record provides factory methods that set the `ErrorType` automatical
 
 ```csharp
 Error.Validation("Order.InvalidQuantity", "Quantity must be greater than zero.");
-// With field-level detail (ValidationBehavior does this automatically for FluentValidation failures):
-Error.Validation("General.Validation", "One or more validation errors occurred.",
+// With field-level detail (ValidationBehavior does this through GeneralErrors.Validation for FluentValidation failures):
+Error.Validation("Order.InvalidLines", "One or more order lines are invalid.",
     new Dictionary<string, string[]> { ["quantity"] = ["Must be greater than zero."] });
 Error.NotFound("Order.NotFound", "Order was not found.");
+Error.Unauthorized("Auth.InvalidCredentials", "Invalid email or password.");
 Error.Forbidden("Order.Forbidden", "You cannot modify another tenant's order.");
 Error.Conflict("Order.Duplicate", "An order with this reference already exists.");
 Error.Unexpected("Order.ProcessingFailed", "Failed to process the order.");
@@ -62,7 +64,21 @@ public static class InventoryErrors
 }
 ```
 
-**Naming convention:** `<Module>Errors` class with `static readonly Error` constants. Error codes follow the pattern `<Module>.<ErrorName>`.
+**Naming convention:** `<Module>Errors` class with `static readonly Error` constants. Error codes follow the pattern `<Area>.<ErrorName>`, where the area is the entity or module the error is about (e.g. `User.NotFound`, `Inventory.InsufficientStock`).
+
+**Runtime details:** an error whose message or field errors are only known at runtime is a static factory method in the catalog, never built inline in the handler:
+
+```csharp
+public static Error RoleInUse(int userCount) =>
+    Error.Conflict("Role.InUse", $"Role is assigned to {userCount} users. Reassign them before deleting.");
+
+public static Error UserCreationFailed(IReadOnlyDictionary<string, string[]> fieldErrors) =>
+    Error.Validation("User.CreationFailed", "Failed to create user.", fieldErrors);
+```
+
+**Other catalogs:** Infrastructure services and the API layer have their own catalogs (`AuthErrors`, `FileStorageErrors`, `ApiErrors`, ...). The cross-cutting `General.*` errors live in `GeneralErrors` (SharedKernel `Results/`): `Validation(fieldErrors)`, `Unauthorized`, `Forbidden`, `MissingTenant`, `InactiveEntity` and `Unexpected`. They are raised by pipeline behaviors, middleware and the API layer; a module handler returns its own catalog's errors, so the code names the actual failure.
+
+**Rules:** never call `Error.*(...)` outside a `*Errors` catalog, and define each code once. `ErrorCatalogTests` reads every catalog by reflection and fails if two of them define the same code (reusing a `GeneralErrors` error, as `ApiErrors.RouteIdMismatch` does, is allowed).
 
 ---
 

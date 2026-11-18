@@ -15,5 +15,6 @@ public class ErrorTypeTests
         values.Should().Contain(ErrorType.Forbidden);
         values.Should().Contain(ErrorType.Conflict);
         values.Should().Contain(ErrorType.Unexpected);
+        values.Should().Contain(ErrorType.Unauthorized);
     }
 }

@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text.Json;
 using HrastERP.API.Responses;
+using HrastERP.SharedKernel.Results;
 
 namespace HrastERP.API.Middleware;
 
@@ -26,7 +27,7 @@ public class GlobalExceptionMiddleware(RequestDelegate next, ILogger<GlobalExcep
         context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
         context.Response.ContentType = "application/json";
 
-        var body = new ErrorResponse("General.Unexpected", "An unexpected error occurred.");
-        await context.Response.WriteAsJsonAsync(body, JsonOptions);
+        var error = GeneralErrors.Unexpected;
+        await context.Response.WriteAsJsonAsync(new ErrorResponse(error.Code, error.Message), JsonOptions);
     }
 }

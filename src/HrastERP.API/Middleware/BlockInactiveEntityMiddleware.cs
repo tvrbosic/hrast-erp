@@ -2,6 +2,7 @@ using System.Net;
 using System.Security.Claims;
 using System.Text.Json;
 using HrastERP.API.Responses;
+using HrastERP.SharedKernel.Results;
 using HrastERP.Infrastructure.Caching;
 using HrastERP.Infrastructure.Database;
 using HrastERP.Infrastructure.Identity;
@@ -114,9 +115,7 @@ public class BlockInactiveEntityMiddleware(
         context.Response.StatusCode = (int)HttpStatusCode.Forbidden;
         context.Response.ContentType = "application/json";
 
-        var body = new ErrorResponse(
-            "General.InactiveEntity",
-            "Your account or tenant has been deactivated. Contact your administrator.");
-        await context.Response.WriteAsJsonAsync(body, JsonOptions);
+        var error = GeneralErrors.InactiveEntity;
+        await context.Response.WriteAsJsonAsync(new ErrorResponse(error.Code, error.Message), JsonOptions);
     }
 }

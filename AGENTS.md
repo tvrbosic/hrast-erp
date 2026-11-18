@@ -48,8 +48,8 @@ dotnet run --project src/HrastERP.API/
 
 **Pipeline behaviors** (registered in `HrastERP.Infrastructure`), in execution order:
 - `LoggingBehavior` — outermost; logs requests with timing; properties marked `[SensitiveData]` are masked as `"***"`
-- `TenantValidationBehavior` — short-circuits with `Error.Forbidden("General.MissingTenant", ...)` when `ICurrentTenant.TenantId` is `Guid.Empty`; runs before input validation
-- `ValidationBehavior` — runs FluentValidation validators and returns `Error.Validation("General.Validation", ..., fieldErrors)` keyed by camelCase property name. Validators are `internal sealed` classes placed next to their command and are picked up by `AddValidatorsFromAssembly(assembly, includeInternalTypes: true)` in `Add<Module>Module()`; without that flag FluentValidation silently skips internal validators.
+- `TenantValidationBehavior` — short-circuits with `GeneralErrors.MissingTenant` (403 `General.MissingTenant`) when `ICurrentTenant.TenantId` is `Guid.Empty`; runs before input validation
+- `ValidationBehavior` — runs FluentValidation validators and returns `GeneralErrors.Validation(fieldErrors)` (422 `General.Validation`) keyed by camelCase property name. Validators are `internal sealed` classes placed next to their command and are picked up by `AddValidatorsFromAssembly(assembly, includeInternalTypes: true)` in `Add<Module>Module()`; without that flag FluentValidation silently skips internal validators.
 
 **Inter-module communication:** Domain events only (MediatR notifications). Modules never reference each other. Cross-module event contracts live in SharedKernel under `IntegrationEvents/`.
 
@@ -60,7 +60,7 @@ dotnet run --project src/HrastERP.API/
 `HrastERP.SharedKernel` is pure C# with no framework dependencies (no EF Core, no MediatR) and must not import from any module. See `docs/architecture/shared-kernel.md`. Rules to follow:
 
 - All entities inherit `BaseEntity<TId>` (or `AggregateRoot<TId>` to raise domain events), which makes them auditable and soft-deletable. Tenant scoping is opt-in: implement `ITenantEntity` — `BaseEntity` does NOT implement it.
-- Handlers return `Result` / `Result<T>` for expected failures instead of throwing. Each module defines its errors as `static readonly` constants in a `<Module>Errors` class, using the `Error.*` factory methods. See `docs/api/error-handling.md`.
+- Handlers return `Result` / `Result<T>` for expected failures instead of throwing. Each module defines its errors as `static readonly` constants in a `<Module>Errors` class (Infrastructure services and the API have their own, e.g. `AuthErrors`, `ApiErrors`), using the `Error.*` factory methods; an error whose details are only known at runtime (counts, field errors) is a static factory method in that catalog. The cross-cutting `General.*` errors (validation, unauthorized, forbidden, missing tenant, inactive entity, unexpected) are in SharedKernel's `GeneralErrors`, for behaviors and middleware; module handlers return their own catalog's errors. Never call `Error.*(...)` outside a `*Errors` catalog. `ErrorCatalogTests` fails if two catalogs define the same code. See `docs/api/error-handling.md`.
 - List queries return `PagedResult<T>` created via `PagedResult<T>.Create(...)`.
 - Authorization uses the `[Flags] enum Permission : long` — always reference named enum members, never raw `long` values.
 - Mark sensitive MediatR request properties (passwords, tokens) with `[property: SensitiveData]` on record constructor parameters so `LoggingBehavior` masks them.
@@ -103,7 +103,7 @@ Custom RBAC: permissions are embedded in the JWT at login — no per-request DB 
 public async Task<IActionResult> GetInvoices() { ... }
 ```
 
-`[RequirePermission]` supports stacking; `[RequireSuperAdminTenant]` restricts to the super admin tenant. Both are authorization policies in `HrastERP.API/Authorization/` (one subfolder per policy); a failed policy returns a 403 `ErrorResponse` via `ForbiddenResponseHandler` (`General.Forbidden`, or a policy-specific code like `Tenant.SuperAdminRequired`). Token validation and `ICurrentUser` / `ICurrentTenant` are registered by `AddApiAuthentication()` in `HrastERP.API/Authentication/`; custom claim names are `JwtClaimNames` constants. `Role` does NOT inherit `BaseEntity<TId>` (no auditing, soft delete, or tenant isolation); deleting a role still assigned to a user is refused with `409 Role.InUse`. See `docs/security/authorization.md` and `docs/security/permission-checks-guide.md`.
+`[RequirePermission]` supports stacking; `[RequireSuperAdminTenant]` restricts to the super admin tenant. Both are authorization policies in `HrastERP.API/Authorization/` (one subfolder per policy); a failed policy returns a 403 `ErrorResponse` via `ForbiddenResponseHandler` (`General.Forbidden`, or a policy-specific code like `Tenant.SuperAdminRequired`); a missing, invalid or expired token returns a 401 `ErrorResponse` via `JwtChallengeResponse` (`General.Unauthorized`, or `Auth.TokenExpired`). Login and refresh failures (`Auth.InvalidCredentials`, `Auth.InvalidRefreshToken`) are `Error.Unauthorized` (401). Token validation and `ICurrentUser` / `ICurrentTenant` are registered by `AddApiAuthentication()` in `HrastERP.API/Authentication/`; custom claim names are `JwtClaimNames` constants. `Role` does NOT inherit `BaseEntity<TId>` (no auditing, soft delete, or tenant isolation); deleting a role still assigned to a user is refused with `409 Role.InUse`. See `docs/security/authorization.md` and `docs/security/permission-checks-guide.md`.
 
 ## Database Seeding
 

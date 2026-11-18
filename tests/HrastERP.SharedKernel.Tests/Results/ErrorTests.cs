@@ -51,6 +51,16 @@ public class ErrorTests
     }
 
     [Fact]
+    public void Sets_type_to_Unauthorized_When_created_via_Unauthorized_factory()
+    {
+        var error = Error.Unauthorized("Auth.InvalidCredentials", "Invalid email or password");
+
+        error.Code.Should().Be("Auth.InvalidCredentials");
+        error.Message.Should().Be("Invalid email or password");
+        error.Type.Should().Be(ErrorType.Unauthorized);
+    }
+
+    [Fact]
     public void Sets_type_to_Forbidden_When_created_via_Forbidden_factory()
     {
         var error = Error.Forbidden("User.Forbidden", "Access denied");

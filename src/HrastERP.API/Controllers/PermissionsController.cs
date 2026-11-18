@@ -16,7 +16,7 @@ public sealed class PermissionsController(ISender sender) : ControllerBase
     [RequirePermission(Permission.AdministrationView)]
     [HttpGet]
     [ProducesResponseType<ApiResponse<IReadOnlyList<PermissionGroupResponse>>>(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> GetAll(CancellationToken ct)
     {

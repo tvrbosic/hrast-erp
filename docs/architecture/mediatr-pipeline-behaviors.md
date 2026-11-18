@@ -54,7 +54,7 @@ Checks that the current request has a valid tenant context before any handler or
 ### Returned error
 
 ```csharp
-Error.Forbidden("General.MissingTenant", "A valid tenant context is required.")
+GeneralErrors.MissingTenant // Error.Forbidden("General.MissingTenant", "A valid tenant context is required.")
 ```
 
 Maps to HTTP 403 via `ToActionResult()`.

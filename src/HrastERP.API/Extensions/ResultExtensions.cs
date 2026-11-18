@@ -104,6 +104,8 @@ public static class ResultExtensions
         {
             // 404 Not Found — requested resource does not exist
             ErrorType.NotFound   => new NotFoundObjectResult(body),
+            // 401 Unauthorized — the caller could not be authenticated (e.g. wrong credentials, invalid refresh token)
+            ErrorType.Unauthorized => new UnauthorizedObjectResult(body),
             // 403 Forbidden — authenticated but not authorized to perform this action
             ErrorType.Forbidden  => new ObjectResult(body) { StatusCode = 403 },
             // 409 Conflict — request conflicts with current state (e.g. duplicate, stale data)
@@ -112,7 +114,8 @@ public static class ResultExtensions
             ErrorType.Unexpected => new ObjectResult(body) { StatusCode = 500 },
             // 422 Unprocessable Entity — request is well-formed but fails business/domain validation
             ErrorType.Validation => new UnprocessableEntityObjectResult(body),
-            // Should never happen — indicates a new ErrorType was added without a mapping
+            // 500 Internal Server Error — a new ErrorType was added without a mapping; the throw reaches
+            // GlobalExceptionMiddleware, which returns General.Unexpected
             _ => throw new InvalidOperationException($"Unhandled ErrorType: {error.Type}")
         };
     }

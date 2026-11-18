@@ -52,7 +52,7 @@ public sealed class ValidationBehavior<TRequest, TResponse>(
                 g => g.Key,
                 g => g.Select(f => f.ErrorMessage).ToArray());
 
-        var error = Error.Validation("General.Validation", "One or more validation errors occurred.", fieldErrors);
+        var error = GeneralErrors.Validation(fieldErrors);
 
         // We need to return a TResponse failure, but TResponse could be either Result or Result<TValue>.
         // For plain Result, we can call Result.Failure(error) directly.

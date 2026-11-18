@@ -70,14 +70,8 @@ internal sealed class CreateUserCommandHandler(
         var identityResult = await userManager.CreateAsync(user, request.Password);
 
         if (!identityResult.Succeeded)
-        {
-            var errors = identityResult.Errors
-                .GroupBy(e => e.Code)
-                .ToDictionary(g => g.Key, g => g.Select(e => e.Description).ToArray())
-                as IReadOnlyDictionary<string, string[]>;
-
-            return Error.Validation("User.CreationFailed", "Failed to create user.", errors);
-        }
+            return AdministrationErrors.UserCreationFailed(
+                IdentityFieldErrors.From(identityResult.Errors, nameof(CreateUserCommand.Password)));
 
         return user.Id;
     }

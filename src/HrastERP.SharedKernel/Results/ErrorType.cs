@@ -2,7 +2,7 @@ namespace HrastERP.SharedKernel.Results;
 
 /// <summary>
 /// Category of an <see cref="Error"/>. The API maps it to the HTTP status code:
-/// Validation 422, NotFound 404, Forbidden 403, Conflict 409, Unexpected 500.
+/// Validation 422, NotFound 404, Forbidden 403, Conflict 409, Unexpected 500, Unauthorized 401.
 /// </summary>
 public enum ErrorType
 {
@@ -10,5 +10,6 @@ public enum ErrorType
     NotFound,
     Forbidden,
     Conflict,
-    Unexpected
+    Unexpected,
+    Unauthorized
 }

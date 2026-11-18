@@ -1,7 +1,9 @@
 using System.Text.Json;
 using FluentAssertions;
+using HrastERP.API.Authentication;
 using HrastERP.API.Authorization;
 using HrastERP.API.Responses;
+using HrastERP.SharedKernel.Results;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authorization.Policy;
@@ -26,10 +28,11 @@ public class ForbiddenResponseHandlerTests
 
     private static DefaultHttpContext CreateContext()
     {
-        // JwtBearer is registered so the default handler can challenge, as it does in the app.
+        // JwtBearer is registered with the app's challenge handler so the default handler can challenge, as it does in the app.
         var services = new ServiceCollection();
         services.AddLogging();
-        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer();
+        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+            .AddJwtBearer(o => o.Events = new JwtBearerEvents { OnChallenge = JwtChallengeResponse.WriteAsync });
 
         return new DefaultHttpContext
         {
@@ -54,8 +57,8 @@ public class ForbiddenResponseHandlerTests
 
         context.Response.StatusCode.Should().Be(StatusCodes.Status403Forbidden);
         var body = await ReadBodyAsync(context);
-        body.GetProperty("code").GetString().Should().Be(ApiErrors.Forbidden.Code);
-        body.GetProperty("message").GetString().Should().Be(ApiErrors.Forbidden.Message);
+        body.GetProperty("code").GetString().Should().Be(GeneralErrors.Forbidden.Code);
+        body.GetProperty("message").GetString().Should().Be(GeneralErrors.Forbidden.Message);
         _nextCalled.Should().BeFalse();
     }
 
@@ -74,14 +77,15 @@ public class ForbiddenResponseHandlerTests
     }
 
     [Fact]
-    public async Task Returns_bodiless_401_When_challenged()
+    public async Task Writes_General_Unauthorized_When_challenged()
     {
         var context = CreateContext();
 
         await _sut.HandleAsync(Next, context, Policy, PolicyAuthorizationResult.Challenge());
 
         context.Response.StatusCode.Should().Be(StatusCodes.Status401Unauthorized);
-        context.Response.Body.Length.Should().Be(0);
+        var body = await ReadBodyAsync(context);
+        body.GetProperty("code").GetString().Should().Be(GeneralErrors.Unauthorized.Code);
         _nextCalled.Should().BeFalse();
     }
 

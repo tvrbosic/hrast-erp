@@ -18,13 +18,8 @@ internal sealed class ChangePasswordCommandHandler(UserManager<ApplicationUser> 
         var resetResult = await userManager.ResetPasswordAsync(user, token, request.NewPassword);
 
         if (!resetResult.Succeeded)
-        {
-            var errors = resetResult.Errors
-                .GroupBy(e => e.Code)
-                .ToDictionary(g => g.Key, g => g.Select(e => e.Description).ToArray())
-                as IReadOnlyDictionary<string, string[]>;
-            return Result.Failure(Error.Validation("User.PasswordChangeFailed", "Failed to change password.", errors));
-        }
+            return Result.Failure(AdministrationErrors.UserPasswordChangeFailed(
+                IdentityFieldErrors.From(resetResult.Errors, nameof(ChangePasswordCommand.NewPassword))));
 
         return Result.Success();
     }

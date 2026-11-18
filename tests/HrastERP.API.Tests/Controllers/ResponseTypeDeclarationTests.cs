@@ -45,10 +45,10 @@ public class ResponseTypeDeclarationTests
 
     [Theory]
     [MemberData(nameof(ActionNames))]
-    public void Declares_ErrorResponse_body_When_error_status_other_than_401_is_declared(string action)
+    public void Declares_ErrorResponse_body_When_error_status_is_declared(string action)
     {
         Declared(Find(action))
-            .Where(a => a.StatusCode >= 400 && a.StatusCode != 401 && a.Type != typeof(ErrorResponse))
+            .Where(a => a.StatusCode >= 400 && a.Type != typeof(ErrorResponse))
             .Should().BeEmpty();
     }
 

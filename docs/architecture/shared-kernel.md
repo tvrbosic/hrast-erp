@@ -9,7 +9,7 @@ Nothing in SharedKernel should import from any module. It has no dependency on E
 | Folder | Purpose | What goes here | What does NOT go here |
 |---|---|---|---|
 | `Domain/` | Domain model building blocks | Base entities, aggregate roots, value objects, domain marker interfaces (`IAuditable`, `ISoftDeletable`, `ITenantEntity`, `IDomainEvent`) | Business logic, module-specific entities |
-| `Results/` | Operation outcome types | `Result<T>`, `Error`, `ErrorType` — success/failure representation | Data envelopes, pagination, DTOs |
+| `Results/` | Operation outcome types | `Result<T>`, `Error`, `ErrorType`, `GeneralErrors` — success/failure representation and the cross-cutting `General.*` errors | Data envelopes, pagination, DTOs |
 | `Abstractions/` | Ambient request context | `ICurrentUser`, `ICurrentTenant` — "who is calling?" | Infrastructure service interfaces (email, file storage, jobs) |
 | `Authorization/` | Authorization primitives | `Permission` flags enum, `PermissionMapper` (permission names ↔ bitmask) | Authorization handlers, policy providers |
 | `Common/` | Shared utility types | `PagedResult<T>`, sorting descriptors, date/time wrappers | Domain model types, result types |
@@ -48,7 +48,7 @@ Entities opt in by implementing this interface; `BaseEntity` does **not** implem
 
 A global query filter in `HrastDbContext` applies `CurrentTenantId == SuperAdminTenantId || entity.TenantId == currentTenant.TenantId` for all `ITenantEntity` types. Regular tenant users see only their own records; super admin tenant users (`TenantConstants.SuperAdminTenantId`) see all records. Use `.IgnoreQueryFilters()` to bypass explicitly (purge jobs, middleware lookups).
 
-A MediatR pipeline behavior (`TenantValidationBehavior`) provides early defense: before any handler executes, it checks `ICurrentTenant.TenantId != Guid.Empty` and short-circuits with `Result.Failure(Error.Forbidden("General.MissingTenant", ...))` when tenant context is missing.
+A MediatR pipeline behavior (`TenantValidationBehavior`) provides early defense: before any handler executes, it checks `ICurrentTenant.TenantId != Guid.Empty` and short-circuits with `Result.Failure(GeneralErrors.MissingTenant)` (`General.MissingTenant`) when tenant context is missing.
 
 ### `ValueObject.cs`
 Abstract base class for value objects. Equality is determined by the values returned from the abstract `GetEqualityComponents()` method, not by reference or identity. Overrides `Equals`, `GetHashCode`, `==`, and `!=` accordingly. Use this for types like `Money`, `Address`, or `Dimensions` that have no identity of their own.
@@ -62,10 +62,10 @@ Contains the Result pattern types used to represent the outcome of an operation 
 **When to add here:** Types that model success or failure as return values. All command handlers and query handlers in the application layer return `Result` or `Result<T>`.
 
 ### `Error.cs`
-Immutable record `Error(string Code, string Message, ErrorType Type)` representing a named, categorized failure reason. The `Code` is a dot-separated string identifying the error (e.g. `"User.NotFound"`, `"Order.AlreadyCancelled"`). The `Type` is an `ErrorType` enum that classifies the error for HTTP response mapping. Provides static factory methods `NotFound`, `Validation`, `Forbidden`, `Conflict`, and `Unexpected` as semantic constructors that set `Type` automatically, and a `None` constant representing the absence of an error. See `docs/api/error-handling.md` for the full error handling strategy.
+Immutable record `Error(string Code, string Message, ErrorType Type)` representing a named, categorized failure reason. The `Code` is a dot-separated string identifying the error (e.g. `"User.NotFound"`, `"Order.AlreadyCancelled"`). The `Type` is an `ErrorType` enum that classifies the error for HTTP response mapping. Provides static factory methods `NotFound`, `Validation`, `Unauthorized`, `Forbidden`, `Conflict`, and `Unexpected` as semantic constructors that set `Type` automatically, and a `None` constant representing the absence of an error. See `docs/api/error-handling.md` for the full error handling strategy.
 
 ### `ErrorType.cs`
-Enum defining the categories of errors: `Validation` (422), `NotFound` (404), `Forbidden` (403), `Conflict` (409), and `Unexpected` (500). Used by `ResultExtensions.ToActionResult()` in the API layer to map errors to HTTP status codes.
+Enum defining the categories of errors: `Validation` (422), `Unauthorized` (401), `NotFound` (404), `Forbidden` (403), `Conflict` (409), and `Unexpected` (500). Used by `ResultExtensions.ToActionResult()` in the API layer to map errors to HTTP status codes.
 
 ### `Result.cs`
 Two closely related types:

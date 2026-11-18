@@ -20,7 +20,7 @@ public sealed class TenantValidationBehavior<TRequest, TResponse>(ICurrentTenant
     {
         if (currentTenant.TenantId == Guid.Empty)
         {
-            var error = Error.Forbidden("General.MissingTenant", "A valid tenant context is required.");
+            var error = GeneralErrors.MissingTenant;
 
             if (typeof(TResponse) == typeof(Result))
                 return (TResponse)Result.Failure(error);

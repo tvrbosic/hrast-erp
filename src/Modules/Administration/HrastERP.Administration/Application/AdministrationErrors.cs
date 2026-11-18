@@ -5,9 +5,6 @@ namespace HrastERP.Administration.Application;
 public static class AdministrationErrors
 {
     #region Tenant
-    public static readonly Error SuperAdminTenantRequired =
-        Error.Forbidden("Tenant.SuperAdminRequired", "Only super admin tenant users can perform this operation.");
-
     public static readonly Error TenantNotFound =
         Error.NotFound("Tenant.NotFound", "Tenant not found.");
 
@@ -31,11 +28,13 @@ public static class AdministrationErrors
     public static readonly Error UserEmailTaken =
         Error.Conflict("User.EmailTaken", "A user with this email already exists.");
 
-    public static readonly Error UserTenantMismatch =
-        Error.Forbidden("User.TenantMismatch", "You can only manage users within your own tenant.");
+    // Identity rejected the new user (e.g. password policy); fieldErrors is keyed by request field (IdentityFieldErrors)
+    public static Error UserCreationFailed(IReadOnlyDictionary<string, string[]> fieldErrors) =>
+        Error.Validation("User.CreationFailed", "Failed to create user.", fieldErrors);
 
-    public static readonly Error UserCreationFailed =
-        Error.Unexpected("User.CreationFailed", "Failed to create user.");
+    // Identity rejected the new password (password policy); fieldErrors is keyed by request field (IdentityFieldErrors)
+    public static Error UserPasswordChangeFailed(IReadOnlyDictionary<string, string[]> fieldErrors) =>
+        Error.Validation("User.PasswordChangeFailed", "Failed to change password.", fieldErrors);
 
     public static readonly Error UserRoleExceedsOwnPermissions =
         Error.Forbidden("User.RoleExceedsOwnPermissions", "You cannot change the role of a user who has permissions you do not have.");

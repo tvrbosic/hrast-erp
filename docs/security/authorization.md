@@ -111,7 +111,7 @@ builder.Services.AddSingleton<IAuthorizationMiddlewareResultHandler, ForbiddenRe
 |---|---|
 | `Permission/` | `RequirePermissionAttribute`, `PermissionRequirement`, `PermissionAuthorizationHandler`, `PermissionPolicyProvider` (builds `Permission:<long>` policies on demand) |
 | `SuperAdminTenant/` | `RequireSuperAdminTenantAttribute`, `SuperAdminTenantRequirement`, `SuperAdminTenantAuthorizationHandler` (a fixed policy registered in `Program.cs`) |
-| `ForbiddenResponseHandler` | Writes every 403 from a failed policy as an `ErrorResponse`: the first `ErrorFailureReason`'s error, otherwise `General.Forbidden`. Challenges keep the bodiless 401. |
+| `ForbiddenResponseHandler` | Writes every 403 from a failed policy as an `ErrorResponse`: the first `ErrorFailureReason`'s error, otherwise `General.Forbidden`. Challenges go to JwtBearer, whose `OnChallenge` (`JwtChallengeResponse`) writes the 401 as an `ErrorResponse`. |
 | `ErrorFailureReason` | Failure reason carrying an `Error`; a handler fails with it to return a specific 403 code (e.g. `Tenant.SuperAdminRequired`). |
 
 A new policy gets its own subfolder (attribute, requirement, handler) and, if it needs a specific 403 code, fails with an `ErrorFailureReason` whose `Error` lives in `ApiErrors`.
