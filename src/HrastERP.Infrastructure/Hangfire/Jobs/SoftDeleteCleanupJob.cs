@@ -84,7 +84,8 @@ internal sealed class SoftDeleteCleanupJob(
 
             var deletedAtColumn = deletedAtProperty.GetColumnName();
 
-            // Audit EntityName is the C# class name (e.g. "Tenant"), not the table name
+            // Entity name for the Purged audit entries: the C# class (e.g. "Tenant"), not the table ("tenants"),
+            // matching AuditLogInterceptor so a row's Created/Updated/Deleted/Purged entries share one history
             var entityName = entityType.ClrType.Name;
 
             // Tenant-scoped rows record their own tenant_id in the audit entry;

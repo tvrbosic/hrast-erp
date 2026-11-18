@@ -13,6 +13,8 @@ namespace HrastERP.Infrastructure.Database;
 /// </summary>
 internal sealed class DatabaseSeeder
 {
+    private const string HistoryTable = $"{DatabaseSchemas.Infrastructure}.seed_history";
+
     private readonly HrastDbContext _context;
     private readonly IWebHostEnvironment _env;
 
@@ -49,9 +51,9 @@ internal sealed class DatabaseSeeder
     private static async Task EnsureHistoryTableAsync(NpgsqlConnection connection, CancellationToken cancellationToken)
     {
         await using var cmd = connection.CreateCommand();
-        cmd.CommandText = """
-            CREATE SCHEMA IF NOT EXISTS infrastructure;
-            CREATE TABLE IF NOT EXISTS infrastructure.seed_history (
+        cmd.CommandText = $"""
+            CREATE SCHEMA IF NOT EXISTS {DatabaseSchemas.Infrastructure};
+            CREATE TABLE IF NOT EXISTS {HistoryTable} (
                 script_name TEXT PRIMARY KEY,
                 applied_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
             );
@@ -106,7 +108,7 @@ internal sealed class DatabaseSeeder
     private static async Task<bool> IsAppliedAsync(NpgsqlConnection connection, string scriptName, CancellationToken cancellationToken)
     {
         await using var cmd = connection.CreateCommand();
-        cmd.CommandText = "SELECT COUNT(1) FROM infrastructure.seed_history WHERE script_name = $1";
+        cmd.CommandText = $"SELECT COUNT(1) FROM {HistoryTable} WHERE script_name = $1";
         cmd.Parameters.AddWithValue(scriptName);
         var count = (long)(await cmd.ExecuteScalarAsync(cancellationToken))!;
         return count > 0;
@@ -115,7 +117,7 @@ internal sealed class DatabaseSeeder
     private static async Task RecordHistoryAsync(NpgsqlConnection connection, string scriptName, CancellationToken cancellationToken)
     {
         await using var cmd = connection.CreateCommand();
-        cmd.CommandText = "INSERT INTO infrastructure.seed_history (script_name) VALUES ($1)";
+        cmd.CommandText = $"INSERT INTO {HistoryTable} (script_name) VALUES ($1)";
         cmd.Parameters.AddWithValue(scriptName);
         await cmd.ExecuteNonQueryAsync(cancellationToken);
     }
