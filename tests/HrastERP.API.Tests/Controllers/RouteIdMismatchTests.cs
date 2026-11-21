@@ -1,3 +1,4 @@
+using System.Reflection;
 using FluentAssertions;
 using HrastERP.Administration.Application.Roles.Commands.UpdateRole;
 using HrastERP.Administration.Application.Tenants.Commands.UpdateTenant;
@@ -13,15 +14,17 @@ namespace HrastERP.API.Tests.Controllers;
 
 public class RouteIdMismatchTests
 {
+    // Hand-written because each case needs a real command instance with valid constructor
+    // arguments. Covers_every_action_When_action_takes_route_id_and_body_id keeps it complete.
     public static TheoryData<string, Func<ISender, Guid, Guid, Task<IActionResult>>> Actions => new()
     {
-        { "Roles.Update", (s, routeId, bodyId) =>
+        { "RolesController.Update", (s, routeId, bodyId) =>
             new RolesController(s).Update(routeId, new UpdateRoleCommand(bodyId, "Auditor", null, []), default) },
-        { "Tenants.Update", (s, routeId, bodyId) =>
+        { "TenantsController.Update", (s, routeId, bodyId) =>
             new TenantsController(s).Update(routeId, new UpdateTenantCommand(bodyId, "Acme"), default) },
-        { "Users.Update", (s, routeId, bodyId) =>
+        { "UsersController.Update", (s, routeId, bodyId) =>
             new UsersController(s).Update(routeId, new UpdateUserCommand(bodyId, "a@b.c", "A", "B", null), default) },
-        { "Users.ChangePassword", (s, routeId, bodyId) =>
+        { "UsersController.ChangePassword", (s, routeId, bodyId) =>
             new UsersController(s).ChangePassword(routeId, new ChangePasswordCommand(bodyId, "Secret123!"), default) },
     };
 
@@ -40,5 +43,32 @@ public class RouteIdMismatchTests
         body.Code.Should().Be("General.Validation");
         body.Errors.Should().ContainKey("id");
         sender.ReceivedCalls().Should().BeEmpty("the command must not be sent when the ids differ");
+    }
+
+    // The cases in Actions can't be generated, so a new action that takes a route id and a body id
+    // would go untested unless someone remembers to add it. This guard finds those actions by
+    // signature and fails until Actions lists exactly them: add a case for a new action, or remove
+    // the case of one that no longer exists.
+    [Fact]
+    public void Covers_every_action_When_action_takes_route_id_and_body_id()
+    {
+        // AuthController only anchors the API assembly; every controller in it is scanned
+        var discovered = typeof(AuthController).Assembly.GetTypes()
+            .Where(t => typeof(ControllerBase).IsAssignableFrom(t) && !t.IsAbstract)
+            .SelectMany(t => t.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
+            .Where(TakesRouteIdAndBodyId)
+            .Select(m => $"{m.DeclaringType!.Name}.{m.Name}");
+
+        var covered = Actions.Select(row => (string)row[0]);
+
+        discovered.Should().BeEquivalentTo(covered);
+    }
+
+    // No HTTP-verb filter: UsersController.ChangePassword is a PATCH with both ids
+    private static bool TakesRouteIdAndBodyId(MethodInfo action)
+    {
+        var parameters = action.GetParameters();
+        return parameters.Any(p => p.Name == "id" && p.ParameterType == typeof(Guid))
+            && parameters.Any(p => p.ParameterType.GetProperty("Id")?.PropertyType == typeof(Guid));
     }
 }
