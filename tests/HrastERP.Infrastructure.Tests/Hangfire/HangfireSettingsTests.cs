@@ -24,6 +24,8 @@ public class HangfireSettingsTests
         settings.RevokedTokenRetentionDays.Should().Be(7);
         settings.SoftDeleteCleanupCron.Should().Be("0 2 * * *");
         settings.RefreshTokenCleanupCron.Should().Be("0 2 * * *");
+        settings.DashboardEnabled.Should().BeFalse();
+        settings.DashboardPath.Should().Be("/hangfire");
     }
 
     [Fact]
@@ -36,7 +38,9 @@ public class HangfireSettingsTests
                 ["Hangfire:SoftDeleteRetentionDays"] = "30",
                 ["Hangfire:RevokedTokenRetentionDays"] = "14",
                 ["Hangfire:SoftDeleteCleanupCron"] = "0 3 * * *",
-                ["Hangfire:RefreshTokenCleanupCron"] = "0 4 * * *"
+                ["Hangfire:RefreshTokenCleanupCron"] = "0 4 * * *",
+                ["Hangfire:DashboardEnabled"] = "true",
+                ["Hangfire:DashboardPath"] = "/jobs/dashboard"
             })
             .Build();
 
@@ -53,6 +57,8 @@ public class HangfireSettingsTests
         settings.RevokedTokenRetentionDays.Should().Be(14);
         settings.SoftDeleteCleanupCron.Should().Be("0 3 * * *");
         settings.RefreshTokenCleanupCron.Should().Be("0 4 * * *");
+        settings.DashboardEnabled.Should().BeTrue();
+        settings.DashboardPath.Should().Be("/jobs/dashboard");
     }
 
     [Theory]
@@ -105,5 +111,43 @@ public class HangfireSettingsTests
         var act = () => provider.GetRequiredService<IOptions<HangfireSettings>>().Value;
 
         act.Should().Throw<OptionsValidationException>();
+    }
+
+    [Fact]
+    public void Passes_validation_When_DashboardPath_has_nested_segments()
+    {
+        var provider = BuildValidatedProvider("/jobs/dashboard");
+
+        var settings = provider.GetRequiredService<IOptions<HangfireSettings>>().Value;
+
+        settings.DashboardPath.Should().Be("/jobs/dashboard");
+    }
+
+    [Theory]
+    [InlineData("hangfire")]
+    [InlineData("/hang fire")]
+    [InlineData("/hangfire?x=1")]
+    [InlineData("")]
+    public void Fails_validation_When_DashboardPath_is_invalid(string path)
+    {
+        var provider = BuildValidatedProvider(path);
+
+        var act = () => provider.GetRequiredService<IOptions<HangfireSettings>>().Value;
+
+        act.Should().Throw<OptionsValidationException>();
+    }
+
+    private static ServiceProvider BuildValidatedProvider(string dashboardPath)
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["Hangfire:DashboardPath"] = dashboardPath })
+            .Build();
+
+        var services = new ServiceCollection();
+        services.AddSingleton<IConfiguration>(configuration);
+        services.AddOptions<HangfireSettings>()
+            .BindConfiguration(HangfireSettings.SectionName)
+            .ValidateDataAnnotations();
+        return services.BuildServiceProvider();
     }
 }

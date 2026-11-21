@@ -1,5 +1,8 @@
+using HrastERP.Infrastructure.Database;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Options;
+using StackExchange.Redis;
 
 namespace HrastERP.API.HealthChecks;
 
@@ -13,16 +16,16 @@ public static class HealthCheckServiceExtensions
     /// under <c>checks</c> in the <c>/health</c> response.
     /// </summary>
     /// <remarks>
-    /// Reads the connection strings from <c>Database:ConnectionString</c> and <c>Cache:ConnectionString</c>.
+    /// The database check uses the validated <see cref="DatabaseSettings"/> connection string. The redis
+    /// check reuses the shared <see cref="IConnectionMultiplexer"/> from the cache services instead of
+    /// opening a second connection.
     /// </remarks>
-    public static IServiceCollection AddHealthCheckServices(
-        this IServiceCollection services,
-        IConfiguration configuration)
+    public static IServiceCollection AddHealthCheckServices(this IServiceCollection services)
     {
         services
             .AddHealthChecks()
-            .AddNpgSql(configuration["Database:ConnectionString"]!, name: "database")
-            .AddRedis(configuration["Cache:ConnectionString"]!, name: "redis")
+            .AddNpgSql(sp => sp.GetRequiredService<IOptions<DatabaseSettings>>().Value.ConnectionString, name: "database")
+            .AddRedis(sp => sp.GetRequiredService<IConnectionMultiplexer>(), name: "redis")
             .AddCheck<SmtpHealthCheck>("smtp");
 
         return services;

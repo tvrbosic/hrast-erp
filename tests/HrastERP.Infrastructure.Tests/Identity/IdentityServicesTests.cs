@@ -6,6 +6,7 @@ using HrastERP.SharedKernel.Abstractions;
 using HrastERP.SharedKernel.Constants;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 
@@ -26,6 +27,12 @@ public class IdentityServicesTests : IClassFixture<PostgresContainerFixture>, IA
     public IdentityServicesTests(PostgresContainerFixture fixture)
     {
         var services = new ServiceCollection();
+
+        // UserManager's IdentityOptions are bound from the "Identity" section; "Password1" below is 9 characters
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["Identity:PasswordRequiredLength"] = "9" })
+            .Build();
+        services.AddSingleton<IConfiguration>(configuration);
 
         var currentTenant = Substitute.For<ICurrentTenant>();
         currentTenant.TenantId.Returns(TenantConstants.SuperAdminTenantId);
@@ -75,5 +82,25 @@ public class IdentityServicesTests : IClassFixture<PostgresContainerFixture>, IA
 
         result.Succeeded.Should().BeTrue();
         (await _userManager.CheckPasswordAsync(user, "NewPassword1")).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Rejects_password_shorter_than_configured_length_When_creating_user()
+    {
+        var user = new ApplicationUser
+        {
+            Id = Guid.NewGuid(),
+            Email = "short@example.com",
+            UserName = "short@example.com",
+            TenantId = _tenantId,
+            FirstName = "Test",
+            LastName = "User"
+        };
+
+        // 8 characters: meets every rule except the configured length of 9
+        var result = await _userManager.CreateAsync(user, "Passwo1A");
+
+        result.Succeeded.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.Code == "PasswordTooShort");
     }
 }

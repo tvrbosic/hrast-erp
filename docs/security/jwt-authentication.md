@@ -25,7 +25,7 @@ Settings are validated at startup with `ValidateDataAnnotations()` + `ValidateOn
 
 ## Services
 
-- **Identity registration** — `AddIdentityServices()` (`Infrastructure/Identity/IdentityServiceExtensions.cs`) sets up `AddIdentityCore<ApplicationUser>` with the password and user rules, `AddEntityFrameworkStores<HrastDbContext>()`, and `AddDefaultTokenProviders()` plus `AddDataProtection()`. The token providers create the password reset tokens that the admin ChangePassword command uses, and Data Protection encrypts those tokens. Without them, `GeneratePasswordResetTokenAsync` throws and the endpoint returns a 500.
+- **Identity registration** — `AddIdentityServices()` (`Infrastructure/Identity/IdentityServiceExtensions.cs`) sets up `AddIdentityCore<ApplicationUser>` with the user rules (the password and lockout policy come from `IdentitySettings`, section `Identity`), `AddEntityFrameworkStores<HrastDbContext>()`, and `AddDefaultTokenProviders()` plus `AddDataProtection()`. The token providers create the password reset tokens that the admin ChangePassword command uses, and Data Protection encrypts those tokens. Without them, `GeneratePasswordResetTokenAsync` throws and the endpoint returns a 500.
 - **`ITokenService` / `TokenService`** — generates JWT access tokens, generates refresh token pairs (raw + hash), and hashes raw tokens for DB lookup.
 - **`IAuthService` / `AuthService`** — orchestrates login, refresh, logout and the current user (`/me`) using Identity's `UserManager` and `ITokenService`. All of it lives in `Infrastructure/Identity/` (`Entities/`, `Persistence/`, `Services/`), namespace `HrastERP.Infrastructure.Identity`.
 
@@ -48,7 +48,7 @@ When `TokenService.GenerateAccessToken` creates a JWT, it includes:
 ### Login (`POST /api/auth/login`)
 
 1. Find user by `NormalizedEmail` (case-insensitive) via `userManager.Users.Include(u => u.Role)` (eager-loads role so permissions are available for JWT generation). If none is found, verify the password against a dummy hash anyway, so response time doesn't reveal which emails exist, and return `Auth.InvalidCredentials`
-2. Verify password via `UserManager.CheckPasswordAsync` (`Auth.InvalidCredentials`). A locked-out account (`IsLockedOutAsync`) gets the same `Auth.InvalidCredentials` after a dummy hash, so lockout reveals nothing; a wrong password calls `AccessFailedAsync` (5 failures in a row lock the account for 15 minutes, set in `AddIdentityServices()`), a correct one calls `ResetAccessFailedCountAsync`
+2. Verify password via `UserManager.CheckPasswordAsync` (`Auth.InvalidCredentials`). A locked-out account (`IsLockedOutAsync`) gets the same `Auth.InvalidCredentials` after a dummy hash, so lockout reveals nothing; a wrong password calls `AccessFailedAsync` (by default 5 failures in a row lock the account for 15 minutes; `Identity:LockoutMaxFailedAttempts` and `Identity:LockoutMinutes`), a correct one calls `ResetAccessFailedCountAsync`
 3. Reject if `IsActive` is false or the user is soft-deleted (`Auth.InactiveUser`). This comes after the password check, so only someone who knows the password learns the account is inactive
 4. Reject if the user's tenant is inactive or soft-deleted (`Auth.InactiveTenant`); the super admin tenant is never blocked, matching `BlockInactiveEntityMiddleware`. Login runs without the middleware, so this check lives here. The same query loads the tenant's name for the response
 5. Generate JWT access token with user claims
@@ -207,6 +207,6 @@ Client                        API                         Infrastructure
 - **Reuse detection** — presenting an already rotated token revokes all of the user's refresh tokens
 - **No clock skew** — `ClockSkew = TimeSpan.Zero`, tokens expire exactly on time
 - **Short-lived access tokens** — 15 min default, limits exposure window
-- **Account lockout** — Identity lockout: 5 failed logins in a row lock the account for 15 minutes; a locked account gets the same response as a wrong password
+- **Account lockout** — Identity lockout: by default 5 failed logins in a row lock the account for 15 minutes (`Identity:LockoutMaxFailedAttempts`, `Identity:LockoutMinutes`); a locked account gets the same response as a wrong password
 - **Inactive user and tenant check** — deactivated and deleted accounts, and users of deactivated or deleted tenants, are rejected at login and token refresh
 - **No caching of tokens** — login and refresh responses send `Cache-Control: no-store` (`[ResponseCache(NoStore = true)]`), so browsers and proxies never store them

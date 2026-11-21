@@ -13,7 +13,9 @@ Settings in `appsettings.json` under `"Hangfire"`:
     "SoftDeleteRetentionDays": 90,
     "RevokedTokenRetentionDays": 7,
     "SoftDeleteCleanupCron": "0 2 * * *",
-    "RefreshTokenCleanupCron": "0 2 * * *"
+    "RefreshTokenCleanupCron": "0 2 * * *",
+    "DashboardEnabled": false,
+    "DashboardPath": "/hangfire"
   }
 }
 ```
@@ -25,6 +27,8 @@ Settings in `appsettings.json` under `"Hangfire"`:
 | `RevokedTokenRetentionDays` | int (1–365) | 7 | Days to keep revoked refresh tokens before deletion |
 | `SoftDeleteCleanupCron` | string | `"0 2 * * *"` | Cron schedule for soft-delete cleanup |
 | `RefreshTokenCleanupCron` | string | `"0 2 * * *"` | Cron schedule for refresh token cleanup |
+| `DashboardEnabled` | bool | false | Maps the Hangfire dashboard |
+| `DashboardPath` | string | `"/hangfire"` | Dashboard path; must start with `/` and contain only letters, digits, `/`, `_` and `-` |
 
 Bound to `HangfireSettings` via `ValidateDataAnnotations()` + `ValidateOnStart()` — misconfiguration fails at startup.
 
@@ -32,7 +36,9 @@ Job storage uses the same PostgreSQL database, with its tables in the `hangfire`
 
 ## Dashboard
 
-The Hangfire dashboard is available at `/hangfire` and restricted to localhost connections via `LocalhostDashboardAuthorizationFilter`.
+`UseBackgroundJobDashboard()` maps the Hangfire dashboard at `DashboardPath` only when `DashboardEnabled` is true (it is on in `appsettings.Development.json`). It is restricted to localhost connections via `LocalhostDashboardAuthorizationFilter`.
+
+**Do not enable the dashboard in production** unless it is served on an internal port the reverse proxy does not forward (reached through an SSH tunnel) or protected by real authentication. The localhost check alone is not enough: behind a reverse proxy or sidecar on the same host, every request arrives from loopback, so it lets everyone in.
 
 ## Architecture
 

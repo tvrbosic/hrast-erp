@@ -6,7 +6,7 @@ Interactive API documentation using [Scalar](https://scalar.com/) as the UI and 
 
 ### Availability
 
-Development environment only. The OpenAPI JSON endpoint and Scalar UI are not registered in other environments.
+Only when `OpenApi:Enabled` is true (`OpenApiSettings`, default false; on in `appsettings.Development.json`). Otherwise the OpenAPI JSON endpoint and Scalar UI are not registered.
 
 ### URLs
 
@@ -28,7 +28,7 @@ The OpenAPI document includes a global `BearerAuth` security scheme. In Scalar U
 Registration is in `HrastERP.API/OpenApi/OpenApiServiceExtensions.cs`:
 
 - `AddOpenApiServices()` — registers OpenAPI document generation with a document transformer that sets the API title, version, and JWT security scheme
-- `UseOpenApiInfrastructure()` — maps the OpenAPI and Scalar endpoints; no-ops outside Development
+- `UseOpenApiInfrastructure()` — maps the OpenAPI and Scalar endpoints; no-ops when `OpenApi:Enabled` is false
 
 ### Customizing the OpenAPI Document
 
@@ -100,7 +100,24 @@ The new check will automatically appear in the `/health` response.
 
 Registration is in `HrastERP.API/HealthChecks/HealthCheckServiceExtensions.cs`:
 
-- `AddHealthCheckServices(IConfiguration)` — registers all health checks with their connection strings
+- `AddHealthCheckServices()` — registers all health checks; the database check takes its connection string from `DatabaseSettings`, and the redis check reuses the shared `IConnectionMultiplexer` from the cache services
 - `UseHealthCheckEndpoint()` — maps `GET /health` with the custom JSON response writer
 
 The JSON response writer is in `HrastERP.API/HealthChecks/HealthCheckResponseWriter.cs`.
+
+## CORS
+
+Browser clients on another origin are allowed through a single default CORS policy. It is configured by `CorsSettings` (section `Cors`) and registered by `AddApiCors()` in `HrastERP.API/Cors/CorsServiceExtensions.cs`. `Program.cs` adds the middleware with `app.UseCors()`.
+
+| Setting | Type | Default | Description |
+|---|---|---|---|
+| `AllowedOrigins` | string[] | `[]` | Origins allowed to call the API; empty means no cross-origin access |
+| `PreflightMaxAgeMinutes` | int (0–1440) | 10 | How long browsers may cache a preflight response |
+
+Each origin must be exactly `scheme://host[:port]` as the browser sends it in the `Origin` header: `http` or `https`, with no trailing slash, path, query, user info, explicit default port, surrounding whitespace or `*`. Anything else fails at startup, because it would never match.
+
+The policy allows any header and method, exposes `Location` (so clients can read it from `201` responses), and does not allow credentials, since the API uses bearer tokens, not cookies.
+
+`app.UseCors()` runs after `UseLoggingInfrastructure()` and before the Hangfire dashboard and `UseAuthentication()`, so preflights are answered before authentication. It sits inside `GlobalExceptionMiddleware`, which keeps headers, so browsers can also read `500` responses.
+
+`appsettings.Development.json` allows `http://localhost:5173` as a placeholder for a local frontend dev server.

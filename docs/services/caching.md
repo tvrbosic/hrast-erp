@@ -10,7 +10,8 @@ Settings in `appsettings.json` under `"Cache"`:
 {
   "Cache": {
     "ConnectionString": "localhost:6379",
-    "DefaultTtlMinutes": 60
+    "DefaultTtlMinutes": 60,
+    "ActiveStatusTtlMinutes": 5
   }
 }
 ```
@@ -19,6 +20,7 @@ Settings in `appsettings.json` under `"Cache"`:
 |---|---|---|---|
 | `ConnectionString` | string | — | Redis connection string (required) |
 | `DefaultTtlMinutes` | int (1-1440) | 60 | Default cache entry TTL in minutes |
+| `ActiveStatusTtlMinutes` | int (1-60) | 5 | How long `BlockInactiveEntityMiddleware` caches a user's or tenant's active status |
 
 Bound to `CacheSettings` via `ValidateDataAnnotations()` + `ValidateOnStart()` — misconfiguration fails at startup.
 

@@ -7,6 +7,7 @@ using HrastERP.SharedKernel.Abstractions;
 using HrastERP.SharedKernel.Constants;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 
@@ -47,6 +48,8 @@ public class ApplicationUserAuditTests : IClassFixture<PostgresContainerFixture>
                 new TenantEntityInterceptor(currentTenant),
                 new AuditLogInterceptor(currentUser, currentTenant)));
 
+        // Empty configuration: Identity binds its settings from it and falls back to the defaults
+        services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
         services.AddIdentityServices();
         services.AddLogging();
 

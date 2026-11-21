@@ -8,6 +8,7 @@ using HrastERP.Infrastructure.Database;
 using HrastERP.Infrastructure.Identity;
 using HrastERP.SharedKernel.Constants;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace HrastERP.API.Middleware;
 
@@ -15,9 +16,11 @@ public class BlockInactiveEntityMiddleware(
     RequestDelegate next,
     ICacheService cacheService,
     IServiceScopeFactory scopeFactory,
+    IOptions<CacheSettings> cacheSettings,
     ILogger<BlockInactiveEntityMiddleware> logger)
 {
-    private static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(5);
+    // Read once: middleware is created once and IOptions<T> is a singleton, so the value can't change
+    private readonly TimeSpan _cacheTtl = TimeSpan.FromMinutes(cacheSettings.Value.ActiveStatusTtlMinutes);
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 
     public async Task InvokeAsync(HttpContext context)
@@ -80,7 +83,7 @@ public class BlockInactiveEntityMiddleware(
             .FirstOrDefaultAsync();
 
         if (tenant.HasValue)
-            await cacheService.SetAsync(cacheKey, tenant.Value, CacheTtl);
+            await cacheService.SetAsync(cacheKey, tenant.Value, _cacheTtl);
 
         return tenant;
     }
@@ -105,7 +108,7 @@ public class BlockInactiveEntityMiddleware(
             .FirstOrDefaultAsync();
 
         if (isActive.HasValue)
-            await cacheService.SetAsync(cacheKey, isActive.Value, CacheTtl);
+            await cacheService.SetAsync(cacheKey, isActive.Value, _cacheTtl);
 
         return isActive;
     }

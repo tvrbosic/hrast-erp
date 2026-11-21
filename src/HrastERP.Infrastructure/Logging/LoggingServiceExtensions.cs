@@ -1,40 +1,20 @@
 using Microsoft.AspNetCore.Builder;
 using Serilog;
-using Serilog.Events;
-using Serilog.Formatting.Json;
 
 namespace HrastERP.Infrastructure.Logging;
 
 internal static class LoggingServiceExtensions
 {
     /// <summary>
-    /// Configures Serilog as the logging provider with Console, Debug, and rolling JSON file sinks.
-    /// Reads minimum log levels and overrides from appsettings "Serilog" section.
+    /// Configures Serilog as the logging provider. Minimum levels, enrichers and sinks all come from
+    /// the appsettings "Serilog" section; sink and enricher assemblies are found automatically.
     /// Must be called directly on WebApplicationBuilder (not from AddInfrastructure) because
     /// UseSerilog is on builder.Host.
     /// </summary>
     internal static WebApplicationBuilder AddLoggingInfrastructure(this WebApplicationBuilder builder)
     {
         builder.Host.UseSerilog((context, loggerConfig) =>
-        {
-            var filePath = context.Configuration["Serilog:File:Path"] ?? "./logs/hrast-erp-.log";
-            var retentionDays = int.TryParse(context.Configuration["Serilog:File:RetentionDays"], out var days)
-                ? days
-                : 30;
-
-            loggerConfig
-                .ReadFrom.Configuration(context.Configuration)
-                .Enrich.FromLogContext()
-                .Enrich.WithMachineName()
-                .Enrich.WithEnvironmentName()
-                .WriteTo.Console()
-                .WriteTo.Debug()
-                .WriteTo.File(
-                    formatter: new JsonFormatter(),
-                    path: filePath,
-                    rollingInterval: RollingInterval.Day,
-                    retainedFileCountLimit: retentionDays);
-        });
+            loggerConfig.ReadFrom.Configuration(context.Configuration));
 
         return builder;
     }

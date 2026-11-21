@@ -21,7 +21,8 @@ public class DatabaseSettingsTests
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Database:ConnectionString"] = "Host=localhost;Database=test"
+                ["Database:ConnectionString"] = "Host=localhost;Database=test",
+                ["Database:SeedFixtures"] = "true"
             })
             .Build();
 
@@ -34,6 +35,7 @@ public class DatabaseSettingsTests
         var settings = provider.GetRequiredService<IOptions<DatabaseSettings>>().Value;
 
         settings.ConnectionString.Should().Be("Host=localhost;Database=test");
+        settings.SeedFixtures.Should().BeTrue();
     }
 
     [Fact]
@@ -41,6 +43,7 @@ public class DatabaseSettingsTests
     {
         var settings = new DatabaseSettings();
         settings.ConnectionString.Should().Be(string.Empty);
+        settings.SeedFixtures.Should().BeFalse();
     }
 
     [Fact]

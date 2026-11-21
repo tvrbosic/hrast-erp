@@ -22,4 +22,10 @@ public sealed class HangfireSettings
     [Required]
     [MinLength(1)]
     public string RefreshTokenCleanupCron { get; init; } = "0 2 * * *";
+
+    public bool DashboardEnabled { get; init; }
+
+    [Required]
+    [RegularExpression("^/[A-Za-z0-9/_-]*$")]
+    public string DashboardPath { get; init; } = "/hangfire";
 }

@@ -84,7 +84,7 @@ First business module — manages tenants, users and roles. Their entities (`Ten
 
 **Role Management:** CQRS slice in `Administration/Application/Roles/` operating on the global `Role` entity (Infrastructure) via `HrastDbContext.Set<Role>()`. Endpoints at `api/admin/roles` (CRUD) and `api/admin/permissions` (all permissions grouped by module). Reads need `AdministrationView`; writes additionally need `[RequireSuperAdminTenant]`, applied per write action (not on the controller) so tenant admins can still read roles. Permissions travel over the API as enum names and are converted to/from the bitmask by `PermissionMapper` (SharedKernel `Authorization/`, next to `Permission`). Role names are trimmed and unique case-insensitively, enforced by a unique index on `Role.NormalizedName` (`Name.Trim().ToUpperInvariant()`). Outside the super admin tenant, users can only be given roles within the caller's own permissions (`RoleAssignment` in `Application/Users/`). The Administrator role (`RoleConstants.AdministratorRoleId`) cannot be deleted and must keep every permission. Role changes reach users on their next token refresh.
 
-**Block Inactive Entity Middleware:** `BlockInactiveEntityMiddleware` runs after authentication, before authorization. Blocks requests from users with inactive or deleted accounts (403 `Auth.InactiveUser`), or belonging to inactive tenants (403 `Auth.InactiveTenant`), the same codes login and refresh return. Uses `ICacheService` for cached status lookups (5-min TTL). The super admin tenant is never blocked as a tenant, but its inactive or deleted users are.
+**Block Inactive Entity Middleware:** `BlockInactiveEntityMiddleware` runs after authentication, before authorization. Blocks requests from users with inactive or deleted accounts (403 `Auth.InactiveUser`), or belonging to inactive tenants (403 `Auth.InactiveTenant`), the same codes login and refresh return. Uses `ICacheService` for cached status lookups (TTL from `Cache:ActiveStatusTtlMinutes`, default 5 min). The super admin tenant is never blocked as a tenant, but its inactive or deleted users are.
 
 ## Authentication & Authorization
 
@@ -107,7 +107,7 @@ public async Task<IActionResult> GetInvoices() { ... }
 
 ## Database Seeding
 
-`DatabaseSeeder` runs plain SQL scripts at startup (after migrations) from `src/HrastERP.Infrastructure/Database/Seeds/`: `Reference/` always, `Fixtures/` in `Development` only. Scripts are named `NNNN_description.sql`, run once per database (tracked in `infrastructure.seed_history`), and use `INSERT ... ON CONFLICT (id) DO NOTHING`. See `docs/data/database-seeding.md`.
+`DatabaseSeeder` runs plain SQL scripts at startup (after migrations) from `src/HrastERP.Infrastructure/Database/Seeds/`: `Reference/` always, `Fixtures/` only when `Database:SeedFixtures` is true (on in `appsettings.Development.json`, never in production). Scripts are named `NNNN_description.sql`, run once per database (tracked in `infrastructure.seed_history`), and use `INSERT ... ON CONFLICT (id) DO NOTHING`. See `docs/data/database-seeding.md`.
 
 **Predefined UUIDs** (stable across environments — used as FK targets and constants):
 - Super Admin Tenant: `00000000-0000-0000-0000-100000000000` (seeded in `Reference/0002_super_admin_tenant.sql`)
@@ -127,7 +127,7 @@ Each lives in `HrastERP.Infrastructure/<Service>/`, is configured by an `appsett
 - **PDF generation** (QuestPDF, `IReportGenerator<TData>` per module) — `docs/services/pdf-generation.md`
 - **Caching** (Redis, keys `Module:Entity:Identifier`) — `docs/services/caching.md`
 - **Logging** (Serilog) — `docs/services/logging.md`
-- **OpenAPI/Scalar UI and `/health` checks** — `docs/api/api-setup.md`
+- **OpenAPI/Scalar UI, CORS and `/health` checks** — `docs/api/api-setup.md`
 
 ## Test stack
 

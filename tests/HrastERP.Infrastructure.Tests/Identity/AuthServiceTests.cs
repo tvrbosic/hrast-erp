@@ -9,6 +9,7 @@ using HrastERP.SharedKernel.Authorization;
 using HrastERP.SharedKernel.Constants;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using NSubstitute;
@@ -49,6 +50,8 @@ public class AuthServiceTests : IClassFixture<PostgresContainerFixture>, IAsyncL
         var connectionString = fixture.NewConnectionString();
         services.AddDbContext<HrastDbContext>(options => options.UseNpgsql(connectionString));
 
+        // Empty configuration: Identity binds its settings from it and falls back to the defaults
+        services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
         services.AddIdentityServices();
 
         // Registered after AddIdentityServices() so it replaces the appsettings binding.

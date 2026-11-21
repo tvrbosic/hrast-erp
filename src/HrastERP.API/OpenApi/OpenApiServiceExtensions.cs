@@ -1,20 +1,28 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.Options;
 using Microsoft.OpenApi;
 using Scalar.AspNetCore;
 
 namespace HrastERP.API.OpenApi;
 
 /// <summary>
-/// Registers OpenAPI document generation and, in Development only, serves the document and the Scalar UI.
+/// Registers OpenAPI document generation and, when <see cref="OpenApiSettings.Enabled"/> is true,
+/// serves the document and the Scalar UI.
 /// </summary>
 public static class OpenApiServiceExtensions
 {
     /// <summary>
-    /// Registers the OpenAPI document with the API title, version and a global JWT Bearer security
-    /// scheme, so Scalar can send a token with every request.
+    /// Binds <see cref="OpenApiSettings"/> and registers the OpenAPI document with the API title, version
+    /// and a global JWT Bearer security scheme, so Scalar can send a token with every request.
     /// </summary>
     public static IServiceCollection AddOpenApiServices(this IServiceCollection services)
     {
+        services
+            .AddOptions<OpenApiSettings>()
+            .BindConfiguration(OpenApiSettings.SectionName)
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
         services.AddOpenApi(options =>
         {
             options.AddDocumentTransformer((document, _, _) =>
@@ -52,12 +60,12 @@ public static class OpenApiServiceExtensions
     }
 
     /// <summary>
-    /// In Development, maps the OpenAPI document at <c>/openapi/v1.json</c> and the Scalar UI at
-    /// <c>/scalar/v1</c>. Does nothing in other environments.
+    /// When <see cref="OpenApiSettings.Enabled"/> is true, maps the OpenAPI document at
+    /// <c>/openapi/v1.json</c> and the Scalar UI at <c>/scalar/v1</c>. Does nothing otherwise.
     /// </summary>
     public static WebApplication UseOpenApiInfrastructure(this WebApplication app)
     {
-        if (!app.Environment.IsDevelopment())
+        if (!app.Services.GetRequiredService<IOptions<OpenApiSettings>>().Value.Enabled)
             return app;
 
         app.MapOpenApi();

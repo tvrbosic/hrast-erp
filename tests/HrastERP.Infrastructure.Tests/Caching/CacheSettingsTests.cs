@@ -21,6 +21,7 @@ public class CacheSettingsTests
 
         settings.ConnectionString.Should().Be(string.Empty);
         settings.DefaultTtlMinutes.Should().Be(60);
+        settings.ActiveStatusTtlMinutes.Should().Be(5);
     }
 
     [Fact]
@@ -30,7 +31,8 @@ public class CacheSettingsTests
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["Cache:ConnectionString"] = "redis-server:6380",
-                ["Cache:DefaultTtlMinutes"] = "120"
+                ["Cache:DefaultTtlMinutes"] = "120",
+                ["Cache:ActiveStatusTtlMinutes"] = "10"
             })
             .Build();
 
@@ -44,6 +46,7 @@ public class CacheSettingsTests
 
         settings.ConnectionString.Should().Be("redis-server:6380");
         settings.DefaultTtlMinutes.Should().Be(120);
+        settings.ActiveStatusTtlMinutes.Should().Be(10);
     }
 
     [Fact]
@@ -101,6 +104,31 @@ public class CacheSettingsTests
             {
                 ["Cache:ConnectionString"] = "localhost:6379",
                 ["Cache:DefaultTtlMinutes"] = ttl.ToString()
+            })
+            .Build();
+
+        var services = new ServiceCollection();
+        services.AddSingleton<IConfiguration>(configuration);
+        services.AddOptions<CacheSettings>()
+            .BindConfiguration(CacheSettings.SectionName)
+            .ValidateDataAnnotations();
+        var provider = services.BuildServiceProvider();
+
+        var act = () => provider.GetRequiredService<IOptions<CacheSettings>>().Value;
+
+        act.Should().Throw<OptionsValidationException>();
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(61)]
+    public void Fails_validation_When_ActiveStatusTtlMinutes_is_out_of_range(int ttl)
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Cache:ConnectionString"] = "localhost:6379",
+                ["Cache:ActiveStatusTtlMinutes"] = ttl.ToString()
             })
             .Build();
 

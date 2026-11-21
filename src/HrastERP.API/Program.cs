@@ -1,6 +1,6 @@
-using Hangfire;
 using HrastERP.API.Authentication;
 using HrastERP.API.Authorization;
+using HrastERP.API.Cors;
 using HrastERP.API.HealthChecks;
 using HrastERP.API.Middleware;
 using HrastERP.API.OpenApi;
@@ -57,12 +57,15 @@ builder.Services.ConfigureModelBindingErrorFormat();
 builder.Services.AddOpenApiServices();
 
 // Register health checks for PostgreSQL, Redis, and SMTP connectivity.
-builder.Services.AddHealthCheckServices(builder.Configuration);
+builder.Services.AddHealthCheckServices();
+
+// Register the default CORS policy for the origins in Cors:AllowedOrigins (none by default).
+builder.Services.AddApiCors();
 
 var app = builder.Build();
 
 // Requires migrations to be applied first: dotnet ef database update
-// Reference seeds always run; dev fixtures run only in Development environment.
+// Reference seeds always run; dev fixtures run only when Database:SeedFixtures is true.
 using (var scope = app.Services.CreateScope())
 {
     var seeder = scope.ServiceProvider.GetRequiredService<DatabaseSeeder>();
@@ -84,11 +87,12 @@ app.UseStatusCodePages(StatusCodeErrorResponse.WriteAsync);
 // Serilog HTTP request logging — one structured log line per request (method, path, status code, elapsed time).
 app.UseLoggingInfrastructure();
 
-// Hangfire dashboard — restricted to localhost connections only.
-app.UseHangfireDashboard("/hangfire", new DashboardOptions
-{
-    Authorization = [new LocalhostDashboardAuthorizationFilter()]
-});
+// CORS — answers preflights before authentication and adds CORS headers for allowed origins.
+// Runs inside GlobalExceptionMiddleware, which keeps headers, so browsers can also read 500 responses.
+app.UseCors();
+
+// Hangfire dashboard — only when Hangfire:DashboardEnabled, and restricted to localhost connections.
+app.UseBackgroundJobDashboard();
 
 // UseAuthentication reads the Bearer token from the request, validates it, and populates HttpContext.User.
 // UseAuthorization checks whether the authenticated user is allowed to access the endpoint ([Authorize] etc.).
@@ -112,7 +116,7 @@ app.MapControllers();
 // Health check endpoint — unauthenticated, available in all environments.
 app.UseHealthCheckEndpoint();
 
-// OpenAPI document + Scalar UI — Development only.
+// OpenAPI document + Scalar UI — only when OpenApi:Enabled.
 app.UseOpenApiInfrastructure();
 
 app.Run();

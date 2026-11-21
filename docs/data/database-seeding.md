@@ -9,10 +9,10 @@
 ```
 src/HrastERP.Infrastructure/Database/Seeds/
 ├── Reference/    # Always applied — every environment
-└── Fixtures/     # Applied only in Development environment
+└── Fixtures/     # Applied only when Database:SeedFixtures is true
 ```
 
-Reference scripts run first, then Fixtures (in Development). Within each folder, scripts execute in ascending numeric order.
+Reference scripts run first, then Fixtures (when `Database:SeedFixtures` is true; it is on in `appsettings.Development.json`). Within each folder, scripts execute in ascending numeric order.
 
 ## Naming Convention
 
@@ -37,7 +37,7 @@ The `infrastructure.seed_history` table (and the `infrastructure` schema, if mis
 
 ## Adding a New Seed Script
 
-1. Determine the correct folder: `Reference/` for data that must exist in all environments; `Fixtures/` for dev-only data.
+1. Determine the correct folder: `Reference/` for data that must exist in all environments; `Fixtures/` for dev-only data (applied only when `Database:SeedFixtures` is true).
 2. Choose the next available prefix number (check existing files in the folder).
 3. Create `NNNN_description.sql` with idempotent SQL using `ON CONFLICT (id) DO NOTHING`.
 4. The script will be copied to the build output automatically (configured via `<Content CopyToOutputDirectory="PreserveNewest">` in `HrastERP.Infrastructure.csproj`).
@@ -83,3 +83,4 @@ Drop and recreate the database, re-apply migrations, then restart the app. The s
 
 - `ON CONFLICT DO NOTHING` means existing rows are not updated. To update reference data (e.g. change a role's permissions), add a new script with an `UPDATE` statement — do not modify existing scripts that have already run against production databases.
 - The dev admin user fixture (`Database/Seeds/Fixtures/0001_dev_admin_user.sql`) uses `TenantId = SuperAdminTenantId` (`00000000-0000-0000-0000-100000000000`), assigning the dev admin to the super admin tenant.
+- **Never enable `SeedFixtures` in production.** The fixtures create a dev admin user with a known password.

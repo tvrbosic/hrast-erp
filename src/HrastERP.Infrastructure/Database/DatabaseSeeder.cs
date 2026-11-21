@@ -1,14 +1,13 @@
 using System.Data;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using Npgsql;
 
 namespace HrastERP.Infrastructure.Database;
 
 /// <summary>
 /// Runs the SQL seed scripts at startup, after migrations: <c>Seeds/Reference</c> always,
-/// <c>Seeds/Fixtures</c> only in Development. Each script runs once per database; applied scripts are
+/// <c>Seeds/Fixtures</c> only when <see cref="DatabaseSettings.SeedFixtures"/> is true. Each script runs once per database; applied scripts are
 /// recorded in the <c>infrastructure.seed_history</c> table.
 /// </summary>
 internal sealed class DatabaseSeeder
@@ -16,12 +15,12 @@ internal sealed class DatabaseSeeder
     private const string HistoryTable = $"{DatabaseSchemas.Infrastructure}.seed_history";
 
     private readonly HrastDbContext _context;
-    private readonly IWebHostEnvironment _env;
+    private readonly DatabaseSettings _settings;
 
-    public DatabaseSeeder(HrastDbContext context, IWebHostEnvironment env)
+    public DatabaseSeeder(HrastDbContext context, IOptions<DatabaseSettings> settings)
     {
         _context = context;
-        _env = env;
+        _settings = settings.Value;
     }
 
     public async Task SeedAsync(CancellationToken cancellationToken = default)
@@ -35,11 +34,11 @@ internal sealed class DatabaseSeeder
         {
             await EnsureHistoryTableAsync(connection, cancellationToken);
 
-            // Apply reference data everywhere and fixtures only in Development
+            // Apply reference data everywhere and fixtures only when enabled
             var baseDir = AppContext.BaseDirectory;
             await ApplyScriptsAsync(connection, Path.Combine(baseDir, "Seeds", "Reference"), cancellationToken);
 
-            if (_env.IsDevelopment())
+            if (_settings.SeedFixtures)
                 await ApplyScriptsAsync(connection, Path.Combine(baseDir, "Seeds", "Fixtures"), cancellationToken);
         }
         finally
