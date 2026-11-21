@@ -2,7 +2,9 @@ using System.Reflection;
 using FluentAssertions;
 using HrastERP.API.Controllers;
 using HrastERP.API.Responses;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 
 namespace HrastERP.API.Tests.Controllers;
 
@@ -36,6 +38,23 @@ public class ResponseTypeDeclarationTests
     private static MethodInfo Find(string qualifiedName) =>
         AllActions().Single(a => $"{a.DeclaringType!.Name}.{a.Name}" == qualifiedName);
 
+    // [RequirePermission] and [RequireSuperAdminTenant] derive from AuthorizeAttribute, and
+    // TenantsController puts [RequireSuperAdminTenant] on the class, so both places are checked.
+    private static bool RequiresAuthorization(MethodInfo action) =>
+        action.GetCustomAttributes<AuthorizeAttribute>(inherit: true).Any()
+        || action.DeclaringType!.GetCustomAttributes<AuthorizeAttribute>(inherit: true).Any();
+
+    private static bool HasBindableInput(MethodInfo action) =>
+        action.GetParameters().Any(p => p.GetCustomAttribute<FromQueryAttribute>() is not null || IsBody(p));
+
+    // [ApiController] binds a complex type without a binding source attribute from the body.
+    // Value types (Guid id, CancellationToken) and strings bind from route or query instead.
+    private static bool IsBody(ParameterInfo parameter) =>
+        parameter.GetCustomAttribute<FromBodyAttribute>() is not null
+        || (!parameter.ParameterType.IsValueType
+            && parameter.ParameterType != typeof(string)
+            && !parameter.GetCustomAttributes().OfType<IBindingSourceMetadata>().Any());
+
     [Theory]
     [MemberData(nameof(ActionNames))]
     public void Declares_exactly_one_success_response_When_action_is_public(string action)
@@ -50,6 +69,32 @@ public class ResponseTypeDeclarationTests
         Declared(Find(action))
             .Where(a => a.StatusCode >= 400 && a.Type != typeof(ErrorResponse))
             .Should().BeEmpty();
+    }
+
+    // 403 applies even to [Authorize]-only actions: BlockInactiveEntityMiddleware can return it
+    // on any authenticated request.
+    [Theory]
+    [MemberData(nameof(ActionNames))]
+    public void Declares_401_and_403_When_action_requires_authorization(string action)
+    {
+        var method = Find(action);
+        if (!RequiresAuthorization(method))
+            return;
+
+        Declared(method).Select(a => a.StatusCode).Should().Contain(new[] { 401, 403 });
+    }
+
+    // Body and query input can fail model binding or validation (422 General.Validation); a bad
+    // {id:guid} route value doesn't match the route at all, so route-only actions are skipped.
+    [Theory]
+    [MemberData(nameof(ActionNames))]
+    public void Declares_422_When_action_binds_body_or_query(string action)
+    {
+        var method = Find(action);
+        if (!HasBindableInput(method))
+            return;
+
+        Declared(method).Should().Contain(a => a.StatusCode == 422);
     }
 
     [Theory]
