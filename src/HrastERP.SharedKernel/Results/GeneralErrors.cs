@@ -26,10 +26,11 @@ public static class GeneralErrors
         Error.Forbidden("General.Forbidden", "You do not have permission to perform this action.");
 
     /// <summary>
-    /// The request reached a MediatR handler without a tenant context.
+    /// The request reached a MediatR handler without a tenant context, i.e. its token has no valid tenant claim.
+    /// An authentication failure (401), since only a malformed token can lack it.
     /// </summary>
     public static readonly Error MissingTenant =
-        Error.Forbidden("General.MissingTenant", "A valid tenant context is required.");
+        Error.Unauthorized("General.MissingTenant", "A valid tenant context is required.");
 
     /// <summary>
     /// No endpoint matches the URL (404 written by <c>StatusCodeErrorResponse</c>). Not the same as a handler's

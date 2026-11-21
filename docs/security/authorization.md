@@ -67,7 +67,7 @@ Roles are global (shared by all tenants). Any user with `AdministrationView` can
 - `page` must be ≥ 1 and `pageSize` between 1 and 100 (`422` otherwise).
 - Role names are trimmed and unique, case-insensitively (`409 Role.NameTaken`). Uniqueness is enforced by a unique index on `Role.NormalizedName` (trimmed, `ToUpperInvariant()`, like Identity's `NormalizedUserName`); a concurrent duplicate that slips past the handler's check is rejected by the index and fails with a 500.
 - **Assignment ceiling:** outside the super admin tenant, `CreateUser`/`UpdateUser` only accept a `RoleId` whose permissions the caller holds (`403 Role.ExceedsOwnPermissions`), and a caller can't change the role of a user who holds permissions they lack (`403 User.RoleExceedsOwnPermissions`). This stops a tenant admin from granting themselves or others more than they have. Super admin tenant users are exempt.
-- **Administrator protection:** the seeded Administrator role (`RoleConstants.AdministratorRoleId`) cannot be deleted and must always hold every permission (`409 Role.AdministratorImmutable`). It can still be renamed or have its description changed.
+- **Administrator protection:** the seeded Administrator role (`RoleConstants.AdministratorRoleId`) cannot be deleted and must always hold every permission (`422 Role.AdministratorImmutable`). It can still be renamed or have its description changed.
 - **Propagation:** permissions are embedded in the JWT, so a change to a role reaches its users on their next token refresh — at most `AccessTokenExpirationMinutes` (15 by default).
 
 ## How Permissions Reach the JWT

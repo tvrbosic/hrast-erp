@@ -54,10 +54,10 @@ Checks that the current request has a valid tenant context before any handler or
 ### Returned error
 
 ```csharp
-GeneralErrors.MissingTenant // Error.Forbidden("General.MissingTenant", "A valid tenant context is required.")
+GeneralErrors.MissingTenant // Error.Unauthorized("General.MissingTenant", "A valid tenant context is required.")
 ```
 
-Maps to HTTP 403 via `ToActionResult()`.
+Maps to HTTP 401 via `ToActionResult()`: only a token without a valid tenant claim reaches it, which is an authentication failure.
 
 ### Why before ValidationBehavior
 

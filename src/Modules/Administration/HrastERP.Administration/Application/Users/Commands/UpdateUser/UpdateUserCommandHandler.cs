@@ -69,9 +69,13 @@ internal sealed class UpdateUserCommandHandler(
 
             var setEmailResult = await userManager.SetEmailAsync(user, request.Email);
             if (!setEmailResult.Succeeded)
-                return Result.Failure(AdministrationErrors.UserEmailTaken);
+                return Result.Failure(AdministrationErrors.UserUpdateFailed(
+                    IdentityFieldErrors.From(setEmailResult.Errors)));
 
-            await userManager.SetUserNameAsync(user, request.Email);
+            var setUserNameResult = await userManager.SetUserNameAsync(user, request.Email);
+            if (!setUserNameResult.Succeeded)
+                return Result.Failure(AdministrationErrors.UserUpdateFailed(
+                    IdentityFieldErrors.From(setUserNameResult.Errors)));
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);

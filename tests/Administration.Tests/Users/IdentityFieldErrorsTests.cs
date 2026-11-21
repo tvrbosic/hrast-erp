@@ -37,4 +37,12 @@ public class IdentityFieldErrorsTests
 
         fieldErrors.Keys.Should().Equal("concurrencyFailure");
     }
+
+    [Fact]
+    public void Keeps_camelCased_Identity_code_When_password_rule_fails_without_password_field()
+    {
+        var fieldErrors = IdentityFieldErrors.From([Err("PasswordTooShort")]);
+
+        fieldErrors.Keys.Should().Equal("passwordTooShort");
+    }
 }

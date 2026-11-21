@@ -5,7 +5,7 @@ using MediatR;
 namespace HrastERP.Infrastructure.Behaviors;
 
 /// <summary>
-/// MediatR pipeline behavior that returns <c>Forbidden("General.MissingTenant")</c> without running the
+/// MediatR pipeline behavior that returns <c>Unauthorized("General.MissingTenant")</c> without running the
 /// handler when the request has no tenant context. Runs after logging and before input validation.
 /// </summary>
 public sealed class TenantValidationBehavior<TRequest, TResponse>(ICurrentTenant currentTenant)

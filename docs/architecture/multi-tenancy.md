@@ -12,7 +12,7 @@ The current tenant is resolved from the JWT claim on every request via `ICurrent
 
 | Layer | Mechanism | Failure mode |
 |---|---|---|
-| MediatR pipeline | `TenantValidationBehavior` | `Result.Failure(Error.Forbidden(...))` — before handler runs |
+| MediatR pipeline | `TenantValidationBehavior` | `Result.Failure(GeneralErrors.MissingTenant)` (401) — before handler runs |
 | EF Core | `TenantEntityInterceptor` + global query filter | `InvalidOperationException` on save; invisible rows on read |
 
 ---
@@ -112,7 +112,7 @@ await dbContext.Products.IgnoreQueryFilters().ToListAsync();
 Before any MediatR handler executes, `TenantValidationBehavior` checks that `ICurrentTenant.TenantId` is not `Guid.Empty`. If it is, the pipeline short-circuits:
 
 ```json
-HTTP 403
+HTTP 401
 {
     "code": "General.MissingTenant",
     "message": "A valid tenant context is required."

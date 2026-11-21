@@ -32,6 +32,11 @@ public static class AdministrationErrors
     public static Error UserCreationFailed(IReadOnlyDictionary<string, string[]> fieldErrors) =>
         Error.Validation("User.CreationFailed", "Failed to create user.", fieldErrors);
 
+    // Identity rejected the new email or user name (e.g. invalid format, concurrent update); fieldErrors is keyed by
+    // request field (IdentityFieldErrors)
+    public static Error UserUpdateFailed(IReadOnlyDictionary<string, string[]> fieldErrors) =>
+        Error.Validation("User.UpdateFailed", "Failed to update user.", fieldErrors);
+
     // Identity rejected the new password (password policy); fieldErrors is keyed by request field (IdentityFieldErrors)
     public static Error UserPasswordChangeFailed(IReadOnlyDictionary<string, string[]> fieldErrors) =>
         Error.Validation("User.PasswordChangeFailed", "Failed to change password.", fieldErrors);
@@ -54,7 +59,7 @@ public static class AdministrationErrors
         Error.Conflict("Role.NameTaken", "A role with this name already exists.");
 
     public static readonly Error RoleAdministratorImmutable =
-        Error.Conflict("Role.AdministratorImmutable", "The Administrator role cannot be deleted and its permissions cannot be changed.");
+        Error.Validation("Role.AdministratorImmutable", "The Administrator role cannot be deleted and its permissions cannot be changed.");
 
     public static Error RoleInUse(int userCount) =>
         Error.Conflict("Role.InUse", $"Role is assigned to {userCount} users, including deleted users awaiting permanent removal. Reassign them before deleting.");

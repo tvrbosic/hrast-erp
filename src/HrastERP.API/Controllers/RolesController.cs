@@ -62,6 +62,7 @@ public sealed class RolesController(ISender sender) : ControllerBase
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status403Forbidden)]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status404NotFound)]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status409Conflict)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         var result = await sender.Send(new DeleteRoleCommand(id), ct);

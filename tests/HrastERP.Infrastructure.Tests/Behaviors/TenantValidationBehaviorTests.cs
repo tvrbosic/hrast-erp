@@ -14,7 +14,7 @@ public class TenantValidationBehaviorTests
     private sealed record TestRequestWithValue : IRequest<Result<string>>;
 
     [Fact]
-    public async Task Returns_forbidden_failure_When_TenantId_is_empty()
+    public async Task Returns_unauthorized_failure_When_TenantId_is_empty()
     {
         var tenant = Substitute.For<ICurrentTenant>();
         var behavior = new TenantValidationBehavior<TestRequest, Result>(tenant);
@@ -23,12 +23,12 @@ public class TenantValidationBehaviorTests
         var result = await behavior.Handle(new TestRequest(), next, CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
-        result.Error.Type.Should().Be(ErrorType.Forbidden);
+        result.Error.Type.Should().Be(ErrorType.Unauthorized);
         result.Error.Code.Should().Be("General.MissingTenant");
     }
 
     [Fact]
-    public async Task Returns_forbidden_failure_for_ResultT_When_TenantId_is_empty()
+    public async Task Returns_unauthorized_failure_for_ResultT_When_TenantId_is_empty()
     {
         var tenant = Substitute.For<ICurrentTenant>();
         var behavior = new TenantValidationBehavior<TestRequestWithValue, Result<string>>(tenant);
@@ -37,7 +37,7 @@ public class TenantValidationBehaviorTests
         var result = await behavior.Handle(new TestRequestWithValue(), next, CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
-        result.Error.Type.Should().Be(ErrorType.Forbidden);
+        result.Error.Type.Should().Be(ErrorType.Unauthorized);
         result.Error.Code.Should().Be("General.MissingTenant");
     }
 

@@ -48,7 +48,7 @@ dotnet run --project src/HrastERP.API/
 
 **Pipeline behaviors** (registered in `HrastERP.Infrastructure`), in execution order:
 - `LoggingBehavior` — outermost; logs requests with timing; properties marked `[SensitiveData]` are masked as `"***"`
-- `TenantValidationBehavior` — short-circuits with `GeneralErrors.MissingTenant` (403 `General.MissingTenant`) when `ICurrentTenant.TenantId` is `Guid.Empty`; runs before input validation
+- `TenantValidationBehavior` — short-circuits with `GeneralErrors.MissingTenant` (401 `General.MissingTenant`) when `ICurrentTenant.TenantId` is `Guid.Empty`; runs before input validation
 - `ValidationBehavior` — runs FluentValidation validators and returns `GeneralErrors.Validation(fieldErrors)` (422 `General.Validation`) keyed by camelCase property name. Validators are `internal sealed` classes placed next to their command and are picked up by `AddValidatorsFromAssembly(assembly, includeInternalTypes: true)` in `Add<Module>Module()`; without that flag FluentValidation silently skips internal validators.
 
 **Inter-module communication:** Domain events only (MediatR notifications). Modules never reference each other. Cross-module event contracts will live in SharedKernel under `IntegrationEvents/` (created with the first integration event).
