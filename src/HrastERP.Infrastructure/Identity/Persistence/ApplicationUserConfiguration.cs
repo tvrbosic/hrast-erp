@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace HrastERP.Infrastructure.Identity;
 
-public sealed class ApplicationUserConfiguration : IEntityTypeConfiguration<ApplicationUser>
+internal sealed class ApplicationUserConfiguration : IEntityTypeConfiguration<ApplicationUser>
 {
     public void Configure(EntityTypeBuilder<ApplicationUser> builder)
     {
