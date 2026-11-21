@@ -6,22 +6,27 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace HrastERP.API.Authentication;
 
+/// <summary>
+/// Registers JWT access token validation and exposes the validated token's claims to handlers as
+/// <see cref="ICurrentUser"/> and <see cref="ICurrentTenant"/>.
+/// </summary>
 public static class AuthenticationServiceExtensions
 {
-    /// <summary>
-    /// Validates incoming JWT access tokens (JwtBearer as the default scheme) and exposes their claims to
-    /// handlers as <see cref="ICurrentUser"/> and <see cref="ICurrentTenant"/>. Tokens are issued by
-    /// <c>Infrastructure/Identity</c> (<c>TokenService</c>) with the same <see cref="JwtSettings"/>.
-    /// </summary>
+    /// <remarks>
+    /// Tokens are issued by <c>TokenService</c> in <c>Infrastructure/Identity</c> with the same
+    /// <see cref="JwtSettings"/>, so issuer, audience and signing key must match on both sides.
+    /// </remarks>
     public static IServiceCollection AddApiAuthentication(
         this IServiceCollection services, IConfiguration configuration)
     {
+        // Read the JWT settings. The null-forgiving operator is safe: they are only used inside the AddJwtBearer
+        // callback, which runs on the first request, and AddIdentityServices() validates them on startup before that
         var jwtSettings = configuration
             .GetSection(JwtSettings.SectionName)
             .Get<JwtSettings>()!;
 
-        // AddAuthentication sets the default scheme so [Authorize] uses it without naming it explicitly.
-        // AddJwtBearer configures how incoming tokens are validated (issuer, audience, signing key, expiry).
+        // Register JwtBearer as the default scheme, so [Authorize] uses it without naming it,
+        // and configure how incoming tokens are validated
         services
             .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
@@ -36,6 +41,7 @@ public static class AuthenticationServiceExtensions
                     ValidAudience = jwtSettings.Audience,
                     IssuerSigningKey = new SymmetricSecurityKey(
                         Encoding.UTF8.GetBytes(jwtSettings.SecretKey)),
+                    // No grace period: a token is rejected the moment it expires (the default allows 5 minutes)
                     ClockSkew = TimeSpan.Zero
                 };
 
@@ -43,11 +49,9 @@ public static class AuthenticationServiceExtensions
                 options.Events = new JwtBearerEvents { OnChallenge = JwtChallengeResponse.WriteAsync };
             });
 
-        // IHttpContextAccessor gives DI-injected services (like CurrentUser) access to HttpContext,
-        // and thus the validated token's claims, outside of controllers and middleware.
+        // Register the current user and tenant. Both read the claims of the request's validated token through
+        // IHttpContextAccessor, so they are scoped (one per HTTP request)
         services.AddHttpContextAccessor();
-
-        // Resolved from JWT claims per request by application handlers.
         services.AddScoped<ICurrentUser, CurrentUser>();
         services.AddScoped<ICurrentTenant, CurrentTenant>();
 

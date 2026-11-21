@@ -1,7 +1,6 @@
 using HrastERP.Administration.Application.Roles.Models;
 using HrastERP.Administration.Application.Roles.Queries.GetPermissions;
 using HrastERP.API.Authorization;
-using HrastERP.API.Extensions;
 using HrastERP.API.Responses;
 using HrastERP.SharedKernel.Authorization;
 using MediatR;

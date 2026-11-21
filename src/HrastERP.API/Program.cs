@@ -1,8 +1,10 @@
 using Hangfire;
 using HrastERP.API.Authentication;
 using HrastERP.API.Authorization;
-using HrastERP.API.Extensions;
+using HrastERP.API.HealthChecks;
 using HrastERP.API.Middleware;
+using HrastERP.API.OpenApi;
+using HrastERP.API.Responses;
 using HrastERP.Administration;
 using HrastERP.Finance;
 using HrastERP.Infrastructure;
@@ -12,7 +14,6 @@ using HrastERP.Infrastructure.Logging;
 using HrastERP.Inventory;
 using HrastERP.Procurement;
 using HrastERP.Production;
-using Microsoft.AspNetCore.Authorization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,23 +27,8 @@ builder.Services.AddInfrastructure();
 // Validate incoming JWT access tokens and expose their claims as ICurrentUser / ICurrentTenant.
 builder.Services.AddApiAuthentication(builder.Configuration);
 
-// Register authorization services that evaluate [Authorize] attributes and policies against the authenticated user.
-// The SuperAdminTenant policy is fixed; Permission policies are built on demand by PermissionPolicyProvider.
-builder.Services.AddAuthorization(options =>
-    options.AddPolicy(RequireSuperAdminTenantAttribute.PolicyName, policy => policy
-        .RequireAuthenticatedUser()
-        .AddRequirements(new SuperAdminTenantRequirement())));
-
-// Replace the default policy provider with one that builds Permission policies dynamically.
-// Singleton is safe — policy construction uses only static enum values.
-builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
-
-// Scoped because they depend on scoped ICurrentUser / ICurrentTenant (one per HTTP request).
-builder.Services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
-builder.Services.AddScoped<IAuthorizationHandler, SuperAdminTenantAuthorizationHandler>();
-
-// Write every 403 from a failed policy as an ErrorResponse (the default is a bodiless 403).
-builder.Services.AddSingleton<IAuthorizationMiddlewareResultHandler, ForbiddenResponseHandler>();
+// Register the SuperAdminTenant and Permission policies, their handlers, and the 403 ErrorResponse writer.
+builder.Services.AddApiAuthorization();
 
 // Register each business module's services (MediatR handlers, validators, EF configurations, repositories)
 builder.Services

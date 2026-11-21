@@ -1,4 +1,3 @@
-using HrastERP.API.Extensions;
 using HrastERP.API.Requests.Auth;
 using HrastERP.API.Responses;
 using HrastERP.Infrastructure.Identity;

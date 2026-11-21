@@ -7,7 +7,6 @@ using HrastERP.Administration.Application.Tenants.Models;
 using HrastERP.Administration.Application.Tenants.Queries.GetTenantById;
 using HrastERP.Administration.Application.Tenants.Queries.GetTenants;
 using HrastERP.API.Authorization;
-using HrastERP.API.Extensions;
 using HrastERP.API.Responses;
 using HrastERP.SharedKernel.Authorization;
 using HrastERP.SharedKernel.Results;

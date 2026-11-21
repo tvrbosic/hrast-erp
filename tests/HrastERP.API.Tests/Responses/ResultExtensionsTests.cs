@@ -1,11 +1,10 @@
 using FluentAssertions;
-using HrastERP.API.Extensions;
 using HrastERP.API.Responses;
 using HrastERP.SharedKernel.Common;
 using HrastERP.SharedKernel.Results;
 using Microsoft.AspNetCore.Mvc;
 
-namespace HrastERP.API.Tests.Extensions;
+namespace HrastERP.API.Tests.Responses;
 
 public class ResultExtensionsTests
 {

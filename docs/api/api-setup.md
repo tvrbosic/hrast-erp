@@ -25,7 +25,7 @@ The OpenAPI document includes a global `BearerAuth` security scheme. In Scalar U
 
 ### Configuration
 
-Registration is in `HrastERP.API/Extensions/OpenApiServiceExtensions.cs`:
+Registration is in `HrastERP.API/OpenApi/OpenApiServiceExtensions.cs`:
 
 - `AddOpenApiServices()` — registers OpenAPI document generation with a document transformer that sets the API title, version, and JWT security scheme
 - `UseOpenApiInfrastructure()` — maps the OpenAPI and Scalar endpoints; no-ops outside Development
@@ -98,7 +98,7 @@ The new check will automatically appear in the `/health` response.
 
 ### Configuration
 
-Registration is in `HrastERP.API/Extensions/HealthCheckServiceExtensions.cs`:
+Registration is in `HrastERP.API/HealthChecks/HealthCheckServiceExtensions.cs`:
 
 - `AddHealthCheckServices(IConfiguration)` — registers all health checks with their connection strings
 - `UseHealthCheckEndpoint()` — maps `GET /health` with the custom JSON response writer

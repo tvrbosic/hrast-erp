@@ -88,17 +88,17 @@ Roles are global (shared by all tenants). Any user with `AdministrationView` can
 
 ## DI Registration
 
-In `Program.cs`:
+In `AddApiAuthorization()` (`HrastERP.API/Authorization/AuthorizationServiceExtensions.cs`, called from `Program.cs`):
 
 ```csharp
-builder.Services.AddAuthorization(options =>
+services.AddAuthorization(options =>
     options.AddPolicy(RequireSuperAdminTenantAttribute.PolicyName, policy => policy
         .RequireAuthenticatedUser()
         .AddRequirements(new SuperAdminTenantRequirement())));
-builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
-builder.Services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
-builder.Services.AddScoped<IAuthorizationHandler, SuperAdminTenantAuthorizationHandler>();
-builder.Services.AddSingleton<IAuthorizationMiddlewareResultHandler, ForbiddenResponseHandler>();
+services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
+services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
+services.AddScoped<IAuthorizationHandler, SuperAdminTenantAuthorizationHandler>();
+services.AddSingleton<IAuthorizationMiddlewareResultHandler, ForbiddenResponseHandler>();
 ```
 
 `PermissionPolicyProvider` is singleton — policy construction uses only static enum values. The two authorization handlers are scoped — they depend on scoped `ICurrentUser` / `ICurrentTenant`.
@@ -110,7 +110,7 @@ builder.Services.AddSingleton<IAuthorizationMiddlewareResultHandler, ForbiddenRe
 | Path | Contents |
 |---|---|
 | `Permission/` | `RequirePermissionAttribute`, `PermissionRequirement`, `PermissionAuthorizationHandler`, `PermissionPolicyProvider` (builds `Permission:<long>` policies on demand) |
-| `SuperAdminTenant/` | `RequireSuperAdminTenantAttribute`, `SuperAdminTenantRequirement`, `SuperAdminTenantAuthorizationHandler` (a fixed policy registered in `Program.cs`) |
+| `SuperAdminTenant/` | `RequireSuperAdminTenantAttribute`, `SuperAdminTenantRequirement`, `SuperAdminTenantAuthorizationHandler` (a fixed policy registered in `AddApiAuthorization()`) |
 | `ForbiddenResponseHandler` | Writes every 403 from a failed policy as an `ErrorResponse`: the first `ErrorFailureReason`'s error, otherwise `General.Forbidden`. Challenges go to JwtBearer, whose `OnChallenge` (`JwtChallengeResponse`) writes the 401 as an `ErrorResponse`. |
 | `ErrorFailureReason` | Failure reason carrying an `Error`; a handler fails with it to return a specific 403 code (e.g. `Tenant.SuperAdminRequired`). |
 

@@ -124,12 +124,12 @@ All four types live in `HrastERP.API/Authorization/Permission/` (namespace `Hras
 | `PermissionRequirement` | Pure data carrier: "this request needs permission X". No logic. |
 | `PermissionAuthorizationHandler` | Performs the actual check: `(currentUser.EffectivePermissions & requirement.Permission) != 0`. |
 
-Registered in `Program.cs`:
+Registered in `AddApiAuthorization()` (`HrastERP.API/Authorization/AuthorizationServiceExtensions.cs`):
 
 ```csharp
-builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
-builder.Services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
-builder.Services.AddSingleton<IAuthorizationMiddlewareResultHandler, ForbiddenResponseHandler>();
+services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
+services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
+services.AddSingleton<IAuthorizationMiddlewareResultHandler, ForbiddenResponseHandler>();
 ```
 
 When the handler doesn't succeed, `ForbiddenResponseHandler` returns `403` with `{ "code": "General.Forbidden", "message": ... }` (see `docs/security/authorization.md`). The provider is a singleton (it only uses static enum values); the handler is scoped (it depends on scoped `ICurrentUser`).

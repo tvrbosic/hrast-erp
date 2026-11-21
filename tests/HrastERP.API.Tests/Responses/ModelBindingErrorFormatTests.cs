@@ -1,5 +1,4 @@
 using FluentAssertions;
-using HrastERP.API.Extensions;
 using HrastERP.API.Responses;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -9,7 +8,7 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
-namespace HrastERP.API.Tests.Configuration;
+namespace HrastERP.API.Tests.Responses;
 
 public class ModelBindingErrorFormatTests
 {

@@ -146,7 +146,7 @@ This middleware is **not** the primary error path. Application-layer failures al
 
 When ASP.NET Core fails to deserialize or bind the request body (malformed JSON, missing `[Required]` fields, wrong types), it short-circuits the pipeline **before** MediatR runs. By default, ASP.NET returns its own `ValidationProblemDetails` format which differs from the application's `ErrorResponse` shape.
 
-`ModelBindingExtensions.ConfigureModelBindingErrorFormat()` (in `HrastERP.API/Extensions/`) replaces the default `InvalidModelStateResponseFactory` so that model binding errors produce the same response format as `ValidationBehavior`:
+`ModelBindingExtensions.ConfigureModelBindingErrorFormat()` (in `HrastERP.API/Responses/`) replaces the default `InvalidModelStateResponseFactory` so that model binding errors produce the same response format as `ValidationBehavior`:
 
 ```json
 {

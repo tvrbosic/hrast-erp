@@ -5,7 +5,6 @@ using HrastERP.Administration.Application.Roles.Models;
 using HrastERP.Administration.Application.Roles.Queries.GetRoleById;
 using HrastERP.Administration.Application.Roles.Queries.GetRoles;
 using HrastERP.API.Authorization;
-using HrastERP.API.Extensions;
 using HrastERP.API.Responses;
 using HrastERP.SharedKernel.Authorization;
 using HrastERP.SharedKernel.Results;

@@ -8,7 +8,6 @@ using HrastERP.Administration.Application.Users.Models;
 using HrastERP.Administration.Application.Users.Queries.GetUserById;
 using HrastERP.Administration.Application.Users.Queries.GetUsers;
 using HrastERP.API.Authorization;
-using HrastERP.API.Extensions;
 using HrastERP.API.Responses;
 using HrastERP.SharedKernel.Authorization;
 using HrastERP.SharedKernel.Results;

@@ -1,9 +1,8 @@
-using HrastERP.API.Responses;
 using HrastERP.SharedKernel.Common;
 using HrastERP.SharedKernel.Results;
 using Microsoft.AspNetCore.Mvc;
 
-namespace HrastERP.API.Extensions;
+namespace HrastERP.API.Responses;
 
 /// <summary>
 /// Turns a handler's <see cref="Result"/> into the API's response shapes and picks the success status:
