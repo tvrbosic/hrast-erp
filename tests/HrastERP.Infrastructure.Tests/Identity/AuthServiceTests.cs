@@ -286,6 +286,27 @@ public class AuthServiceTests : IClassFixture<PostgresContainerFixture>, IAsyncL
             .And.Equal(TokenPermissionNames(result.Value.AccessToken));
     }
 
+    [Fact]
+    public async Task Returns_empty_permissions_and_null_role_When_refresh_follows_role_removal()
+    {
+        var role = await SeedRoleAsync(Permission.FinanceView);
+        var user = await SeedUserAsync(roleId: role.Id);
+        var login = await _sut.LoginAsync("test@example.com", "Password1");
+        login.Value.User.Permissions.Should().Equal("FinanceView");
+        // Through the tracked entity: a bulk update would leave the shared context's copy stale.
+        user.RoleId = null;
+        user.Role = null;
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _sut.RefreshAsync(login.Value.RefreshToken);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.User.RoleId.Should().BeNull();
+        result.Value.User.RoleName.Should().BeNull();
+        result.Value.User.Permissions.Should().BeEmpty();
+        TokenPermissionNames(result.Value.AccessToken).Should().BeEmpty();
+    }
+
     // Current user (/me) tests
 
     [Fact]
