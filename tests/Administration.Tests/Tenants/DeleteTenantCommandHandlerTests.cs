@@ -4,6 +4,7 @@ using HrastERP.Administration.Application;
 using HrastERP.Administration.Application.Tenants.Commands.DeleteTenant;
 using HrastERP.Infrastructure.FileStorage;
 using HrastERP.Infrastructure.Identity;
+using HrastERP.SharedKernel.Constants;
 using HrastERP.SharedKernel.Results;
 using Microsoft.EntityFrameworkCore;
 
@@ -83,6 +84,19 @@ public class DeleteTenantCommandHandlerTests(PostgresContainerFixture fixture)
         result.Error.Should().Be(AdministrationErrors.TenantHasFiles(2));
         await using var db = NewDbContext();
         (await db.Set<Tenant>().AnyAsync(t => t.Id == tenant.Id)).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Returns_SuperAdminImmutable_When_deleting_super_admin_tenant()
+    {
+        // No users or files, so only the super admin guard can refuse the delete
+        await SeedTenantAsync("Super Admin", TenantConstants.SuperAdminTenantId);
+
+        var result = await HandleAsync(TenantConstants.SuperAdminTenantId);
+
+        result.Error.Should().Be(AdministrationErrors.TenantSuperAdminImmutable);
+        await using var db = NewDbContext();
+        (await db.Set<Tenant>().AnyAsync(t => t.Id == TenantConstants.SuperAdminTenantId)).Should().BeTrue();
     }
 
     [Fact]

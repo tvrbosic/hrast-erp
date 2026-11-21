@@ -74,6 +74,7 @@ These are stable across all environments and used as FK targets and constants:
 | ProductionWorker role | `00000000-0000-0000-0000-000000000003` | `Reference/0001_roles.sql` |
 | WarehouseEmployee role | `00000000-0000-0000-0000-000000000004` | `Reference/0001_roles.sql` |
 | FinanceEmployee role | `00000000-0000-0000-0000-000000000005` | `Reference/0001_roles.sql` |
+| Demo Tenant (Development only) | `00000000-0000-0000-0000-200000000000` | `Fixtures/0002_dev_tenant.sql` |
 
 ## Resetting Seed Data
 
@@ -83,4 +84,5 @@ Drop and recreate the database, re-apply migrations, then restart the app. The s
 
 - `ON CONFLICT DO NOTHING` means existing rows are not updated. To update reference data (e.g. change a role's permissions), add a new script with an `UPDATE` statement — do not modify existing scripts that have already run against production databases.
 - The dev admin user fixture (`Database/Seeds/Fixtures/0001_dev_admin_user.sql`) uses `TenantId = SuperAdminTenantId` (`00000000-0000-0000-0000-100000000000`), assigning the dev admin to the super admin tenant.
+- The dev tenant fixture (`Database/Seeds/Fixtures/0002_dev_tenant.sql`) creates a regular tenant, `Demo Tenant`, with a tenant admin user (`tenantadmin@hrasterp.local` / `admin`, Administrator role) for exercising tenant isolation and tenant-admin user management locally.
 - **Never enable `SeedFixtures` in production.** The fixtures create a dev admin user with a known password.

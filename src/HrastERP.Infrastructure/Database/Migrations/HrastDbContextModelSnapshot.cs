@@ -420,6 +420,12 @@ namespace HrastERP.Infrastructure.Database.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("name");
 
+                    b.Property<string>("NormalizedName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("normalized_name");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
@@ -431,9 +437,9 @@ namespace HrastERP.Infrastructure.Database.Migrations
                     b.HasKey("Id")
                         .HasName("pk_tenants");
 
-                    b.HasIndex("Name")
+                    b.HasIndex("NormalizedName")
                         .IsUnique()
-                        .HasDatabaseName("ix_tenants_name");
+                        .HasDatabaseName("ix_tenants_normalized_name");
 
                     b.ToTable("tenants", "administration");
                 });

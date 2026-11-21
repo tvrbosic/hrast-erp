@@ -68,8 +68,6 @@ Environment variables cannot delete a key, so removing a base sink (e.g. File in
 
 Development overrides in `appsettings.Development.json` also relax EF Core and ASP.NET Core to `Information` and set default level to `Debug`.
 
-**Migrating from the old keys:** `Serilog__File__Path` and `Serilog__File__RetentionDays` are no longer read, and nothing reports them. Use `Serilog__WriteTo__File__Args__path` and `Serilog__WriteTo__File__Args__retainedFileCountLimit` instead.
-
 ## Sensitive Data Masking
 
 `LoggingBehavior` logs the full request payload for every MediatR command/query. To prevent sensitive data from appearing in logs, mark properties with `[SensitiveData]`:

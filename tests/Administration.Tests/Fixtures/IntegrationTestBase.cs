@@ -60,14 +60,22 @@ public abstract class IntegrationTestBase(PostgresContainerFixture fixture) : IA
         return role;
     }
 
-    protected async Task<Tenant> SeedTenantAsync(string name = "Acme")
+    protected async Task<Tenant> SeedTenantAsync(string name = "Acme", Guid? id = null)
     {
-        var tenant = new Tenant(Guid.NewGuid(), name);
+        var tenant = new Tenant(id ?? Guid.NewGuid(), name);
 
         await using var db = NewDbContext();
         db.Set<Tenant>().Add(tenant);
         await db.SaveChangesAsync();
         return tenant;
+    }
+
+    // Interceptors aren't registered here, so a Remove() would hard-delete; set deleted_at directly instead.
+    protected async Task SoftDeleteTenantAsync(Guid tenantId)
+    {
+        await using var db = NewDbContext();
+        await db.Database.ExecuteSqlInterpolatedAsync(
+            $"UPDATE administration.tenants SET deleted_at = now() WHERE id = {tenantId}");
     }
 
     protected async Task<ApplicationUser> SeedUserAsync(Guid tenantId, Guid? roleId, bool isActive = true)

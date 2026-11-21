@@ -4,6 +4,7 @@
 INSERT INTO administration.tenants (
     id,
     name,
+    normalized_name,
     is_active,
     created_at,
     created_by
@@ -11,6 +12,7 @@ INSERT INTO administration.tenants (
 VALUES (
     '00000000-0000-0000-0000-100000000000',
     'Super Admin',
+    'SUPER ADMIN',
     true,
     NOW(),
     '00000000-0000-0000-0000-000000000000'

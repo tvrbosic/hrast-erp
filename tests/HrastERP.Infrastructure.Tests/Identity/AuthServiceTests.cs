@@ -19,6 +19,9 @@ namespace HrastERP.Infrastructure.Tests.Identity;
 [Trait("Category", "Integration")]
 public class AuthServiceTests : IClassFixture<PostgresContainerFixture>, IAsyncLifetime
 {
+    // Set in configuration below so the lockout tests don't depend on the IdentitySettings default
+    private const int LockoutMaxFailedAttempts = 5;
+
     private readonly JwtSettings _settings = new()
     {
         SecretKey = "ThisIsATestSecretKeyWithAtLeast32Characters!",
@@ -50,8 +53,14 @@ public class AuthServiceTests : IClassFixture<PostgresContainerFixture>, IAsyncL
         var connectionString = fixture.NewConnectionString();
         services.AddDbContext<HrastDbContext>(options => options.UseNpgsql(connectionString));
 
-        // Empty configuration: Identity binds its settings from it and falls back to the defaults
-        services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
+        // Identity binds its settings from configuration; only the lockout limit is pinned, the rest use defaults
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Identity:LockoutMaxFailedAttempts"] = LockoutMaxFailedAttempts.ToString()
+            })
+            .Build();
+        services.AddSingleton<IConfiguration>(configuration);
         services.AddIdentityServices();
 
         // Registered after AddIdentityServices() so it replaces the appsettings binding.
@@ -400,7 +409,7 @@ public class AuthServiceTests : IClassFixture<PostgresContainerFixture>, IAsyncL
     public async Task Returns_invalid_credentials_When_correct_password_is_used_after_lockout()
     {
         await SeedUserAsync();
-        for (var i = 0; i < 5; i++)
+        for (var i = 0; i < LockoutMaxFailedAttempts; i++)
             await _sut.LoginAsync("test@example.com", "WrongPassword1");
 
         var result = await _sut.LoginAsync("test@example.com", "Password1");
@@ -413,23 +422,23 @@ public class AuthServiceTests : IClassFixture<PostgresContainerFixture>, IAsyncL
     public async Task Resets_failed_count_When_login_succeeds()
     {
         var user = await SeedUserAsync();
-        for (var i = 0; i < 4; i++)
+        for (var i = 0; i < LockoutMaxFailedAttempts - 1; i++)
             await _sut.LoginAsync("test@example.com", "WrongPassword1");
 
         await _sut.LoginAsync("test@example.com", "Password1");
-        // Four more failures would lock the account only if the earlier four still counted
-        for (var i = 0; i < 4; i++)
+        // The same number of failures again would lock the account only if the earlier ones still counted
+        for (var i = 0; i < LockoutMaxFailedAttempts - 1; i++)
             await _sut.LoginAsync("test@example.com", "WrongPassword1");
 
         (await _userManager.IsLockedOutAsync(user)).Should().BeFalse();
-        (await _userManager.GetAccessFailedCountAsync(user)).Should().Be(4);
+        (await _userManager.GetAccessFailedCountAsync(user)).Should().Be(LockoutMaxFailedAttempts - 1);
     }
 
     [Fact]
     public async Task Returns_success_When_lockout_has_expired()
     {
         var user = await SeedUserAsync();
-        for (var i = 0; i < 5; i++)
+        for (var i = 0; i < LockoutMaxFailedAttempts; i++)
             await _sut.LoginAsync("test@example.com", "WrongPassword1");
         await _userManager.SetLockoutEndDateAsync(user, DateTimeOffset.UtcNow.AddSeconds(-1));
 

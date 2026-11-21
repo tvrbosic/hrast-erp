@@ -78,7 +78,7 @@ dotnet run --project src/HrastERP.API/
 
 First business module — manages tenants, users and roles. Their entities (`Tenant`, `ApplicationUser`, `Role`) live in the shared identity model in `HrastERP.Infrastructure/Identity/`; every change to them goes through this module.
 
-**Tenant Management:** `Tenant` entity (`Infrastructure/Identity/Entities/`) stored in `administration.tenants`. Full CRUD at `api/admin/tenants`, protected by `[RequireSuperAdminTenant]` + `[RequirePermission]`. Tenant inherits `BaseEntity<Guid>` but does NOT implement `ITenantEntity` — tenants don't belong to other tenants.
+**Tenant Management:** `Tenant` entity (`Infrastructure/Identity/Entities/`) stored in `administration.tenants`. Full CRUD at `api/admin/tenants`, protected by `[RequireSuperAdminTenant]` + `[RequirePermission]`. Tenant inherits `BaseEntity<Guid>` but does NOT implement `ITenantEntity` — tenants don't belong to other tenants. Tenant names are trimmed and unique case-insensitively, enforced by a unique index on `Tenant.NormalizedName` (set by the entity); `CreateTenant` and `UpdateTenant` check it with `IgnoreQueryFilters()`, because soft-deleted tenants keep their name until purged (`409 Tenant.NameTaken`). The super admin tenant cannot be deactivated or deleted (`422 Tenant.SuperAdminImmutable`); renaming it is allowed.
 
 **User Management:** Operates directly on `ApplicationUser` (no separate User entity). Uses `UserManager` for identity operations (create, password), `HrastDbContext` for reads and field updates. Endpoints at `api/admin/users`, protected by `[RequirePermission]`. Super admin tenant users manage all tenants' users; regular tenant admins manage only their own tenant's users (via automatic tenant query filter on `ApplicationUser`). `DELETE api/admin/users/{id}` (`AdministrationDelete`) soft-deletes: it sets `IsActive = false`, hard-deletes the user's refresh tokens, then soft-deletes and clears the cached status. It refuses deleting yourself (`422 User.CannotDeleteSelf`) and, outside the super admin tenant, a user with permissions the caller lacks (`403 User.DeleteExceedsOwnPermissions`). `SoftDeleteCleanupJob` purges deleted users after retention, and until then tenant and role deletes still count them (`Tenant.HasUsers`, `Role.InUse`). Email uniqueness is checked with `IgnoreQueryFilters()` in `CreateUser` and `UpdateUser`, because Identity's own check can't see users in other tenants or soft-deleted users, which keep their email until purged (`409 User.EmailTaken`).
 
@@ -116,6 +116,7 @@ public async Task<IActionResult> GetInvoices() { ... }
 - ProductionWorker role: `00000000-0000-0000-0000-000000000003`
 - WarehouseEmployee role: `00000000-0000-0000-0000-000000000004`
 - FinanceEmployee role: `00000000-0000-0000-0000-000000000005`
+- Demo Tenant (Development fixture only, with user `tenantadmin@hrasterp.local` / `admin`): `00000000-0000-0000-0000-200000000000` (seeded in `Fixtures/0002_dev_tenant.sql`)
 
 ## Infrastructure services
 

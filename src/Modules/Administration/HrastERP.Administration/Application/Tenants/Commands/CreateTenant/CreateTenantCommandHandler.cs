@@ -11,8 +11,12 @@ internal sealed class CreateTenantCommandHandler(HrastDbContext dbContext)
 {
     public async Task<Result<Guid>> Handle(CreateTenantCommand request, CancellationToken cancellationToken)
     {
+        // Soft-deleted tenants keep their name (and its unique index entry) until the purge job removes them,
+        // so ignore query filters to see them too.
+        var normalizedName = request.Name.Trim().ToUpperInvariant();
         var nameExists = await dbContext.Set<Tenant>()
-            .AnyAsync(t => t.Name == request.Name, cancellationToken);
+            .IgnoreQueryFilters()
+            .AnyAsync(t => t.NormalizedName == normalizedName, cancellationToken);
 
         if (nameExists)
             return AdministrationErrors.TenantNameTaken;

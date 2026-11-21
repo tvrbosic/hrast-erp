@@ -16,7 +16,11 @@ internal sealed class TenantConfiguration : IEntityTypeConfiguration<Tenant>
             .IsRequired()
             .HasMaxLength(200);
 
-        builder.HasIndex(t => t.Name)
+        builder.Property(t => t.NormalizedName)
+            .IsRequired()
+            .HasMaxLength(200);
+
+        builder.HasIndex(t => t.NormalizedName)
             .IsUnique();
 
         builder.Property(t => t.IsActive)

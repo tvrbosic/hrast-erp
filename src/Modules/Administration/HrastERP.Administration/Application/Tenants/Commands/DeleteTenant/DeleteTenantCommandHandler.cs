@@ -1,6 +1,7 @@
 using HrastERP.Infrastructure.Database;
 using HrastERP.Infrastructure.FileStorage;
 using HrastERP.Infrastructure.Identity;
+using HrastERP.SharedKernel.Constants;
 using HrastERP.SharedKernel.Results;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -12,6 +13,9 @@ internal sealed class DeleteTenantCommandHandler(HrastDbContext dbContext)
 {
     public async Task<Result> Handle(DeleteTenantCommand request, CancellationToken cancellationToken)
     {
+        if (request.Id == TenantConstants.SuperAdminTenantId)
+            return Result.Failure(AdministrationErrors.TenantSuperAdminImmutable);
+
         var tenant = await dbContext.Set<Tenant>()
             .FirstOrDefaultAsync(t => t.Id == request.Id, cancellationToken);
 

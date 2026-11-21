@@ -31,6 +31,8 @@ public class DatabaseSeederTests : IClassFixture<PostgresContainerFixture>, IAsy
 
     public async Task DisposeAsync() => await _context.DisposeAsync();
 
+    private static readonly Guid DemoTenantId = Guid.Parse("00000000-0000-0000-0000-200000000000");
+
     private DatabaseSeeder CreateSeeder(bool seedFixtures) =>
         new(_context, Options.Create(new DatabaseSettings { ConnectionString = "unused", SeedFixtures = seedFixtures }));
 
@@ -43,6 +45,9 @@ public class DatabaseSeederTests : IClassFixture<PostgresContainerFixture>, IAsy
         _context.Set<Tenant>().IgnoreQueryFilters().Should().Contain(t => t.Id == TenantConstants.SuperAdminTenantId);
         _context.Users.IgnoreQueryFilters().Should()
             .Contain(u => u.UserName == "admin" && u.RoleId == RoleConstants.AdministratorRoleId);
+        _context.Set<Tenant>().IgnoreQueryFilters().Should().Contain(t => t.Id == DemoTenantId && t.Name == "Demo Tenant");
+        _context.Users.IgnoreQueryFilters().Should().Contain(u =>
+            u.UserName == "tenantadmin" && u.TenantId == DemoTenantId && u.RoleId == RoleConstants.AdministratorRoleId);
     }
 
     [Fact]
@@ -53,5 +58,7 @@ public class DatabaseSeederTests : IClassFixture<PostgresContainerFixture>, IAsy
         _context.Set<Role>().IgnoreQueryFilters().Count().Should().Be(5);
         _context.Set<Tenant>().IgnoreQueryFilters().Should().Contain(t => t.Id == TenantConstants.SuperAdminTenantId);
         _context.Users.IgnoreQueryFilters().Should().NotContain(u => u.UserName == "admin");
+        _context.Set<Tenant>().IgnoreQueryFilters().Should().NotContain(t => t.Id == DemoTenantId);
+        _context.Users.IgnoreQueryFilters().Should().NotContain(u => u.UserName == "tenantadmin");
     }
 }

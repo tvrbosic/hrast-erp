@@ -19,6 +19,9 @@ public static class AdministrationErrors
 
     public static readonly Error TenantInactive =
         Error.Validation("Tenant.Inactive", "Cannot create a user for an inactive tenant.");
+
+    public static readonly Error TenantSuperAdminImmutable =
+        Error.Validation("Tenant.SuperAdminImmutable", "The super admin tenant cannot be deactivated or deleted.");
     #endregion
 
     #region User
